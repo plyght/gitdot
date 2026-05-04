@@ -14,6 +14,7 @@ mod webhook;
 
 pub use git_http::*;
 pub use internal::*;
+pub use webhook::*;
 
 pub trait FromApi: Sized {
     type ApiType;

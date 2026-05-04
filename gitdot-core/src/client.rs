@@ -21,5 +21,7 @@ pub use kafka::{KafkaClient, KafkaClientImpl};
 pub use r2::{R2Client, R2ClientImpl};
 pub use s2::{S2Client, S2ClientImpl};
 pub use secret::{GoogleSecretClient, SecretClient};
-pub use slack_bot::{SlackBotClient, SlackBotClientImpl};
+pub use slack_bot::{
+    SLACK_BOT_SIGNATURE_HEADER, SLACK_BOT_TIMESTAMP_HEADER, SlackBotClient, SlackBotClientImpl,
+};
 pub use token::{TokenClient, TokenClientImpl};

@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
 use gitdot_api::resource::webhook as api;
 use gitdot_core::dto::WebhookResponse;
 
@@ -16,4 +19,20 @@ impl IntoApi for WebhookResponse {
             updated_at: self.updated_at,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubscribeSlackWebhookRequest {
+    pub gitdot_user_id: Uuid,
+    pub slack_user_id: String,
+    pub slack_team_id: String,
+    pub slack_channel_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnsubscribeSlackWebhookRequest {
+    pub gitdot_user_id: Uuid,
+    pub slack_user_id: String,
+    pub slack_team_id: String,
+    pub slack_channel_id: String,
 }

@@ -12,14 +12,24 @@ use uuid::Uuid;
 
 use crate::{dto::SlackStatePayload, error::SlackBotError};
 
-const TIMESTAMP_HEADER: &str = "x-gitdot-timestamp";
-const SIGNATURE_HEADER: &str = "x-gitdot-signature";
+pub const SLACK_BOT_TIMESTAMP_HEADER: &str = "x-gitdot-timestamp";
+pub const SLACK_BOT_SIGNATURE_HEADER: &str = "x-gitdot-signature";
 
 const FINALIZE_LOGIN_PATH: &str = "/gitdot/auth/finalize";
+
+// Intentionally set tight time window to prevent replay attacks
+const MAX_REQUEST_AGE_IN_SECONDS: i64 = 10;
 
 #[async_trait]
 pub trait SlackBotClient: Send + Sync + Clone + 'static {
     fn verify_slack_state(&self, state: &str) -> Result<SlackStatePayload, String>;
+
+    fn verify_request_signature(
+        &self,
+        timestamp: &str,
+        body: &[u8],
+        signature: &str,
+    ) -> Result<(), SlackBotError>;
 
     async fn notify_link_completed(
         &self,
@@ -65,12 +75,12 @@ impl SlackBotClientImpl {
             HeaderValue::from_static("application/json"),
         );
         headers.insert(
-            TIMESTAMP_HEADER,
+            SLACK_BOT_TIMESTAMP_HEADER,
             HeaderValue::from_str(&timestamp.to_string())
                 .expect("ascii numeric timestamp is a valid header value"),
         );
         headers.insert(
-            SIGNATURE_HEADER,
+            SLACK_BOT_SIGNATURE_HEADER,
             HeaderValue::from_str(&signature)
                 .expect("hex-encoded signature is a valid header value"),
         );
@@ -135,6 +145,39 @@ impl SlackBotClient for SlackBotClientImpl {
         }
 
         Ok(payload)
+    }
+
+    fn verify_request_signature(
+        &self,
+        timestamp: &str,
+        body: &[u8],
+        signature: &str,
+    ) -> Result<(), SlackBotError> {
+        let ts: i64 = timestamp
+            .parse()
+            .map_err(|_| SlackBotError::InvalidSignature("malformed timestamp".to_string()))?;
+
+        if (Utc::now().timestamp() - ts).abs() > MAX_REQUEST_AGE_IN_SECONDS {
+            return Err(SlackBotError::InvalidSignature("stale request".to_string()));
+        }
+
+        let sig_hex = signature
+            .strip_prefix("v0=")
+            .ok_or_else(|| SlackBotError::InvalidSignature("malformed signature".to_string()))?;
+        let sig_bytes = hex::decode(sig_hex).map_err(|_| {
+            SlackBotError::InvalidSignature("invalid signature encoding".to_string())
+        })?;
+
+        let mut mac = Hmac::<Sha256>::new_from_slice(self.slack_secret.as_bytes())
+            .expect("HMAC accepts any key length");
+        mac.update(b"v0:");
+        mac.update(timestamp.as_bytes());
+        mac.update(b":");
+        mac.update(body);
+        mac.verify_slice(&sig_bytes)
+            .map_err(|_| SlackBotError::InvalidSignature("signature mismatch".to_string()))?;
+
+        Ok(())
     }
 
     async fn notify_link_completed(

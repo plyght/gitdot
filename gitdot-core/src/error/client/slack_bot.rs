@@ -10,4 +10,7 @@ pub enum SlackBotError {
 
     #[error("Failed to serialize Slack bot request body: {0}")]
     SerializationError(#[from] serde_json::Error),
+
+    #[error("Invalid Slack bot signature: {0}")]
+    InvalidSignature(String),
 }

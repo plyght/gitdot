@@ -13,6 +13,7 @@ use crate::{
         LinkSlackAccountRequest, LinkSlackAccountResponse, LogoutRequest, OAuthRedirectResponse,
         PollTokenRequest, RefreshSessionRequest, SendAuthEmailRequest, TokenResponse,
         ValidateTokenRequest, ValidateTokenResponse, VerifyAuthCodeRequest,
+        VerifySlackBotSignatureRequest,
     },
     error::{AuthenticationError, InputError, OptionNotFoundExt},
     model::{AuthProvider, DeviceAuthorizationStatus, TokenType},
@@ -57,12 +58,19 @@ pub trait AuthenticationService: Send + Sync + 'static {
         request: ExchangeGitHubCodeRequest,
     ) -> Result<AuthTokensResponse, AuthenticationError>;
 
+    // --- Slack bot operations ---
+
     async fn link_slack_account(
         &self,
         request: LinkSlackAccountRequest,
     ) -> Result<LinkSlackAccountResponse, AuthenticationError>;
 
-    // --- Device flow operations ---
+    fn verify_slack_bot_signature(
+        &self,
+        request: VerifySlackBotSignatureRequest,
+    ) -> Result<(), AuthenticationError>;
+
+    // --- Device flow opxerations ---
 
     async fn request_device_code(
         &self,
@@ -425,6 +433,15 @@ where
             .await?;
 
         Ok(account.into())
+    }
+
+    fn verify_slack_bot_signature(
+        &self,
+        request: VerifySlackBotSignatureRequest,
+    ) -> Result<(), AuthenticationError> {
+        self.slack_bot_client
+            .verify_request_signature(&request.timestamp, &request.body, &request.signature)
+            .map_err(|_| AuthenticationError::Unauthorized)
     }
 
     async fn request_device_code(
