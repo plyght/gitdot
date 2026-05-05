@@ -1,6 +1,7 @@
 "use client";
 
 import type { OrganizationResource, RepositoryResource } from "gitdot-api";
+import { useParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useShortcuts } from "@/(main)/context/shortcuts";
 import { useUserContext } from "@/(main)/context/user";
@@ -10,27 +11,21 @@ import Link from "@/ui/link";
 
 export function MainCommandBar() {
   const { user, repositories, organizations } = useUserContext();
-  const username = user === undefined ? "ghost" : (user?.name ?? "ghost");
+  const pathname = usePathname();
+  const promptText = pathname.split("/").filter(Boolean).join("/");
 
-  const typed = useTypewriter(username ?? "", 35);
+  const typed = useTypewriter(promptText, 35);
   const [done, setDone] = useState(false);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: trigger typewriter when username changes
   useEffect(() => {
-    setDone(false);
-  }, [username]);
-
-  useEffect(() => {
-    if (!username || typed !== username) return;
+    if (typed !== promptText) return;
     const t = setTimeout(() => setDone(true), 60);
     return () => clearTimeout(t);
-  }, [typed, username]);
-
-  if (username === null) return null;
+  }, [typed, promptText]);
 
   if (!done) {
     return (
-      <span className="flex flex-1 items-center px-2 text-sm text-muted-foreground">
+      <span className="flex flex-1 items-center px-2 text-sm text-foreground">
         {typed}
       </span>
     );
@@ -38,7 +33,6 @@ export function MainCommandBar() {
 
   return (
     <CommandBar
-      username={username}
       user={user ?? null}
       repositories={repositories}
       organizations={organizations}
@@ -47,16 +41,16 @@ export function MainCommandBar() {
 }
 
 function CommandBar({
-  username,
   user,
   repositories,
   organizations,
 }: {
-  username: string;
   user: { name: string } | null;
   repositories: RepositoryResource[] | null | undefined;
   organizations: OrganizationResource[] | null | undefined;
 }) {
+  const pathname = usePathname();
+  const params = useParams();
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [input, setInput] = useState("");
@@ -127,11 +121,33 @@ function CommandBar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, filteredCommands, selectedIdx, close]);
 
+  const segments = pathname.split("/").filter(Boolean);
+  const pathLinks: React.ReactNode[] = [];
+  segments.forEach((segment, index) => {
+    let path = `/${segments.slice(0, index + 1).join("/")}`;
+    if ("path" in params && index === 1) {
+      path = `${path}/files`;
+    }
+    if (index > 0) {
+      pathLinks.push(<span key={`sep-${segment}`}>/</span>);
+    }
+    pathLinks.push(
+      <Link
+        className="hover:underline"
+        href={path}
+        key={`segment-${segment}`}
+        prefetch={true}
+      >
+        {segment}
+      </Link>,
+    );
+  });
+
   return (
     <>
       {open && <div className="fixed inset-0 z-40" onClick={close} />}
       {open && (
-        <div className="fixed bottom-6 left-0 z-50 flex flex-col border-t border-r bg-background font-mono text-sm">
+        <div className="fixed top-7 left-0 z-50 flex flex-col border-b border-r bg-background font-mono text-sm">
           {filteredCommands.length === 0 ? (
             <span className="px-2 py-0.5 text-muted-foreground">
               no results
@@ -160,29 +176,14 @@ function CommandBar({
         </div>
       )}
       <span className="flex flex-1 items-center px-2 text-sm">
-        {user ? (
-          <Link
-            href={`/${user.name}`}
-            className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground hover:underline transition-colors duration-200"
-          >
-            {username}
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event("toggleAuthDialog"))}
-            className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground hover:underline transition-colors duration-200"
-          >
-            {username}
-          </button>
-        )}
+        <span className="flex items-center text-foreground">{pathLinks}</span>
         <span
           className={`flex flex-1 items-center transition-colors duration-200 ${open ? "text-foreground cursor-default" : "text-muted-foreground hover:text-foreground cursor-pointer"}`}
           onClick={() => setOpen(true)}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
-          <span className="mx-1">$</span>
+          <span className="mx-1">»</span>
           {open && (
             <input
               autoFocus

@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  useParams,
-  usePathname,
-  useSelectedLayoutSegments,
-} from "next/navigation";
+import { useSelectedLayoutSegments } from "next/navigation";
+import { useUserContext } from "@/(main)/context/user";
 import { useMetricsContext } from "@/context/metrics";
 import { useAnimateNumber } from "@/hooks/use-animate-number";
 import {
@@ -15,48 +12,45 @@ import {
 import Link from "@/ui/link";
 import { MainCommandBar } from "./main-command-bar";
 
-export function MainFooter() {
+export function MainHeader() {
   const segments = useSelectedLayoutSegments();
   if (segments[2] === "reviews" && segments[3] !== undefined) return null;
 
   return (
-    <div className="relative shrink-0 flex w-full h-6 items-center border-t bg-sidebar text-xs font-mono">
+    <div className="relative shrink-0 flex w-full h-7 items-center border-b bg-sidebar text-xs font-mono">
       <MainCommandBar />
       <div className="ml-auto flex items-baseline pr-2">
-        <Breadcrumbs />
-        <PageVitals />
+        <AuthStatus />
       </div>
     </div>
   );
 }
 
-function Breadcrumbs() {
-  const pathname = usePathname();
-  const params = useParams();
-  const pathLinks: React.ReactNode[] = [];
-  const segments = pathname.split("/").filter(Boolean);
-  segments.forEach((segment, index) => {
-    let path = `/${segments.slice(0, index + 1).join("/")}`;
-    if ("path" in params && index === 1) {
-      path = `${path}/files`;
-    }
+function AuthStatus() {
+  const { user } = useUserContext();
 
-    if (index > 0) {
-      pathLinks.push(<span key={`sep-${segment}`}>/</span>);
-    }
-    pathLinks.push(
+  if (user === undefined) return null;
+
+  if (user) {
+    return (
       <Link
-        className="hover:underline"
-        href={path}
-        key={`segment-${segment}`}
-        prefetch={true}
+        href={`/${user.name}`}
+        className="text-muted-foreground hover:text-foreground hover:underline transition-colors duration-200 mr-1.5"
       >
-        {segment}
-      </Link>,
+        logged in as {user.name}
+      </Link>
     );
-  });
+  }
 
-  return pathLinks;
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new Event("toggleAuthDialog"))}
+      className="text-muted-foreground hover:text-foreground hover:underline transition-colors duration-200 mr-1.5 cursor-pointer"
+    >
+      browsing as guest <span className="text-foreground">(login)</span>
+    </button>
+  );
 }
 
 function PageVitals() {
@@ -68,13 +62,13 @@ function PageVitals() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="w-[5ch] text-center text-muted-foreground ml-1.5 hover:text-foreground transition-colors outline-none cursor-pointer select-none p-0 leading-none"
+          className="w-[5ch] text-center text-muted-foreground hover:text-foreground transition-colors outline-none cursor-pointer select-none p-0 leading-none"
         >
           {animatedFCP != null ? `${animatedFCP}ms` : "0ms"}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        side="top"
+        side="bottom"
         align="end"
         sideOffset={12}
         alignOffset={-8}
