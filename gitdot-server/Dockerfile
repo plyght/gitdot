@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && \
-  apt-get install -y pkg-config libssl-dev && \
+  apt-get install -y pkg-config libssl-dev cmake && \
   rm -rf /var/lib/apt/lists/*
 
 # Copy everything
