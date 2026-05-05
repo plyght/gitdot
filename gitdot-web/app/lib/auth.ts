@@ -135,7 +135,11 @@ export async function verifyAuthCode(code: string) {
 
   const tokens = AuthTokensResource.parse(await res.json());
   await setTokenCookies(tokens);
-  return { access_token: tokens.access_token, is_new: tokens.is_new };
+
+  const payload = JSON.parse(atob(tokens.access_token.split(".")[1]));
+  const username: string = payload.user_metadata?.username ?? "";
+
+  return { is_new: tokens.is_new, username };
 }
 
 // --- GitHub OAuth ---

@@ -46,8 +46,9 @@ function EmailForm({ onSuccess }: { onSuccess: () => void }) {
         name="email"
         placeholder="Email"
         defaultValue=""
+        autoFocus
         onChange={(e) => setEmail(e.target.value)}
-        className="border-border border-b mb-2 ring-0 outline-0 focus:border-black transition-colors duration-150"
+        className="border-border border-b mb-2 ring-0 outline-0 focus:border-black transition-colors duration-500"
       />
       <div className="flex flex-row w-full justify-between">
         <div className="flex items-center">
@@ -101,7 +102,9 @@ function VerifyCodeForm({ redirect }: { redirect?: string }) {
   const isTyping = useIsTyping(code);
 
   useEffect(() => {
-    if (state && !("error" in state)) router.push(redirect ?? "/home");
+    if (state && !("error" in state)) {
+      router.push(redirect ?? `/${state.username}`);
+    }
   }, [state, redirect, router]);
 
   useEffect(() => {
