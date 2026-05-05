@@ -6,6 +6,7 @@ members = [
   "gitdot-auth",
   "gitdot-cli",
   "gitdot-config",
+  "gitdot-consumer",
   "gitdot-core",
   "gitdot-core/derive",
   "gitdot-server",

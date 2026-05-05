@@ -1,8 +1,6 @@
 use thiserror::Error;
 
-use crate::error::{
-    DatabaseError, GitError, InputError, KafkaError, NotFoundError, SlackBotError,
-};
+use crate::error::{DatabaseError, GitError, InputError, KafkaError, NotFoundError, SlackBotError};
 
 #[derive(Debug, Error)]
 pub enum WebhookError {

@@ -141,6 +141,7 @@ dev:
     tmux new-session -d -s "$SESSION_NAME" -c "$PROJECT_ROOT/gitdot-web" -n "gitdot-web" "pnpm run dev"
     tmux new-window -d -t "${SESSION_NAME}:" -c "$PROJECT_ROOT/gitdot-server" -n "gitdot-server" "cargo run"
     tmux new-window -d -t "${SESSION_NAME}:" -c "$PROJECT_ROOT/gitdot-auth" -n "gitdot-auth" "PORT=8082 cargo run"
+    tmux new-window -d -t "${SESSION_NAME}:" -c "$PROJECT_ROOT/gitdot-consumer" -n "gitdot-consumer" "cargo run"
     tmux new-window -d -t "${SESSION_NAME}:" -c "$PROJECT_ROOT/s2-server" -n "s2" "cargo run -- --port 8081"
 
     tmux attach-session -t "$SESSION_NAME"
@@ -156,6 +157,10 @@ server:
 # Run auth server
 auth:
     cd gitdot-auth && PORT=8082 cargo run
+
+# Run kafka consumer
+consumer:
+    cd gitdot-consumer && cargo run
 
 # Run s2-server
 s2:
@@ -307,8 +312,8 @@ REGISTRY := "us-central1-docker.pkg.dev/gitdot/gitdot"
 docker-auth:
     gcloud auth configure-docker us-central1-docker.pkg.dev
 
-# Build and push server + auth Docker images
-docker-push: (_docker-push "gitdot-server") (_docker-push "gitdot-auth")
+# Build and push server + auth + consumer Docker images
+docker-push: (_docker-push "gitdot-server") (_docker-push "gitdot-auth") (_docker-push "gitdot-consumer")
 
 _docker-push name:
     #!/usr/bin/env bash

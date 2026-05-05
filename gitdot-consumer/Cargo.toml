@@ -1,0 +1,25 @@
+[package]
+name = "gitdot-consumer"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "gitdot-consumer"
+path = "src/bin/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+futures = { workspace = true }
+gitdot-core = { workspace = true }
+rdkafka = { workspace = true }
+rustls = { workspace = true, features = ["aws-lc-rs"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { workspace = true }

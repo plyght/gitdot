@@ -2570,6 +2570,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "gitdot-consumer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dotenvy",
+ "futures",
+ "gitdot-core",
+ "rdkafka",
+ "rustls 0.23.36",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "gitdot-core"
 version = "0.1.0"
 dependencies = [
