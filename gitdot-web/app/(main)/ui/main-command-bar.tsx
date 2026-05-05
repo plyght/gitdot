@@ -6,31 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShortcuts } from "@/(main)/context/shortcuts";
 import { useUserContext } from "@/(main)/context/user";
 import { useCommands } from "@/(main)/hooks/use-commands";
-import { useTypewriter } from "@/hooks/use-typewriter";
 import Link from "@/ui/link";
 
 export function MainCommandBar() {
   const { user, repositories, organizations } = useUserContext();
-  const pathname = usePathname();
-  const promptText = pathname.split("/").filter(Boolean).join("/");
-
-  const typed = useTypewriter(promptText, 35);
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    if (typed !== promptText) return;
-    const t = setTimeout(() => setDone(true), 60);
-    return () => clearTimeout(t);
-  }, [typed, promptText]);
-
-  if (!done) {
-    return (
-      <span className="flex flex-1 items-center px-2 text-sm text-foreground">
-        {typed}
-      </span>
-    );
-  }
-
   return (
     <CommandBar
       user={user ?? null}
@@ -157,7 +136,7 @@ function CommandBar({
       {open && (
         // manual math to align first char of input with first char of dropdown labels
         <div
-          className="fixed top-7 z-50 flex flex-col border-b border-r bg-background font-mono text-sm"
+          className="fixed top-7 z-50 flex flex-col border-x border-b bg-background font-mono text-sm"
           style={{ left: `${dropdownLeft + 3}px` }}
         >
           {filteredCommands.length === 0 ? (
