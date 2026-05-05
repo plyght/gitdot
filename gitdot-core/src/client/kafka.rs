@@ -86,10 +86,15 @@ impl ClientContext for GcpKafkaContext {
         _config: Option<&str>,
     ) -> Result<OAuthToken, Box<dyn std::error::Error>> {
         let scopes = [GCP_KAFKA_SCOPE];
-        let token = self.runtime.block_on(self.provider.token(&scopes))?;
-        let lifetime_ms = (token.expires_at() - chrono::Utc::now())
-            .num_milliseconds()
-            .max(0);
+        // librdkafka calls this from inside a tokio task on the same runtime,
+        // so a plain `block_on` panics. `block_in_place` releases the worker
+        // first, letting us drive the future synchronously without re-entry.
+        let token =
+            tokio::task::block_in_place(|| self.runtime.block_on(self.provider.token(&scopes)))?;
+        // librdkafka expects the absolute expiry timestamp in unix-epoch ms,
+        // NOT a duration. Returning a duration here makes librdkafka think the
+        // token expired in 1970.
+        let lifetime_ms = token.expires_at().timestamp_millis();
         Ok(OAuthToken {
             token: token.as_str().to_string(),
             principal_name: "kafka".to_string(),
