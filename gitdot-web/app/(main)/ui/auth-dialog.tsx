@@ -129,9 +129,11 @@ function EmailForm({
   handleSubmit: (e: React.FormEvent) => void;
   handleGithubLogin: () => void;
 }) {
+  const [showSignup, setShowSignup] = useState(false);
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col text-sm" noValidate>
-      <p className="px-2 py-2">Login.</p>
+      <p className="px-2 py-2">{showSignup ? "Signup." : "Login."}</p>
       <input
         type="email"
         name="email"
@@ -144,7 +146,19 @@ function EmailForm({
       />
       <div className="flex items-center justify-between h-8">
         <div className="flex items-center px-2">
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error ? (
+            <p className="text-xs text-red-500">{error}</p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowSignup((v) => !v)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              {showSignup
+                ? "Already have an account? Login."
+                : "Don't have an account? Signup."}
+            </button>
+          )}
         </div>
         <div className="flex items-center h-full">
           <button
