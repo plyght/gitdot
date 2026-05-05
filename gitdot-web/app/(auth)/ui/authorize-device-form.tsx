@@ -39,6 +39,7 @@ export default function AuthorizeDeviceForm() {
         name="user_code"
         placeholder="6 character code"
         value={userCode}
+        maxLength={6}
         onChange={(e) => setUserCode(e.target.value)}
         className="border-border border-b ring-0 outline-0 focus:border-black transition-colors duration-150"
       />
