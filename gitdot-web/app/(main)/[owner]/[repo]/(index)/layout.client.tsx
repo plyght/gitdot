@@ -10,10 +10,10 @@ export const NAV_ITEMS = [
   { path: "", label: "/home" },
   { path: "files", label: "/files" },
   { path: "commits", label: "/commits" },
+  { path: "settings", label: "/settings", protected: true },
   { path: "questions", label: "/questions", beta: true },
   { path: "reviews", label: "/reviews", beta: true },
   { path: "builds", label: "/builds", beta: true },
-  { path: "settings", label: "/settings", protected: true },
 ];
 
 const IS_BETA = process.env.NEXT_PUBLIC_GITDOT_BETA === "true";
