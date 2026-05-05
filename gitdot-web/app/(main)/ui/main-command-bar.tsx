@@ -2,7 +2,7 @@
 
 import type { OrganizationResource, RepositoryResource } from "gitdot-api";
 import { useParams, usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShortcuts } from "@/(main)/context/shortcuts";
 import { useUserContext } from "@/(main)/context/user";
 import { useCommands } from "@/(main)/hooks/use-commands";
@@ -55,6 +55,14 @@ function CommandBar({
   const [hovered, setHovered] = useState(false);
   const [input, setInput] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [dropdownLeft, setDropdownLeft] = useState(0);
+
+  const promptRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (open && promptRef.current) {
+      setDropdownLeft(promptRef.current.getBoundingClientRect().left);
+    }
+  }, [open]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -147,7 +155,11 @@ function CommandBar({
     <>
       {open && <div className="fixed inset-0 z-40" onClick={close} />}
       {open && (
-        <div className="fixed top-7 left-0 z-50 flex flex-col border-b border-r bg-background font-mono text-sm">
+        // manual math to align first char of input with first char of dropdown labels
+        <div
+          className="fixed top-7 z-50 flex flex-col border-b border-r bg-background font-mono text-sm"
+          style={{ left: `${dropdownLeft + 3}px` }}
+        >
           {filteredCommands.length === 0 ? (
             <span className="px-2 py-0.5 text-muted-foreground">
               no results
@@ -183,7 +195,9 @@ function CommandBar({
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
-          <span className="mx-1">»</span>
+          <span ref={promptRef} className="mx-1">
+            »
+          </span>
           {open && (
             <input
               autoFocus
