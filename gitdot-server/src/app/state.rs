@@ -98,7 +98,8 @@ impl AppState {
             settings.gitdot_slack_bot_server_url.clone(),
             secret_client.get_gitdot_slack_secret().await?,
         );
-        let kafka_client = KafkaClientImpl::new(&settings.kafka_bootstrap_servers)?;
+        let kafka_client =
+            KafkaClientImpl::new(&settings.kafka_bootstrap_servers, settings.kafka_auth).await?;
         let email_client = ResendClient::new(&secret_client.get_resend_api_key().await?);
         let image_client = ImageClientImpl::new();
         let r2_client = R2ClientImpl::new(

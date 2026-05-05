@@ -13,6 +13,7 @@ bytes = { workspace = true }
 chrono = { workspace = true }
 crc32fast = { workspace = true }
 futures = { workspace = true }
+gcp_auth = { workspace = true }
 git2 = { workspace = true }
 gitdot-config = { workspace = true }
 gitdot-core-derive = { workspace = true }

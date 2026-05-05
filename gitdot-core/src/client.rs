@@ -17,7 +17,7 @@ pub use git::{Git2Client, GitClient};
 pub use git_http::{GitHttpClient, GitHttpClientImpl};
 pub use github::{GitHubClient, OctocrabClient};
 pub use image::{ImageClient, ImageClientImpl};
-pub use kafka::{KafkaClient, KafkaClientImpl};
+pub use kafka::{GcpKafkaContext, KafkaAuthMode, KafkaClient, KafkaClientImpl};
 pub use r2::{R2Client, R2ClientImpl};
 pub use s2::{S2Client, S2ClientImpl};
 pub use secret::{GoogleSecretClient, SecretClient};

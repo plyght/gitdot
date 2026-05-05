@@ -7,4 +7,7 @@ pub enum KafkaError {
 
     #[error("Failed to serialize Kafka payload: {0}")]
     SerializationError(#[from] serde_json::Error),
+
+    #[error("Kafka auth error: {0}")]
+    AuthError(String),
 }

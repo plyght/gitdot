@@ -1,5 +1,7 @@
 use std::env;
 
+use gitdot_core::client::KafkaAuthMode;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Settings {
     pub port: String,
@@ -15,6 +17,7 @@ pub struct Settings {
     pub gitdot_slack_bot_server_url: String,
 
     pub kafka_bootstrap_servers: String,
+    pub kafka_auth: KafkaAuthMode,
 }
 
 impl Settings {
@@ -41,6 +44,9 @@ impl Settings {
 
             kafka_bootstrap_servers: env::var("KAFKA_BOOTSTRAP_SERVERS")
                 .unwrap_or_else(|_| "localhost:9092".to_string()),
+            kafka_auth: env::var("KAFKA_AUTH")
+                .map(|s| KafkaAuthMode::from_env_str(&s))
+                .unwrap_or_default(),
         })
     }
 

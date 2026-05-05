@@ -5,7 +5,10 @@ use rdkafka::{ClientConfig, consumer::StreamConsumer};
 use sqlx::PgPool;
 
 use gitdot_core::{
-    client::{Git2Client, KafkaClientImpl, SecretClient, SlackBotClientImpl, TokenClientImpl},
+    client::{
+        GcpKafkaContext, Git2Client, KafkaAuthMode, KafkaClientImpl, SecretClient,
+        SlackBotClientImpl, TokenClientImpl,
+    },
     repository::{
         RepositoryRepositoryImpl, SlackWebhookRepositoryImpl, UserRepositoryImpl,
         WebhookRepositoryImpl,
@@ -33,7 +36,8 @@ impl ConsumerState {
         let user_repo = UserRepositoryImpl::new(pool.clone());
 
         let git_client = Git2Client::new("".to_string());
-        let kafka_client = KafkaClientImpl::new(&settings.kafka_bootstrap_servers)?;
+        let kafka_client =
+            KafkaClientImpl::new(&settings.kafka_bootstrap_servers, settings.kafka_auth).await?;
         let slack_bot_client = SlackBotClientImpl::new(
             settings.gitdot_slack_bot_server_url.clone(),
             secret_client.get_gitdot_slack_secret().await?,
@@ -60,14 +64,34 @@ impl ConsumerState {
     }
 }
 
-pub fn build_consumer(settings: &Settings) -> anyhow::Result<StreamConsumer> {
-    let consumer: StreamConsumer = ClientConfig::new()
+pub enum ConsumerHandle {
+    Plain(StreamConsumer),
+    Gcp(StreamConsumer<GcpKafkaContext>),
+}
+
+pub async fn build_consumer(settings: &Settings) -> anyhow::Result<ConsumerHandle> {
+    let mut config = ClientConfig::new();
+    config
         .set("bootstrap.servers", &settings.kafka_bootstrap_servers)
         .set("group.id", &settings.kafka_consumer_group_id)
         .set("enable.auto.commit", "false")
         .set("auto.offset.reset", "earliest")
-        .set("session.timeout.ms", "10000")
-        .create()
-        .context("create kafka consumer")?;
-    Ok(consumer)
+        .set("session.timeout.ms", "10000");
+
+    settings.kafka_auth.apply_security_config(&mut config);
+
+    let handle = match settings.kafka_auth {
+        KafkaAuthMode::GcpOauthbearer => {
+            let context = GcpKafkaContext::new().await?;
+            ConsumerHandle::Gcp(
+                config
+                    .create_with_context(context)
+                    .context("create kafka consumer")?,
+            )
+        }
+        KafkaAuthMode::Local => {
+            ConsumerHandle::Plain(config.create().context("create kafka consumer")?)
+        }
+    };
+    Ok(handle)
 }

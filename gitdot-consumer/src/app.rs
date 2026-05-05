@@ -4,19 +4,19 @@ mod settings;
 mod state;
 
 use anyhow::Context;
-use rdkafka::consumer::{Consumer, StreamConsumer};
+use rdkafka::consumer::Consumer;
 use sqlx::PgPool;
 
 use gitdot_core::client::{GoogleSecretClient, SecretClient};
 
 pub use settings::Settings;
-pub use state::ConsumerState;
+pub use state::{ConsumerHandle, ConsumerState};
 
 const REPO_PUSHED_TOPIC: &str = "gitdot.repo.pushed";
 
 pub struct GitdotConsumer {
     state: ConsumerState,
-    kafka: StreamConsumer,
+    kafka: ConsumerHandle,
 }
 
 impl GitdotConsumer {
@@ -33,10 +33,15 @@ impl GitdotConsumer {
         let pool = PgPool::connect(&database_url).await?;
 
         let state = ConsumerState::new(settings, pool, secret_client).await?;
-        let kafka = state::build_consumer(&state.settings)?;
-        kafka
-            .subscribe(&[REPO_PUSHED_TOPIC])
-            .context("subscribe to topic")?;
+        let kafka = state::build_consumer(&state.settings).await?;
+        match &kafka {
+            ConsumerHandle::Plain(c) => c
+                .subscribe(&[REPO_PUSHED_TOPIC])
+                .context("subscribe to topic")?,
+            ConsumerHandle::Gcp(c) => c
+                .subscribe(&[REPO_PUSHED_TOPIC])
+                .context("subscribe to topic")?,
+        }
 
         Ok(Self { state, kafka })
     }
@@ -47,6 +52,9 @@ impl GitdotConsumer {
             group_id = %self.state.settings.kafka_consumer_group_id,
             "starting consumer",
         );
-        runner::run(self.state, self.kafka).await
+        match self.kafka {
+            ConsumerHandle::Plain(c) => runner::run(self.state, c).await,
+            ConsumerHandle::Gcp(c) => runner::run(self.state, c).await,
+        }
     }
 }

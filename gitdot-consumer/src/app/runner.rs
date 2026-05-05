@@ -2,7 +2,7 @@ use anyhow::Context;
 use futures::StreamExt;
 use rdkafka::{
     Message,
-    consumer::{CommitMode, Consumer, StreamConsumer},
+    consumer::{CommitMode, Consumer, ConsumerContext, StreamConsumer},
     message::BorrowedMessage,
 };
 
@@ -13,7 +13,10 @@ use gitdot_core::{
 
 use super::ConsumerState;
 
-pub async fn run(state: ConsumerState, kafka: StreamConsumer) -> anyhow::Result<()> {
+pub async fn run<C>(state: ConsumerState, kafka: StreamConsumer<C>) -> anyhow::Result<()>
+where
+    C: ConsumerContext + 'static,
+{
     let mut stream = kafka.stream();
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
