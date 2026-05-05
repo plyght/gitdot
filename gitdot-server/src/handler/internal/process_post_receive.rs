@@ -7,10 +7,7 @@ use axum::{
 use reqwest::Client;
 use serde_json::json;
 
-use gitdot_core::{
-    dto::{CreateBuildRequest, CreateCommitsRequest, PublishRepoPushRequest},
-    error::{BuildError, NotFoundError},
-};
+use gitdot_core::dto::{CreateCommitsRequest, PublishRepoPushRequest};
 
 use crate::{
     app::{AppError, AppResponse, AppState},
@@ -31,12 +28,6 @@ pub async fn process_post_receive(
         request.ref_name.clone(),
         None,
         Default::default(),
-    )?;
-    let build_request = CreateBuildRequest::new(
-        &owner,
-        &repo,
-        request.ref_name.clone(),
-        request.new_sha.clone(),
     )?;
 
     let slack_webhook_url = env::var("SLACK_WEBHOOK_URL").ok();
@@ -122,19 +113,6 @@ pub async fn process_post_receive(
             .await
         {
             tracing::error!("Failed to send Slack notification: {e}");
-        }
-    });
-    tokio::spawn(async move {
-        if let Err(e) = state.build_service.create_build(build_request).await {
-            if !matches!(
-                e,
-                BuildError::NotFound(NotFoundError {
-                    entity: "config",
-                    ..
-                })
-            ) {
-                tracing::error!("Failed to create build in post-receive: {e}");
-            }
         }
     });
 
