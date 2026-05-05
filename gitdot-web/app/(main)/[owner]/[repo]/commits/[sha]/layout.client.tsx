@@ -39,7 +39,6 @@ export function LayoutClient({
       <Sidebar>
         <SidebarContent className="overflow-auto">
           <div className="flex flex-col w-full">
-            <CommitSidebarHeader owner={owner} repo={repo} />
             <Suspense>
               <CommitSidebarContent
                 owner={owner}
@@ -52,20 +51,6 @@ export function LayoutClient({
       </Sidebar>
       <OverlayScroll>{children}</OverlayScroll>
     </>
-  );
-}
-
-function CommitSidebarHeader({ owner, repo }: { owner: string; repo: string }) {
-  return (
-    <Link
-      href={`/${owner}/${repo}/commits`}
-      className="sticky top-0 bg-background flex items-center justify-between border-b px-2 h-9 z-10 hover:bg-accent/50 cursor-default"
-    >
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        Commits
-      </h3>
-      <Undo2 size={14} className="text-muted-foreground -translate-y-px" />
-    </Link>
   );
 }
 
