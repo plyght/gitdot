@@ -2,12 +2,14 @@ use async_trait::async_trait;
 use chrono::Utc;
 
 use crate::{
-    client::{Git2Client, GitClient, KafkaClient, KafkaClientImpl},
+    client::{
+        Git2Client, GitClient, KafkaClient, KafkaClientImpl, SlackBotClient, SlackBotClientImpl,
+    },
     dto::{
         CreateWebhookRequest, DeleteWebhookRequest, GetWebhookRequest, ListSlackWebhooksRequest,
-        ListWebhooksRequest, PublishRepoPushRequest, RepoPushCommit, RepoPushEvent,
-        SlackWebhookResponse, SubscribeSlackWebhookRequest, UnsubscribeSlackWebhookRequest,
-        UpdateWebhookRequest, WebhookResponse,
+        ListWebhooksRequest, NotifyRepoPushRequest, PublishRepoPushRequest, RepoPushCommit,
+        RepoPushEvent, SlackWebhookResponse, SubscribeSlackWebhookRequest,
+        UnsubscribeSlackWebhookRequest, UpdateWebhookRequest, WebhookResponse,
     },
     error::{NotFoundError, OptionNotFoundExt, WebhookError},
     model::WebhookEventType,
@@ -61,13 +63,18 @@ pub trait WebhookService: Send + Sync + 'static {
         request: ListSlackWebhooksRequest,
     ) -> Result<Vec<SlackWebhookResponse>, WebhookError>;
 
+    async fn notify_slack_of_repo_push(
+        &self,
+        request: NotifyRepoPushRequest,
+    ) -> Result<(), WebhookError>;
+
     // --- Event operations ---
 
     async fn publish_repo_push(&self, request: PublishRepoPushRequest) -> Result<(), WebhookError>;
 }
 
 #[derive(Debug, Clone)]
-pub struct WebhookServiceImpl<W, SW, R, U, G, K>
+pub struct WebhookServiceImpl<W, SW, R, U, G, K, SBC>
 where
     W: WebhookRepository,
     SW: SlackWebhookRepository,
@@ -75,6 +82,7 @@ where
     U: UserRepository,
     G: GitClient,
     K: KafkaClient,
+    SBC: SlackBotClient,
 {
     webhook_repo: W,
     slack_webhook_repo: SW,
@@ -82,6 +90,7 @@ where
     user_repo: U,
     git_client: G,
     kafka_client: K,
+    slack_bot_client: SBC,
 }
 
 impl
@@ -92,6 +101,7 @@ impl
         UserRepositoryImpl,
         Git2Client,
         KafkaClientImpl,
+        SlackBotClientImpl,
     >
 {
     pub fn new(
@@ -101,6 +111,7 @@ impl
         user_repo: UserRepositoryImpl,
         git_client: Git2Client,
         kafka_client: KafkaClientImpl,
+        slack_bot_client: SlackBotClientImpl,
     ) -> Self {
         Self {
             webhook_repo,
@@ -109,13 +120,14 @@ impl
             user_repo,
             git_client,
             kafka_client,
+            slack_bot_client,
         }
     }
 }
 
 #[crate::instrument_all]
 #[async_trait]
-impl<W, SW, R, U, G, K> WebhookService for WebhookServiceImpl<W, SW, R, U, G, K>
+impl<W, SW, R, U, G, K, SBC> WebhookService for WebhookServiceImpl<W, SW, R, U, G, K, SBC>
 where
     W: WebhookRepository,
     SW: SlackWebhookRepository,
@@ -123,6 +135,7 @@ where
     U: UserRepository,
     G: GitClient,
     K: KafkaClient,
+    SBC: SlackBotClient,
 {
     async fn create_webhook(
         &self,
@@ -336,6 +349,16 @@ where
             .await?;
 
         Ok(webhooks.into_iter().map(Into::into).collect())
+    }
+
+    async fn notify_slack_of_repo_push(
+        &self,
+        request: NotifyRepoPushRequest,
+    ) -> Result<(), WebhookError> {
+        self.slack_bot_client
+            .notify_event(WebhookEventType::Push, &request)
+            .await?;
+        Ok(())
     }
 
     async fn publish_repo_push(&self, request: PublishRepoPushRequest) -> Result<(), WebhookError> {

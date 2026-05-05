@@ -192,6 +192,7 @@ impl AppState {
                 user_repo.clone(),
                 git_client.clone(),
                 kafka_client.clone(),
+                slack_bot_client.clone(),
             )),
             build_service: Arc::new(BuildServiceImpl::new(
                 git_client.clone(),

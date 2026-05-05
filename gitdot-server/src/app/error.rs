@@ -243,9 +243,10 @@ impl HttpStatus for WebhookError {
         match self {
             Self::Input(_) => StatusCode::BAD_REQUEST,
             Self::NotFound(_) => StatusCode::NOT_FOUND,
-            Self::GitError(_) | Self::KafkaError(_) | Self::DatabaseError(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            }
+            Self::GitError(_)
+            | Self::KafkaError(_)
+            | Self::SlackBotError(_)
+            | Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
