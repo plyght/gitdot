@@ -4,7 +4,6 @@ import type {
   RepositoryPathResource,
   RepositoryPathsResource,
 } from "gitdot-api";
-import { Undo2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import {
   Fragment,
@@ -83,74 +82,11 @@ function FileTree({
   promises: ResourcePromises;
 }) {
   const paths = use(promises.paths);
-  const [rootPath, setRootPath] = useState(() =>
-    filePath.split("/").slice(0, -1).join("/"),
-  );
 
   if (!paths) return null;
 
   return (
-    <>
-      <FileTreeHeader
-        owner={owner}
-        repo={repo}
-        rootPath={rootPath}
-        onNavigateUp={() =>
-          setRootPath(rootPath.split("/").slice(0, -1).join("/"))
-        }
-      />
-      <FileTreeRows
-        owner={owner}
-        repo={repo}
-        filePath={filePath}
-        paths={paths}
-        rootPath={rootPath}
-        setRootPath={setRootPath}
-      />
-    </>
-  );
-}
-
-function FileTreeHeader({
-  owner,
-  repo,
-  rootPath,
-  onNavigateUp,
-}: {
-  owner: string;
-  repo: string;
-  rootPath: string;
-  onNavigateUp: () => void;
-}) {
-  const isRoot = rootPath === "";
-
-  return (
-    <Link
-      href={`/${owner}/${repo}/files`}
-      onClick={
-        !isRoot
-          ? (e) => {
-              e.preventDefault();
-              onNavigateUp();
-            }
-          : undefined
-      }
-      className="sticky top-0 bg-background flex items-center justify-between border-b px-2 h-9 z-10 hover:bg-accent/50 cursor-default select-none"
-    >
-      {isRoot ? (
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Files
-        </h3>
-      ) : (
-        <span className="font-mono text-sm truncate">
-          <span className="text-base leading-none">•</span>/{rootPath}/
-        </span>
-      )}
-      <Undo2
-        size={14}
-        className="text-muted-foreground -translate-y-px shrink-0"
-      />
-    </Link>
+    <FileTreeRows owner={owner} repo={repo} filePath={filePath} paths={paths} />
   );
 }
 
@@ -159,29 +95,17 @@ function FileTreeRows({
   repo,
   filePath,
   paths,
-  rootPath,
-  setRootPath,
 }: {
   owner: string;
   repo: string;
   filePath: string;
   paths: RepositoryPathsResource;
-  rootPath: string;
-  setRootPath: (path: string) => void;
 }) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(),
   );
   const expandedFoldersRef = useRef(expandedFolders);
   expandedFoldersRef.current = expandedFolders;
-
-  const updateRootPath = useCallback(
-    (path: string) => {
-      setRootPath(path);
-      setExpandedFolders(new Set());
-    },
-    [setRootPath],
-  );
 
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {
@@ -204,49 +128,30 @@ function FileTreeRows({
   }, []);
 
   useLayoutEffect(() => {
-    if (filePath === "") {
-      updateRootPath("");
-      return;
-    }
+    if (filePath === "") return;
 
     const isFolder = paths.entries.some(
       (e) => e.path === filePath && e.path_type === "tree",
     );
-
-    // For files, rootPath and expand logic is based on the parent folder
-    const targetPath = isFolder
-      ? filePath
-      : filePath.split("/").slice(0, -1).join("/");
-
-    if (targetPath === rootPath) return;
-
-    const isWithinCurrentRoot =
-      rootPath === "" ||
-      targetPath === rootPath ||
-      targetPath.startsWith(`${rootPath}/`);
-
-    if (isWithinCurrentRoot) {
-      const segments = filePath.split("/");
-      const rootDepth = rootPath === "" ? 0 : rootPath.split("/").length;
-      const ancestors = Array.from(
-        { length: segments.length - rootDepth - 1 },
-        (_, i) => segments.slice(0, rootDepth + 1 + i).join("/"),
-      );
-      if (!ancestors.every((a) => expandedFoldersRef.current.has(a))) {
-        expandFolders(ancestors);
-      }
-    } else {
-      updateRootPath(targetPath);
+    const segments = filePath.split("/");
+    const targetSegments = isFolder ? segments : segments.slice(0, -1);
+    const ancestors = targetSegments.map((_, i) =>
+      targetSegments.slice(0, i + 1).join("/"),
+    );
+    if (
+      ancestors.length > 0 &&
+      !ancestors.every((a) => expandedFoldersRef.current.has(a))
+    ) {
+      expandFolders(ancestors);
     }
-  }, [filePath, paths, rootPath, updateRootPath, expandFolders]);
+  }, [filePath, paths, expandFolders]);
 
   const renderRows = (parentPath: string, depth: number): React.ReactNode => {
     const entries = getFolderEntries(parentPath, paths);
-    return entries.map((entry, index) => {
+    return entries.map((entry) => {
       const isFolder = entry.path_type === "tree";
       const isExpanded = expandedFolders.has(entry.path);
       const isActive = filePath === entry.path;
-      const isFirst = depth === 0 && index === 0;
 
       return (
         <Fragment key={entry.path}>
@@ -257,7 +162,6 @@ function FileTreeRows({
               entry={entry}
               depth={depth}
               isActive={isActive}
-              isFirst={isFirst}
               expanded={isExpanded}
               setExpanded={() => toggleFolder(entry.path)}
             />
@@ -268,7 +172,6 @@ function FileTreeRows({
               entry={entry}
               depth={depth}
               isActive={isActive}
-              isFirst={isFirst}
             />
           )}
           {isFolder && isExpanded && renderRows(entry.path, depth + 1)}
@@ -277,7 +180,7 @@ function FileTreeRows({
     });
   };
 
-  return <>{renderRows(rootPath, 0)}</>;
+  return <>{renderRows("", 0)}</>;
 }
 
 function RowGutter({ depth }: { depth: number }) {
@@ -304,7 +207,6 @@ function FolderRow({
   depth,
   entry,
   isActive,
-  isFirst,
   expanded,
   setExpanded,
 }: {
@@ -313,7 +215,6 @@ function FolderRow({
   depth: number;
   entry: RepositoryPathResource;
   isActive: boolean;
-  isFirst: boolean;
   expanded: boolean;
   setExpanded: () => void;
 }) {
@@ -326,8 +227,8 @@ function FolderRow({
       style={{ paddingLeft: `${8 + depth * 16}px` }}
       className={cn(
         "relative flex flex-row w-full h-8 items-center select-none cursor-default text-sm font-mono hover:bg-accent/50 pr-2",
-        isActive && "bg-sidebar border-b border-b-border border-t",
-        isActive && isFirst ? "border-t-transparent" : "border-t-border",
+        isActive &&
+          "bg-sidebar border-b border-b-border border-t border-t-border",
       )}
       data-sidebar-item=""
       data-sidebar-item-active={isActive ? "true" : undefined}
@@ -353,14 +254,12 @@ function FileRow({
   depth,
   entry,
   isActive,
-  isFirst,
 }: {
   owner: string;
   repo: string;
   depth: number;
   entry: RepositoryPathResource;
   isActive: boolean;
-  isFirst: boolean;
 }) {
   const name = entry.path.split("/").pop();
 
@@ -370,8 +269,8 @@ function FileRow({
       style={{ paddingLeft: `${8 + depth * 16}px` }}
       className={cn(
         "relative flex flex-row w-full h-8 items-center select-none cursor-default text-sm font-mono hover:bg-accent/50 pr-2",
-        isActive && "bg-sidebar border-b border-b-border border-t",
-        isActive && isFirst ? "border-t-transparent" : "border-t-border",
+        isActive &&
+          "bg-sidebar border-b border-b-border border-t border-t-border",
       )}
       data-sidebar-item=""
       data-sidebar-item-active={isActive}
