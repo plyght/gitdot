@@ -66,6 +66,9 @@ enum ProducerHandle {
 pub struct GcpKafkaContext {
     provider: Arc<dyn gcp_auth::TokenProvider>,
     runtime: tokio::runtime::Handle,
+    /// SASL authzid sent on the wire. GCP Managed Kafka rejects the handshake
+    /// if this doesn't match the token's bound service account email.
+    principal_name: String,
 }
 
 impl GcpKafkaContext {
@@ -74,8 +77,37 @@ impl GcpKafkaContext {
         let provider = gcp_auth::provider()
             .await
             .map_err(|e| KafkaError::AuthError(format!("init gcp auth provider: {e}")))?;
-        Ok(Self { provider, runtime })
+        let principal_name = fetch_service_account_email().await.unwrap_or_else(|e| {
+            tracing::warn!(
+                ?e,
+                "could not resolve SA email from metadata server; falling back"
+            );
+            "kafka".to_string()
+        });
+        Ok(Self {
+            provider,
+            runtime,
+            principal_name,
+        })
     }
+}
+
+async fn fetch_service_account_email() -> Result<String, KafkaError> {
+    let response = reqwest::Client::new()
+        .get(
+            "http://metadata.google.internal/computeMetadata/v1/\
+             instance/service-accounts/default/email",
+        )
+        .header("Metadata-Flavor", "Google")
+        .timeout(Duration::from_secs(2))
+        .send()
+        .await
+        .map_err(|e| KafkaError::AuthError(format!("metadata server: {e}")))?;
+    let email = response
+        .text()
+        .await
+        .map_err(|e| KafkaError::AuthError(format!("metadata server body: {e}")))?;
+    Ok(email.trim().to_string())
 }
 
 impl ClientContext for GcpKafkaContext {
@@ -97,7 +129,7 @@ impl ClientContext for GcpKafkaContext {
         let lifetime_ms = token.expires_at().timestamp_millis();
         Ok(OAuthToken {
             token: token.as_str().to_string(),
-            principal_name: "kafka".to_string(),
+            principal_name: self.principal_name.clone(),
             lifetime_ms,
         })
     }
