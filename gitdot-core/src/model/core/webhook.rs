@@ -29,7 +29,7 @@ pub struct SlackWebhook {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Type, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Type, Serialize, Deserialize)]
 #[sqlx(type_name = "core.webhook_event_type", rename_all = "snake_case")]
 pub enum WebhookEventType {
     Push,
@@ -37,13 +37,19 @@ pub enum WebhookEventType {
     ReviewUpdate,
 }
 
-impl Into<String> for WebhookEventType {
-    fn into(self) -> String {
+impl WebhookEventType {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            WebhookEventType::Push => "push".to_string(),
-            WebhookEventType::ReviewPublish => "review_publish".to_string(),
-            WebhookEventType::ReviewUpdate => "review_update".to_string(),
+            WebhookEventType::Push => "push",
+            WebhookEventType::ReviewPublish => "review_publish",
+            WebhookEventType::ReviewUpdate => "review_update",
         }
+    }
+}
+
+impl From<WebhookEventType> for String {
+    fn from(event: WebhookEventType) -> Self {
+        event.as_str().to_string()
     }
 }
 

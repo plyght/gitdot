@@ -10,12 +10,14 @@ use serde::Serialize;
 use sha2::Sha256;
 use uuid::Uuid;
 
-use crate::{dto::SlackStatePayload, error::SlackBotError};
+use crate::{dto::SlackStatePayload, error::SlackBotError, model::WebhookEventType};
 
 pub const SLACK_BOT_TIMESTAMP_HEADER: &str = "x-gitdot-timestamp";
 pub const SLACK_BOT_SIGNATURE_HEADER: &str = "x-gitdot-signature";
+pub const SLACK_BOT_EVENT_TYPE_HEADER: &str = "x-gitdot-event-type";
 
 const FINALIZE_LOGIN_PATH: &str = "/gitdot/auth/finalize";
+const EVENTS_PATH: &str = "/gitdot/events";
 
 // Intentionally set tight time window to prevent replay attacks
 const MAX_REQUEST_AGE_IN_SECONDS: i64 = 10;
@@ -35,6 +37,12 @@ pub trait SlackBotClient: Send + Sync + Clone + 'static {
         &self,
         gitdot_user_id: Uuid,
         channel_id: &str,
+    ) -> Result<(), SlackBotError>;
+
+    async fn notify_event<T: Serialize + Send + Sync>(
+        &self,
+        event_type: WebhookEventType,
+        body: &T,
     ) -> Result<(), SlackBotError>;
 }
 
@@ -65,6 +73,15 @@ impl SlackBotClientImpl {
     }
 
     async fn post<T: Serialize>(&self, path: &str, body: &T) -> Result<(), SlackBotError> {
+        self.post_with(path, None, body).await
+    }
+
+    async fn post_with<T: Serialize>(
+        &self,
+        path: &str,
+        event_type: Option<&str>,
+        body: &T,
+    ) -> Result<(), SlackBotError> {
         let body_bytes = serde_json::to_vec(body)?;
         let timestamp = Utc::now().timestamp();
         let signature = self.sign(timestamp, &body_bytes);
@@ -84,6 +101,12 @@ impl SlackBotClientImpl {
             HeaderValue::from_str(&signature)
                 .expect("hex-encoded signature is a valid header value"),
         );
+        if let Some(event_type) = event_type {
+            headers.insert(
+                SLACK_BOT_EVENT_TYPE_HEADER,
+                HeaderValue::from_str(event_type).expect("event type names are ascii safe"),
+            );
+        }
 
         let url = format!("{}{}", self.server_url, path);
         let response = self
@@ -193,5 +216,14 @@ impl SlackBotClient for SlackBotClientImpl {
             },
         )
         .await
+    }
+
+    async fn notify_event<T: Serialize + Send + Sync>(
+        &self,
+        event_type: WebhookEventType,
+        body: &T,
+    ) -> Result<(), SlackBotError> {
+        self.post_with(EVENTS_PATH, Some(event_type.as_str()), body)
+            .await
     }
 }
