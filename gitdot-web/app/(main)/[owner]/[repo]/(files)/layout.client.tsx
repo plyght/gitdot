@@ -164,10 +164,11 @@ function FileTreeRows({
 
   const renderRows = (parentPath: string, depth: number): React.ReactNode => {
     const entries = getFolderEntries(parentPath, paths);
-    return entries.map((entry) => {
+    return entries.map((entry, index) => {
       const isFolder = entry.path_type === "tree";
       const isExpanded = expandedFolders.has(entry.path);
       const isActive = filePath === entry.path;
+      const isFirst = depth === 0 && index === 0;
 
       return (
         <Fragment key={entry.path}>
@@ -178,6 +179,7 @@ function FileTreeRows({
               entry={entry}
               depth={depth}
               isActive={isActive}
+              isFirst={isFirst}
               expanded={isExpanded}
               setExpanded={() => toggleFolder(entry.path)}
             />
@@ -188,6 +190,7 @@ function FileTreeRows({
               entry={entry}
               depth={depth}
               isActive={isActive}
+              isFirst={isFirst}
             />
           )}
           {isFolder && isExpanded && renderRows(entry.path, depth + 1)}
@@ -223,6 +226,7 @@ function FolderRow({
   depth,
   entry,
   isActive,
+  isFirst,
   expanded,
   setExpanded,
 }: {
@@ -231,6 +235,7 @@ function FolderRow({
   depth: number;
   entry: RepositoryPathResource;
   isActive: boolean;
+  isFirst: boolean;
   expanded: boolean;
   setExpanded: () => void;
 }) {
@@ -244,7 +249,10 @@ function FolderRow({
       className={cn(
         "relative flex flex-row w-full h-8 items-center select-none cursor-default text-sm font-mono hover:bg-accent/50 pr-2",
         isActive &&
-          "bg-sidebar border-b border-b-border border-t border-t-border",
+          cn(
+            "bg-sidebar border-b border-b-border",
+            !isFirst && "border-t border-t-border",
+          ),
       )}
       data-sidebar-item=""
       data-sidebar-item-active={isActive ? "true" : undefined}
@@ -270,12 +278,14 @@ function FileRow({
   depth,
   entry,
   isActive,
+  isFirst,
 }: {
   owner: string;
   repo: string;
   depth: number;
   entry: RepositoryPathResource;
   isActive: boolean;
+  isFirst: boolean;
 }) {
   const name = entry.path.split("/").pop();
 
@@ -286,7 +296,10 @@ function FileRow({
       className={cn(
         "relative flex flex-row w-full h-8 items-center select-none cursor-default text-sm font-mono hover:bg-accent/50 pr-2",
         isActive &&
-          "bg-sidebar border-b border-b-border border-t border-t-border",
+          cn(
+            "bg-sidebar border-b border-b-border",
+            !isFirst && "border-t border-t-border",
+          ),
       )}
       data-sidebar-item=""
       data-sidebar-item-active={isActive}

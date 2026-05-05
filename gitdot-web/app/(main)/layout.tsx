@@ -6,7 +6,7 @@ import { ShortcutsProvider } from "./context/shortcuts";
 import { ToasterProvider } from "./context/toaster";
 import { UserProvider } from "./context/user";
 import { WorkerProvider } from "./context/worker";
-import { MainHeader } from "./ui/main-header";
+import { MainFooter } from "./ui/main-footer";
 
 export const metadata: Metadata = {
   title: "gitdot",
@@ -27,10 +27,10 @@ export default function RootLayout({
               <SettingsProvider>
                 <HistoryProvider>
                   <div className="flex flex-col h-screen w-full max-w-screen overflow-hidden">
-                    <MainHeader />
                     <main className="flex-1 min-h-0 overflow-hidden">
                       {children}
                     </main>
+                    <MainFooter />
                   </div>
                 </HistoryProvider>
               </SettingsProvider>

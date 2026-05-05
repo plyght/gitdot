@@ -60,6 +60,7 @@ function IndexSidebar({
     <Sidebar>
       <SidebarContent className="overflow-auto">
         <div className="flex flex-col w-full">
+          <RepoBreadcrumbs owner={owner} repo={repo} />
           {items.map((item) => {
             const active = isActive(item.path);
             return (
@@ -80,5 +81,23 @@ function IndexSidebar({
         </div>
       </SidebarContent>
     </Sidebar>
+  );
+}
+
+function RepoBreadcrumbs({ owner, repo }: { owner: string; repo: string }) {
+  return (
+    <div className="flex flex-row w-full h-9 items-center border-b px-2 text-sm font-mono">
+      <Link href={`/${owner}`} className="hover:underline" prefetch={true}>
+        {owner}
+      </Link>
+      <span>/</span>
+      <Link
+        href={`/${owner}/${repo}`}
+        className="hover:underline"
+        prefetch={true}
+      >
+        {repo}
+      </Link>
+    </div>
   );
 }
