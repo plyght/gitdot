@@ -137,7 +137,7 @@ function CommandBar({
         // manual math to align first char of input with first char of dropdown labels
         <div
           className="fixed bottom-7 z-50 flex flex-col border-x border-t bg-background font-mono text-sm"
-          style={{ left: `${dropdownLeft + 3}px` }}
+          style={{ left: `${dropdownLeft + 5}px` }}
         >
           {filteredCommands.length === 0 ? (
             <span className="px-2 py-0.5 text-muted-foreground">
@@ -174,8 +174,8 @@ function CommandBar({
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
-          <span ref={promptRef} className="mx-1">
-            &gt;
+          <span ref={promptRef} className="mx-1.5">
+            »
           </span>
           {open && (
             <input
