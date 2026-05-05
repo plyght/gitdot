@@ -9,6 +9,8 @@ mod update_webhook;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use crate::model::{SlackWebhook, Webhook, WebhookEventType};
+
 pub use create_webhook::CreateWebhookRequest;
 pub use delete_webhook::DeleteWebhookRequest;
 pub use event::*;
@@ -16,8 +18,6 @@ pub use get_webhook::GetWebhookRequest;
 pub use list_webhooks::ListWebhooksRequest;
 pub use slack::*;
 pub use update_webhook::UpdateWebhookRequest;
-
-use crate::model::{SlackWebhook, Webhook, WebhookEventType};
 
 #[derive(Debug, Clone)]
 pub struct WebhookResponse {

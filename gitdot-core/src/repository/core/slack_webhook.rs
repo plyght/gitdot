@@ -21,6 +21,12 @@ pub trait SlackWebhookRepository: Send + Sync + Clone + 'static {
 
     async fn get(&self, id: Uuid) -> Result<Option<SlackWebhook>, DatabaseError>;
 
+    async fn list_by_repository_and_event(
+        &self,
+        repository_id: Uuid,
+        event: WebhookEventType,
+    ) -> Result<Vec<SlackWebhook>, DatabaseError>;
+
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError>;
 }
 
@@ -81,6 +87,28 @@ impl SlackWebhookRepository for SlackWebhookRepositoryImpl {
         .await?;
 
         Ok(webhook)
+    }
+
+    async fn list_by_repository_and_event(
+        &self,
+        repository_id: Uuid,
+        event: WebhookEventType,
+    ) -> Result<Vec<SlackWebhook>, DatabaseError> {
+        let webhooks = sqlx::query_as::<_, SlackWebhook>(
+            r#"
+            SELECT id, user_id, repository_id, events,
+                slack_user_id, slack_team_id, slack_channel_id, created_at
+            FROM core.slack_webhooks
+            WHERE repository_id = $1 AND $2 = ANY(events)
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(repository_id)
+        .bind(event)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(webhooks)
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError> {

@@ -4,10 +4,10 @@ use chrono::Utc;
 use crate::{
     client::{Git2Client, GitClient, KafkaClient, KafkaClientImpl},
     dto::{
-        CreateWebhookRequest, DeleteWebhookRequest, GetWebhookRequest, ListWebhooksRequest,
-        PublishRepoPushRequest, RepoPushCommit, RepoPushEvent, SlackWebhookResponse,
-        SubscribeSlackWebhookRequest, UnsubscribeSlackWebhookRequest, UpdateWebhookRequest,
-        WebhookResponse,
+        CreateWebhookRequest, DeleteWebhookRequest, GetWebhookRequest, ListSlackWebhooksRequest,
+        ListWebhooksRequest, PublishRepoPushRequest, RepoPushCommit, RepoPushEvent,
+        SlackWebhookResponse, SubscribeSlackWebhookRequest, UnsubscribeSlackWebhookRequest,
+        UpdateWebhookRequest, WebhookResponse,
     },
     error::{NotFoundError, OptionNotFoundExt, WebhookError},
     model::WebhookEventType,
@@ -44,10 +44,6 @@ pub trait WebhookService: Send + Sync + 'static {
 
     async fn delete_webhook(&self, request: DeleteWebhookRequest) -> Result<(), WebhookError>;
 
-    // --- Event operations ---
-
-    async fn publish_repo_push(&self, request: PublishRepoPushRequest) -> Result<(), WebhookError>;
-
     // --- Slack webhook operations ---
 
     async fn subscribe_slack_webhook(
@@ -59,6 +55,15 @@ pub trait WebhookService: Send + Sync + 'static {
         &self,
         request: UnsubscribeSlackWebhookRequest,
     ) -> Result<(), WebhookError>;
+
+    async fn list_slack_webhooks(
+        &self,
+        request: ListSlackWebhooksRequest,
+    ) -> Result<Vec<SlackWebhookResponse>, WebhookError>;
+
+    // --- Event operations ---
+
+    async fn publish_repo_push(&self, request: PublishRepoPushRequest) -> Result<(), WebhookError>;
 }
 
 #[derive(Debug, Clone)]
@@ -250,48 +255,6 @@ where
         Ok(())
     }
 
-    async fn publish_repo_push(&self, request: PublishRepoPushRequest) -> Result<(), WebhookError> {
-        let pusher = self
-            .user_repo
-            .get_by_id(request.pusher_id)
-            .await?
-            .or_not_found("user", request.pusher_id)?;
-
-        let git_commits = self
-            .git_client
-            .rev_list(
-                &request.owner,
-                &request.repo,
-                &request.old_sha,
-                &request.new_sha,
-            )
-            .await?;
-
-        let commits = git_commits
-            .into_iter()
-            .map(|c| RepoPushCommit {
-                sha: c.sha,
-                message: c.message,
-            })
-            .collect();
-
-        let event = RepoPushEvent {
-            owner: request.owner,
-            repo: request.repo,
-            ref_name: request.ref_name,
-            old_sha: request.old_sha,
-            new_sha: request.new_sha,
-            pusher_id: request.pusher_id,
-            pusher_name: pusher.name,
-            commits,
-            pushed_at: Utc::now(),
-        };
-
-        self.kafka_client.publish_repo_push(event).await?;
-
-        Ok(())
-    }
-
     async fn subscribe_slack_webhook(
         &self,
         request: SubscribeSlackWebhookRequest,
@@ -350,6 +313,69 @@ where
         }
 
         self.slack_webhook_repo.delete(request.webhook_id).await?;
+
+        Ok(())
+    }
+
+    async fn list_slack_webhooks(
+        &self,
+        request: ListSlackWebhooksRequest,
+    ) -> Result<Vec<SlackWebhookResponse>, WebhookError> {
+        let owner = request.owner_name.as_ref();
+        let repo = request.repo_name.as_ref();
+
+        let repository = self
+            .repo_repo
+            .get(owner, repo)
+            .await?
+            .or_not_found("repository", format!("{owner}/{repo}"))?;
+
+        let webhooks = self
+            .slack_webhook_repo
+            .list_by_repository_and_event(repository.id, request.event)
+            .await?;
+
+        Ok(webhooks.into_iter().map(Into::into).collect())
+    }
+
+    async fn publish_repo_push(&self, request: PublishRepoPushRequest) -> Result<(), WebhookError> {
+        let pusher = self
+            .user_repo
+            .get_by_id(request.pusher_id)
+            .await?
+            .or_not_found("user", request.pusher_id)?;
+
+        let git_commits = self
+            .git_client
+            .rev_list(
+                &request.owner,
+                &request.repo,
+                &request.old_sha,
+                &request.new_sha,
+            )
+            .await?;
+
+        let commits = git_commits
+            .into_iter()
+            .map(|c| RepoPushCommit {
+                sha: c.sha,
+                message: c.message,
+            })
+            .collect();
+
+        let event = RepoPushEvent {
+            owner: request.owner,
+            repo: request.repo,
+            ref_name: request.ref_name,
+            old_sha: request.old_sha,
+            new_sha: request.new_sha,
+            pusher_id: request.pusher_id,
+            pusher_name: pusher.name,
+            commits,
+            pushed_at: Utc::now(),
+        };
+
+        self.kafka_client.publish_repo_push(event).await?;
 
         Ok(())
     }
