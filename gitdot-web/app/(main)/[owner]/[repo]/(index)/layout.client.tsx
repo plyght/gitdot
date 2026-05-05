@@ -10,11 +10,13 @@ export const NAV_ITEMS = [
   { path: "", label: "/home" },
   { path: "files", label: "/files" },
   { path: "commits", label: "/commits" },
-  { path: "questions", label: "/questions" },
-  { path: "reviews", label: "/reviews" },
-  { path: "builds", label: "/builds" },
+  { path: "questions", label: "/questions", beta: true },
+  { path: "reviews", label: "/reviews", beta: true },
+  { path: "builds", label: "/builds", beta: true },
   { path: "settings", label: "/settings", protected: true },
 ];
+
+const IS_BETA = process.env.NEXT_PUBLIC_GITDOT_BETA === "true";
 
 export function LayoutClient({
   owner,
@@ -47,7 +49,9 @@ function IndexSidebar({
   const pathname = usePathname();
   const path = pathname.replace(`/${owner}/${repo}`, "") || "/";
 
-  const items = NAV_ITEMS.filter((i) => !i.protected || showSettings);
+  const items = NAV_ITEMS.filter(
+    (i) => (!i.protected || showSettings) && (!i.beta || IS_BETA),
+  );
   const isActive = (itemPath: string) => {
     const full = `/${itemPath}`;
     return path === full || path.startsWith(`${full}/`);

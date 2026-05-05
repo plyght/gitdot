@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/auth";
 
-const ORG_SLUGS = ["gitdot"];
+const IS_BETA = process.env.NEXT_PUBLIC_GITDOT_BETA === "true";
+const BETA_PATHS = new Set(["questions", "reviews", "builds"]);
 
 export async function proxy(request: NextRequest) {
   const { user } = await updateSession(request);
@@ -15,22 +16,10 @@ export async function proxy(request: NextRequest) {
       new URL("/login?redirect=/oauth/device", request.nextUrl),
     );
   }
+
   const segments = pathname.split("/").filter(Boolean);
-  const [firstSegment, secondSegment] = segments;
-
-  if (ORG_SLUGS.includes(firstSegment)) {
-    const isSpecialPath = secondSegment === "settings";
-    const isAlreadyDuplicated = secondSegment === firstSegment;
-
-    // TODO: there is ambiguity between a non-default repo (e.g., gitdot/gitdot-infra and files, gitdot/README.md)
-    if (!isSpecialPath && !isAlreadyDuplicated) {
-      const pathParts = [firstSegment, firstSegment, ...segments.slice(1)];
-      const newPathname = `/${pathParts.join("/")}`;
-      return NextResponse.rewrite(
-        new URL(newPathname, request.nextUrl),
-        response,
-      );
-    }
+  if (!IS_BETA && segments.length >= 3 && BETA_PATHS.has(segments[2])) {
+    return new NextResponse(null, { status: 404 });
   }
 
   return response;
