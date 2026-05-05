@@ -4,6 +4,7 @@ import type {
   RepositoryPathResource,
   RepositoryPathsResource,
 } from "gitdot-api";
+import { Undo2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import {
   Fragment,
@@ -52,6 +53,7 @@ export function LayoutClient({
       <Sidebar>
         <SidebarContent className="overflow-auto flex flex-col w-full">
           <div className="flex flex-col w-full">
+            <FileSidebarHeader owner={owner} repo={repo} />
             <Suspense fallback={<Loading />}>
               <FileTree
                 owner={owner}
@@ -67,6 +69,20 @@ export function LayoutClient({
         <OverlayScroll>{children}</OverlayScroll>
       </Suspense>
     </>
+  );
+}
+
+function FileSidebarHeader({ owner, repo }: { owner: string; repo: string }) {
+  return (
+    <Link
+      href={`/${owner}/${repo}/files`}
+      className="sticky top-0 bg-background flex items-center justify-between border-b px-2 h-9 z-10 hover:bg-accent/50 cursor-default"
+    >
+      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        Files
+      </h3>
+      <Undo2 size={14} className="text-muted-foreground -translate-y-px" />
+    </Link>
   );
 }
 

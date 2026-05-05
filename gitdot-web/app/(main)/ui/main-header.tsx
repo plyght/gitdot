@@ -1,10 +1,15 @@
 "use client";
 
 import type { UserResource } from "gitdot-api";
-import { useSelectedLayoutSegments } from "next/navigation";
+import { Settings } from "lucide-react";
+import {
+  useParams,
+  usePathname,
+  useSelectedLayoutSegments,
+} from "next/navigation";
 import { useEffect, useState } from "react";
-import { useUserContext } from "@/(main)/context/user";
 import { UserImage } from "@/(main)/[owner]/ui/user-image";
+import { useUserContext } from "@/(main)/context/user";
 import { useMetricsContext } from "@/context/metrics";
 import { useAnimateNumber } from "@/hooks/use-animate-number";
 import { useTypewriter } from "@/hooks/use-typewriter";
@@ -15,19 +20,79 @@ import {
 } from "@/ui/dropdown-menu";
 import Link from "@/ui/link";
 import { cn } from "@/util";
-import { MainCommandBar } from "./main-command-bar";
 
 export function MainHeader() {
   const segments = useSelectedLayoutSegments();
   if (segments[2] === "reviews" && segments[3] !== undefined) return null;
 
   return (
-    <div className="relative shrink-0 flex w-full h-7 items-center border-b bg-sidebar text-xs font-mono">
-      <MainCommandBar />
-      <div className="ml-auto flex items-center pr-2">
+    <div className="relative shrink-0 flex w-full h-6 items-center border-b bg-sidebar text-xs font-mono">
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
+        <Breadcrumbs />
+      </div>
+      <div className="ml-auto flex items-center h-full">
         <AuthStatus />
+        <SettingsButton />
+        <ShortcutsButton />
       </div>
     </div>
+  );
+}
+
+function Breadcrumbs() {
+  const pathname = usePathname();
+  const params = useParams();
+
+  const segments = pathname.split("/").filter(Boolean);
+  const links: React.ReactNode[] = [];
+  segments.forEach((segment, index) => {
+    let path = `/${segments.slice(0, index + 1).join("/")}`;
+    if ("path" in params && index === 1) {
+      path = `${path}/files`;
+    }
+    if (index > 0) {
+      links.push(<span key={`sep-${segment}`}>/</span>);
+    }
+    links.push(
+      <Link
+        className="hover:underline"
+        href={path}
+        key={`segment-${segment}`}
+        prefetch={true}
+      >
+        {segment}
+      </Link>,
+    );
+  });
+
+  return <span className="flex items-center text-foreground">{links}</span>;
+}
+
+function SettingsButton() {
+  return (
+    <button
+      type="button"
+      aria-label="Settings"
+      title="Settings"
+      onClick={() => window.dispatchEvent(new Event("openSettings"))}
+      className="flex items-center justify-center h-full w-6 border-l text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+    >
+      <Settings className="size-3.5" />
+    </button>
+  );
+}
+
+function ShortcutsButton() {
+  return (
+    <button
+      type="button"
+      aria-label="Shortcuts"
+      title="Shortcuts"
+      onClick={() => window.dispatchEvent(new Event("openShortcuts"))}
+      className="flex items-center justify-center h-full w-6 border-l text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+    >
+      ?
+    </button>
   );
 }
 
@@ -76,7 +141,7 @@ function AuthStatusLoggedIn({ user }: { user: UserResource }) {
           done ? "opacity-100" : "opacity-0",
         )}
       >
-        <UserImage userId={user.id} px={18} />
+        <UserImage userId={user.id} px={16} />
       </span>
     </Link>
   );
