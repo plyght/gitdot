@@ -1,20 +1,35 @@
-# Build stage
-FROM rust:1.92.0-bookworm AS builder
+# syntax=docker/dockerfile:1.7
 
+# ---- chef base ----
+# cargo-chef separates dependency compilation into its own cached layer so
+# `docker build` only recompiles deps when Cargo.toml/Cargo.lock changes.
+FROM rust:1.92.0-bookworm AS chef
 WORKDIR /app
+RUN cargo install cargo-chef --locked
 
-# Install build dependencies
+# ---- planner: compute the recipe (cheap, just inspects Cargo.toml's) ----
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ---- builder ----
+FROM chef AS builder
+
+# Install build dependencies (cmake/perl needed for rdkafka + vendored openssl)
 RUN apt-get update && \
-  apt-get install -y pkg-config libssl-dev cmake && \
+  apt-get install -y pkg-config libssl-dev cmake perl && \
   rm -rf /var/lib/apt/lists/*
 
-# Copy everything
-COPY . .
+# 1. Bake all dependencies into a separate cached layer. This is the slow step
+#    (librdkafka + openssl + everything else); cached until Cargo.* changes.
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json -p gitdot-server
 
-# Build the application
+# 2. Copy real source and build only workspace crates.
+COPY . .
 RUN cargo build --release -p gitdot-server
 
-# Runtime stage
+# ---- runtime ----
 FROM debian:bookworm-slim
 
 WORKDIR /app
@@ -37,16 +52,12 @@ RUN git config --system user.name "Git Server" && \
   git config --system http.receivepack true && \
   git config --system uploadpack.allowAnySHA1InWant true
 
-# Copy the binary from builder
 COPY --from=builder /app/target/release/gitdot-server /app/gitdot-server
 
-# Set environment variables with defaults for Cloud Run
 ENV GIT_PROJECT_ROOT="/srv/git"
 ENV SERVER_HOST="0.0.0.0"
 ENV SERVER_PORT="8080"
 
-# Expose port 8080 (Cloud Run default)
 EXPOSE 8080
 
-# Run the binary
 CMD ["/app/gitdot-server"]

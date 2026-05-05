@@ -1,0 +1,50 @@
+# Rust build artifacts (the big one — usually 10s of GB)
+target/
+**/target/
+
+# Node / Next.js
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+.turbo/
+**/.turbo/
+gitdot-web/.next/
+
+# Git history (not needed inside the build context)
+.git/
+.gitignore
+.gitattributes
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+*.env.local
+
+# Editor / OS noise
+.DS_Store
+**/.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Tooling caches
+.cargo/registry/
+.cargo/git/
+.claude/
+.cursor/
+
+# Tests / coverage
+coverage/
+*.log
+
+# CI artifacts (uncomment if you keep these locally)
+# tarpaulin-report.html
+
+# Docs / static files that don't affect build
+*.md
+!README.md
+
+# The Dockerfiles themselves don't need to be in the context, but harmless
