@@ -86,7 +86,7 @@ function IndexSidebar({
 
 function RepoBreadcrumbs({ owner, repo }: { owner: string; repo: string }) {
   return (
-    <div className="flex flex-row w-full h-9 items-center border-b px-2 text-sm font-mono">
+    <div className="flex flex-row w-full h-9 items-center border-b px-2 text-sm font-mono justify-end">
       <Link
         href={`/${owner}`}
         className="hover:underline text-muted-foreground"
@@ -94,10 +94,10 @@ function RepoBreadcrumbs({ owner, repo }: { owner: string; repo: string }) {
       >
         {owner}
       </Link>
-      <span>/</span>
+      <span className="mx-0.5">/</span>
       <Link
         href={`/${owner}/${repo}`}
-        className="hover:underline"
+        className="hover:underline font-medium"
         prefetch={true}
       >
         {repo}

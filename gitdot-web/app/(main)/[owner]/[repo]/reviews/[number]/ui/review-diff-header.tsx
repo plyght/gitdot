@@ -1,7 +1,7 @@
 "use client";
 
-import { Fragment } from "react";
 import type { DiffStatus, ReviewStatus } from "gitdot-api";
+import { Fragment } from "react";
 import { cn, timeAgo } from "@/util";
 import { useReviewContext } from "../context";
 

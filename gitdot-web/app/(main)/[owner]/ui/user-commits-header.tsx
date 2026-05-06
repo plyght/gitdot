@@ -45,7 +45,7 @@ export function UserCommitsHeader({
   return (
     <div className="flex items-baseline mb-2 justify-between">
       <span className="text-xs text-muted-foreground font-mono">
-        <span className="text-foreground/40 select-none"># </span>Log
+        <span className="text-foreground/40 select-none"># </span>Commits
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center gap-0.5 text-xs text-muted-foreground/60 font-mono cursor-pointer transition-colors hover:text-foreground">
