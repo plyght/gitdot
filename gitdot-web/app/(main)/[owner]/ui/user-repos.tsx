@@ -13,7 +13,7 @@ export function UserRepos({
     <div>
       <p className="text-xs text-muted-foreground font-mono mb-2">
         <span className="text-foreground/40 select-none"># </span>
-        repos
+        Repositories
       </p>
       {repos?.length ? (
         <div className="flex flex-col gap-1">

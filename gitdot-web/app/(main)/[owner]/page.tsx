@@ -4,6 +4,7 @@ import {
   listUserOrganizations,
   listUserRepositories,
 } from "@/dal";
+import { UserActions } from "./ui/user-actions";
 import { UserCommits } from "./ui/user-commits";
 import { UserLinks } from "./ui/user-links";
 import { UserOrgs } from "./ui/user-orgs";
@@ -29,15 +30,16 @@ export default async function Page({
   }
 
   return (
-    <div className="grid grid-cols-[auto_1fr_1fr] items-start py-4 h-full overflow-y-auto scrollbar-thin">
+    <div className="grid grid-cols-[8rem_1fr_1fr] items-start py-4 h-full overflow-y-auto scrollbar-thin">
       <div className="flex flex-col items-end px-4 gap-6">
         <UserProfile user={user} />
-        <UserOrgs orgs={orgs ?? []} />
         <UserLinks user={user} />
+        <UserActions />
       </div>
 
       <div className="border-x pl-4 pr-6 flex flex-col gap-8">
         <UserReadme readme={user.readme} />
+        <UserOrgs orgs={orgs ?? []} />
         <UserRepos owner={owner} repos={repos} />
       </div>
 
