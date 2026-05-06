@@ -5258,6 +5258,7 @@ checksum = "e234cf318915c1059d4921ef7f75616b5219b10b46e9f3a511a15eb4b56a3f77"
 dependencies = [
  "cmake",
  "libc",
+ "libz-sys",
  "num_enum",
  "openssl-sys",
  "pkg-config",

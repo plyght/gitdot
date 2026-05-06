@@ -78,6 +78,7 @@ rcgen = { version = "0.14", default-features = false, features = [
 rdkafka = { version = "0.36", default-features = false, features = [
   "cmake-build",
   "ssl-vendored",
+  "libz",
   "tokio"
 ] }
 reqwest = { version = "0.13.1", features = ["json", "query"] }

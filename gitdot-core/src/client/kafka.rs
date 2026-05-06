@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rdkafka::{
     ClientConfig,
     client::{ClientContext, OAuthToken},
@@ -8,6 +9,7 @@ use rdkafka::{
     producer::{DeliveryResult, FutureProducer, FutureRecord, Producer, ProducerContext},
     util::Timeout,
 };
+use serde_json::json;
 
 use crate::{dto::RepoPushEvent, error::KafkaError};
 
@@ -77,13 +79,11 @@ impl GcpKafkaContext {
         let provider = gcp_auth::provider()
             .await
             .map_err(|e| KafkaError::AuthError(format!("init gcp auth provider: {e}")))?;
-        let principal_name = fetch_service_account_email().await.unwrap_or_else(|e| {
-            tracing::warn!(
-                ?e,
-                "could not resolve SA email from metadata server; falling back"
-            );
-            "kafka".to_string()
-        });
+        // Hard fail: without the SA email we cannot authenticate to Managed Kafka.
+        let principal_name = fetch_service_account_email()
+            .await
+            .map_err(|e| KafkaError::AuthError(format!("resolve SA email from metadata: {e}")))?;
+        tracing::info!(%principal_name, "resolved kafka SASL principal");
         Ok(Self {
             provider,
             runtime,
@@ -118,19 +118,39 @@ impl ClientContext for GcpKafkaContext {
         _config: Option<&str>,
     ) -> Result<OAuthToken, Box<dyn std::error::Error>> {
         let scopes = [GCP_KAFKA_SCOPE];
-        // librdkafka calls this from inside a tokio task on the same runtime,
-        // so a plain `block_on` panics. `block_in_place` releases the worker
-        // first, letting us drive the future synchronously without re-entry.
         let token =
             tokio::task::block_in_place(|| self.runtime.block_on(self.provider.token(&scopes)))?;
-        // librdkafka expects the absolute expiry timestamp in unix-epoch ms,
-        // NOT a duration. Returning a duration here makes librdkafka think the
-        // token expired in 1970.
-        let lifetime_ms = token.expires_at().timestamp_millis();
+
+        // Build the GOOG_OAUTH2_TOKEN-flavored unsigned JWT that GCP's broker expects.
+        // The actual access token is base64url-encoded into the signature segment;
+        // the broker validates it against Google's auth servers and uses `sub` as
+        // the Kafka principal.
+        let now_secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_secs() as i64;
+        let exp_secs = token.expires_at().timestamp();
+
+        let header = json!({ "typ": "JWT", "alg": "GOOG_OAUTH2_TOKEN" }).to_string();
+        let payload = json!({
+            "exp": exp_secs,
+            "iat": now_secs,
+            "iss": "Google",
+            "scope": "kafka",
+            "sub": &self.principal_name,
+        })
+        .to_string();
+
+        let kafka_token = format!(
+            "{}.{}.{}",
+            URL_SAFE_NO_PAD.encode(header),
+            URL_SAFE_NO_PAD.encode(payload),
+            URL_SAFE_NO_PAD.encode(token.as_str()),
+        );
+
         Ok(OAuthToken {
-            token: token.as_str().to_string(),
+            token: kafka_token,
             principal_name: self.principal_name.clone(),
-            lifetime_ms,
+            lifetime_ms: exp_secs * 1000,
         })
     }
 }
