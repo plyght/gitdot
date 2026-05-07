@@ -2,7 +2,10 @@
 
 import type { RepositoryCommitResource } from "gitdot-api";
 import { cn } from "@/util";
-import { cellColor, computeThresholds } from "../[repo]/(index)/commits/util";
+import {
+  cellColor,
+  computeThresholds,
+} from "../../[repo]/(index)/commits/util";
 
 export function UserCommitsCalendar({
   commits,

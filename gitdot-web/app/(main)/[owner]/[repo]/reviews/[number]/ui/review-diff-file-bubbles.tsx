@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReviewCommentResource } from "gitdot-api";
-import { UserImage } from "@/(main)/[owner]/ui/user-image";
+import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { cn } from "@/util";
 import { useReviewContext } from "../context";
 

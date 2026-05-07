@@ -9,8 +9,8 @@ import {
   type ResourceRequestsType,
   useResolvePromises,
 } from "@/(main)/[owner]/[repo]/resources";
-import { UserImage } from "@/(main)/[owner]/ui/user-image";
-import { UserSlug } from "@/(main)/[owner]/ui/user-slug";
+import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
+import { UserSlug } from "@/(main)/[owner]/ui/user/user-slug";
 import Link from "@/ui/link";
 import { OverlayScroll } from "@/ui/scroll";
 import { Sidebar, SidebarContent } from "@/ui/sidebar";

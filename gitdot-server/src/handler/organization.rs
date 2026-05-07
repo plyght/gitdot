@@ -1,5 +1,6 @@
 mod add_member;
 mod create_organization;
+mod get_organization;
 mod list_organization_members;
 mod list_organization_repositories;
 mod list_organizations;
@@ -13,6 +14,7 @@ use crate::app::AppState;
 
 use add_member::add_member;
 use create_organization::create_organization;
+use get_organization::get_organization;
 use list_organization_members::list_organization_members;
 use list_organization_repositories::list_organization_repositories;
 use list_organizations::list_organizations;
@@ -20,7 +22,10 @@ use list_organizations::list_organizations;
 pub fn create_organization_router() -> Router<AppState> {
     Router::new()
         .route("/organizations", get(list_organizations))
-        .route("/organization/{org_name}", post(create_organization))
+        .route(
+            "/organization/{org_name}",
+            get(get_organization).post(create_organization),
+        )
         .route("/organization/{org_name}/member", post(add_member))
         .route(
             "/organization/{org_name}/members",

@@ -2,13 +2,7 @@ import type { RepositoryResource } from "gitdot-api";
 import Link from "@/ui/link";
 import { formatDate } from "@/util";
 
-export function UserRepos({
-  owner,
-  repos,
-}: {
-  owner: string;
-  repos: RepositoryResource[] | null;
-}) {
+export function UserRepos({ repos }: { repos: RepositoryResource[] | null }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground font-mono mb-2">
@@ -26,7 +20,7 @@ export function UserRepos({
               >
                 <div className="flex items-baseline gap-1">
                   <Link
-                    href={`/${owner}/${repo.name}`}
+                    href={`/${repo.owner}/${repo.name}`}
                     className="text-sm font-medium underline decoration-transparent hover:decoration-current transition-colors duration-200"
                   >
                     {repo.name}

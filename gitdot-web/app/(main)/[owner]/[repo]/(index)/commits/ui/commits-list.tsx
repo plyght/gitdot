@@ -4,8 +4,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import type { RepositoryCommitResource } from "gitdot-api";
 import { useParams, useRouter } from "next/navigation";
 import { memo, useRef } from "react";
-import { UserImage } from "@/(main)/[owner]/ui/user-image";
-import { UserSlug } from "@/(main)/[owner]/ui/user-slug";
+import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
+import { UserSlug } from "@/(main)/[owner]/ui/user/user-slug";
 import { formatDateTime, timeAgo } from "@/util";
 
 import { CommitPathSummary } from "./commit-path-summary";

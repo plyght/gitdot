@@ -2,7 +2,7 @@ import type {
   RepositoryCommitResource,
   RepositoryDiffStatResource,
 } from "gitdot-api";
-import { UserSlug } from "@/(main)/[owner]/ui/user-slug";
+import { UserSlug } from "@/(main)/[owner]/ui/user/user-slug";
 import { formatDateTime } from "@/util";
 import { DiffStatBar } from "./diff-stat-bar";
 

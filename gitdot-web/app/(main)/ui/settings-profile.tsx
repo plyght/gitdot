@@ -3,7 +3,7 @@
 import type { UserResource } from "gitdot-api";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { UserImage } from "@/(main)/[owner]/ui/user-image";
+import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { useUserContext } from "@/(main)/context/user";
 import { updateUserAction, uploadUserImageAction } from "@/actions";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useUserContext } from "@/(main)/context/user";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import { cn } from "@/util";
-import { UserImage } from "../../../../ui/user-image";
+import { UserImage } from "../../../../ui/user/user-image";
 import { useReviewContext } from "../context";
 
 type ReviewVerdict = "approve" | "reject" | "comment";

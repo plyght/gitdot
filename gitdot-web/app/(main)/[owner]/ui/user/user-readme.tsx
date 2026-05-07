@@ -1,4 +1,4 @@
-import { MarkdownBody } from "../[repo]/ui/markdown/markdown-body";
+import { MarkdownBody } from "../../[repo]/ui/markdown/markdown-body";
 
 export function UserReadme({ readme }: { readme: string | null | undefined }) {
   return (

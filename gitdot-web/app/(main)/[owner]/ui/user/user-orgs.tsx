@@ -1,8 +1,8 @@
 import type { OrganizationResource } from "gitdot-api";
 import Link from "@/ui/link";
 
-export function UserOrgs({ orgs }: { orgs: OrganizationResource[] }) {
-  if (!orgs.length) return null;
+export function UserOrgs({ orgs }: { orgs: OrganizationResource[] | null }) {
+  if (!orgs?.length) return null;
 
   return (
     <div>

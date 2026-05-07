@@ -5,7 +5,7 @@ import { Send } from "lucide-react";
 import { useEffect, useImperativeHandle, useState } from "react";
 import { useUserContext } from "@/(main)/context/user";
 import { timeAgo } from "@/util";
-import { UserImage } from "../../../../ui/user-image";
+import { UserImage } from "../../../../ui/user/user-image";
 import { useReviewContext } from "../context";
 
 export type ReviewDiffFileCommentThreadHandle = {

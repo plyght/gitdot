@@ -2,7 +2,7 @@
 
 import type { ReviewerResource } from "gitdot-api";
 import { useRef, useState } from "react";
-import { UserImage } from "@/(main)/[owner]/ui/user-image";
+import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import { useReviewContext } from "../context";
 

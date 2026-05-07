@@ -1,8 +1,8 @@
 "use client";
 
 import type { RepositoryCommitResource } from "gitdot-api";
-import { UserImage } from "@/(main)/[owner]/ui/user-image";
-import { UserSlug } from "@/(main)/[owner]/ui/user-slug";
+import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
+import { UserSlug } from "@/(main)/[owner]/ui/user/user-slug";
 import { useRightSidebar } from "@/(main)/hooks/use-sidebar";
 import { formatDate, timeAgo } from "@/util";
 import { DiffStatBar } from "../../../commits/[sha]/ui/diff-stat-bar";
