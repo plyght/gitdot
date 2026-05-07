@@ -86,22 +86,25 @@ function IndexSidebar({
 
 function RepoBreadcrumbs({ owner, repo }: { owner: string; repo: string }) {
   return (
-    <div className="flex flex-row w-full h-9 items-center border-b px-2 text-sm font-mono justify-end">
-      <Link
-        href={`/${owner}`}
-        className="hover:underline text-muted-foreground"
-        prefetch={true}
-      >
-        {owner}
-      </Link>
-      <span className="mx-0.5">/</span>
-      <Link
-        href={`/${owner}/${repo}`}
-        className="hover:underline font-medium"
-        prefetch={true}
-      >
-        {repo}
-      </Link>
+    <div className="flex flex-row w-full h-9 items-center border-b px-2 text-sm font-mono justify-between">
+      <span className="size-1.5 rounded-full bg-primary" />
+      <div className="flex flex-row items-center">
+        <Link
+          href={`/${owner}`}
+          className="hover:underline text-muted-foreground"
+          prefetch={true}
+        >
+          {owner}
+        </Link>
+        <span>/</span>
+        <Link
+          href={`/${owner}/${repo}`}
+          className="hover:underline font-medium"
+          prefetch={true}
+        >
+          {repo}
+        </Link>
+      </div>
     </div>
   );
 }
