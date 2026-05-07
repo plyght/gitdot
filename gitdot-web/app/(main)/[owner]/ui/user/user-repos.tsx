@@ -2,7 +2,13 @@ import type { RepositoryResource } from "gitdot-api";
 import Link from "@/ui/link";
 import { formatDate } from "@/util";
 
-export function UserRepos({ repos }: { repos: RepositoryResource[] | null }) {
+export function UserRepos({
+  repos,
+  isOwner,
+}: {
+  repos: RepositoryResource[] | null;
+  isOwner: boolean;
+}) {
   const publicRepos = repos?.filter((r) => r.visibility === "public") ?? [];
   const privateRepos = repos?.filter((r) => r.visibility === "private") ?? [];
 
@@ -13,14 +19,18 @@ export function UserRepos({ repos }: { repos: RepositoryResource[] | null }) {
         Repositories
       </p>
       {repos?.length ? (
-        <div className="flex flex-col gap-4">
-          {publicRepos.length > 0 && (
-            <RepoGroup label="Public" repos={publicRepos} />
-          )}
-          {privateRepos.length > 0 && (
-            <RepoGroup label="Private" repos={privateRepos} />
-          )}
-        </div>
+        isOwner ? (
+          <div className="flex flex-col gap-4">
+            {publicRepos.length > 0 && (
+              <RepoGroup label="Public" repos={publicRepos} />
+            )}
+            {privateRepos.length > 0 && (
+              <RepoGroup label="Private" repos={privateRepos} />
+            )}
+          </div>
+        ) : (
+          <RepoGroup repos={publicRepos} />
+        )
       ) : (
         <span className="font-mono text-xs">no repos</span>
       )}
@@ -32,7 +42,7 @@ function RepoGroup({
   label,
   repos,
 }: {
-  label: string;
+  label?: string;
   repos: RepositoryResource[];
 }) {
   const sortedRepos = [...repos].sort(
@@ -40,10 +50,12 @@ function RepoGroup({
   );
   return (
     <div>
-      <p className="text-xs text-muted-foreground font-mono mb-1.5">
-        <span className="text-foreground/40 select-none">## </span>
-        {label}
-      </p>
+      {label && (
+        <p className="text-xs text-muted-foreground font-mono mb-0.5">
+          <span className="text-foreground/40 select-none">## </span>
+          {label}
+        </p>
+      )}
       <div className="flex flex-col gap-1">
         {sortedRepos.map((repo) => (
           <RepoRow key={repo.id} repo={repo} />
@@ -56,12 +68,11 @@ function RepoGroup({
 function RepoRow({ repo }: { repo: RepositoryResource }) {
   const seed = parseInt(repo.id.slice(0, 8), 16);
   const commits = (seed % 480) + 3;
-  const stars = (seed >>> 4) % 1500;
   const daysAgo = (seed >>> 8) % 90;
   const lastContribution = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col">
       <div className="flex items-baseline justify-between gap-4">
         <div className="flex items-center gap-1 min-w-0">
           <Link
@@ -73,22 +84,22 @@ function RepoRow({ repo }: { repo: RepositoryResource }) {
             </span>
             {repo.name}
           </Link>
-          {stars > 0 && (
+          {repo.stars > 0 && (
             <span className="text-xs text-muted-foreground font-mono">
-              ({stars})
+              ({repo.stars})
             </span>
           )}
         </div>
         <span className="text-xs font-mono whitespace-nowrap text-muted-foreground">
           {commits} contributions
-          <span className="mx-2">•</span>
+          <span className="mx-1.5">•</span>
           {formatDate(lastContribution)}
         </span>
       </div>
       {repo.description && (
-        <span className="text-xs text-foreground truncate">
+        <div className="text-xs text-foreground truncate pb-1">
           {repo.description}
-        </span>
+        </div>
       )}
     </div>
   );

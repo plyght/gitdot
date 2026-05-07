@@ -156,6 +156,7 @@ export const RepositoryResource = z.object({
   owner: z.string(),
   visibility: z.string(),
   description: z.string().optional(),
+  stars: z.number().int().nonnegative(),
   created_at: z.iso.datetime(),
 });
 export type RepositoryResource = z.infer<typeof RepositoryResource>;

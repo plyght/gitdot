@@ -21,6 +21,7 @@ impl IntoApi for RepositoryResponse {
             owner: self.owner,
             visibility: self.visibility,
             description: self.description,
+            stars: self.stars,
             created_at: self.created_at,
         }
     }

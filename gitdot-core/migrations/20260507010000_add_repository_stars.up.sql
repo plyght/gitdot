@@ -1,0 +1,1 @@
+ALTER TABLE core.repositories ADD COLUMN stars INTEGER NOT NULL DEFAULT 0;

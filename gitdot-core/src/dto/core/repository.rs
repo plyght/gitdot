@@ -36,6 +36,7 @@ pub struct RepositoryResponse {
     pub owner: String,
     pub visibility: String,
     pub description: Option<String>,
+    pub stars: u32,
     pub created_at: DateTime<Utc>,
 }
 
@@ -47,6 +48,7 @@ impl From<Repository> for RepositoryResponse {
             owner: repo.owner_name,
             visibility: repo.visibility.into(),
             description: repo.description,
+            stars: repo.stars as u32,
             created_at: repo.created_at,
         }
     }

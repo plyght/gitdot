@@ -17,6 +17,7 @@ pub struct Repository {
     pub owner_type: RepositoryOwnerType,
     pub visibility: RepositoryVisibility,
     pub description: Option<String>,
+    pub stars: i32,
     pub created_at: DateTime<Utc>,
 
     #[sqlx(json(nullable), default)]
