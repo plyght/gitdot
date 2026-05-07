@@ -1,5 +1,5 @@
+import type { UserResource } from "gitdot-api";
 import {
-  getUser,
   listUserCommits,
   listUserOrganizations,
   listUserRepositories,
@@ -12,17 +12,12 @@ import { UserProfile } from "./user-profile";
 import { UserReadme } from "./user-readme";
 import { UserRepos } from "./user-repos";
 
-export default async function UserPage({ username }: { username: string }) {
-  const [user, commits, repos, orgs] = await Promise.all([
-    getUser(username),
-    listUserCommits(username),
-    listUserRepositories(username),
-    listUserOrganizations(username),
+export default async function UserPage({ user }: { user: UserResource }) {
+  const [commits, repos, orgs] = await Promise.all([
+    listUserCommits(user.name),
+    listUserRepositories(user.name),
+    listUserOrganizations(user.name),
   ]);
-
-  if (!user) {
-    return <div className="p-2 text-sm">{username} not found</div>;
-  }
 
   return (
     <div className="grid grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] h-full">
