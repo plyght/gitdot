@@ -23,7 +23,7 @@ export function ReviewDiff({
 
   useEffect(() => {
     setView("code");
-  }, [position]);
+  }, []);
 
   const activeDiff = review.diffs.find((d) => d.position === position);
   if (!activeDiff) return null;
