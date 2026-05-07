@@ -33,10 +33,10 @@ export default async function UserPage({ user }: { user: UserResource }) {
         </div>
       </div>
 
-      <div className="px-4 py-2 flex flex-col gap-8 overflow-y-auto scrollbar-none">
+      <div className="pl-4 pr-3 py-2 flex flex-col gap-8 overflow-y-auto scrollbar-none">
         <UserReadme readme={user.readme} />
         <UserOrgs orgs={orgs} />
-        <UserRepos repos={repos} isOwner={isOwner} />
+        <UserRepos repos={repos} commits={commits ?? []} isOwner={isOwner} />
       </div>
 
       <div className="pt-2 border-l flex flex-col min-h-0">

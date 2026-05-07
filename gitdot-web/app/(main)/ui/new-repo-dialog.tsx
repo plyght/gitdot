@@ -1,7 +1,7 @@
 "use client";
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useUserContext } from "@/(main)/context/user";
 import {
   type CreateRepositoryActionResult,
@@ -9,14 +9,9 @@ import {
 } from "@/actions";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 
-export default function CreateRepoDialog({
-  open,
-  setOpen,
-}: {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}) {
+export function NewRepoDialog() {
   const { user } = useUserContext();
+  const [open, setOpen] = useState(false);
   const [repoName, setRepoName] = useState("");
   const [state, formAction, isPending] = useActionState(
     async (_prev: CreateRepositoryActionResult | null, formData: FormData) => {
@@ -29,6 +24,14 @@ export default function CreateRepoDialog({
     },
     null,
   );
+
+  useEffect(() => {
+    const handle = () => {
+      if (user) setOpen(true);
+    };
+    window.addEventListener("openNewRepo", handle);
+    return () => window.removeEventListener("openNewRepo", handle);
+  }, [user]);
 
   const isValid = repoName.trim() !== "";
 

@@ -1,8 +1,8 @@
 "use client";
 
-import type { RepositoryResource } from "gitdot-api";
+import type { RepositoryCommitResource, RepositoryResource } from "gitdot-api";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,24 +20,32 @@ const REPO_SORT_LABELS: Record<RepoSort, string> = {
   stars: "Stars",
 };
 
-function getRepoStats(repo: RepositoryResource) {
-  const seed = parseInt(repo.id.slice(0, 8), 16);
-  const commits = (seed % 480) + 3;
-  const daysAgo = (seed >>> 8) % 90;
-  const lastContribution = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
-  return { commits, daysAgo, lastContribution };
-}
+type Repository = {
+  owner: string;
+  name: string;
+  description?: string;
+  stars: number;
+  visibility: string;
+  count: number;
+  lastDate: Date | null;
+};
 
 export function UserRepos({
   repos,
+  commits,
   isOwner,
 }: {
   repos: RepositoryResource[] | null;
+  commits: RepositoryCommitResource[];
   isOwner: boolean;
 }) {
   const [sortBy, setSortBy] = useState<RepoSort>("recent");
-  const publicRepos = repos?.filter((r) => r.visibility === "public") ?? [];
-  const privateRepos = repos?.filter((r) => r.visibility === "private") ?? [];
+  const repositories = useMemo(
+    () => buildRepositories(repos ?? [], commits),
+    [repos, commits],
+  );
+  const publicRepos = repositories.filter((r) => r.visibility === "public");
+  const privateRepos = repositories.filter((r) => r.visibility === "private");
 
   return (
     <div>
@@ -64,7 +72,7 @@ export function UserRepos({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {repos?.length ? (
+      {repositories.length ? (
         isOwner ? (
           <div className="flex flex-col gap-4">
             {publicRepos.length > 0 && (
@@ -90,14 +98,15 @@ function RepoGroup({
   sortBy,
 }: {
   label?: string;
-  repos: RepositoryResource[];
+  repos: Repository[];
   sortBy: RepoSort;
 }) {
   const sortedRepos = [...repos].sort((a, b) => {
     if (sortBy === "stars") return b.stars - a.stars;
-    if (sortBy === "contributions")
-      return getRepoStats(b).commits - getRepoStats(a).commits;
-    return getRepoStats(a).daysAgo - getRepoStats(b).daysAgo;
+    if (sortBy === "contributions") return b.count - a.count;
+    const ta = a.lastDate ? a.lastDate.getTime() : Number.NEGATIVE_INFINITY;
+    const tb = b.lastDate ? b.lastDate.getTime() : Number.NEGATIVE_INFINITY;
+    return tb - ta;
   });
   return (
     <div>
@@ -109,16 +118,14 @@ function RepoGroup({
       )}
       <div className="flex flex-col gap-1">
         {sortedRepos.map((repo) => (
-          <RepoRow key={repo.id} repo={repo} />
+          <RepoRow key={`${repo.owner}/${repo.name}`} repo={repo} />
         ))}
       </div>
     </div>
   );
 }
 
-function RepoRow({ repo }: { repo: RepositoryResource }) {
-  const { commits, lastContribution } = getRepoStats(repo);
-
+function RepoRow({ repo }: { repo: Repository }) {
   return (
     <div className="flex flex-col">
       <div className="flex items-baseline justify-between gap-4">
@@ -139,9 +146,15 @@ function RepoRow({ repo }: { repo: RepositoryResource }) {
           )}
         </div>
         <span className="text-xs font-mono whitespace-nowrap text-muted-foreground">
-          {commits} contributions
-          <span className="mx-1.5">•</span>
-          {formatDate(lastContribution)}
+          {repo.lastDate ? (
+            <>
+              {repo.count} contributions
+              <span className="mx-1.5">•</span>
+              {formatDate(repo.lastDate)}
+            </>
+          ) : (
+            "no contributions"
+          )}
         </span>
       </div>
       {repo.description && (
@@ -151,4 +164,55 @@ function RepoRow({ repo }: { repo: RepositoryResource }) {
       )}
     </div>
   );
+}
+
+function buildRepositories(
+  repos: RepositoryResource[],
+  commits: RepositoryCommitResource[],
+): Repository[] {
+  const stats = new Map<string, { count: number; lastDate: Date }>();
+  for (const c of commits) {
+    const key = `${c.owner_name}/${c.repo_name}`;
+    const date = new Date(c.date);
+    const existing = stats.get(key);
+    if (existing) {
+      existing.count += 1;
+      if (date > existing.lastDate) existing.lastDate = date;
+    } else {
+      stats.set(key, { count: 1, lastDate: date });
+    }
+  }
+
+  const repositories: Repository[] = [];
+  const repositoryKeys = new Set<string>();
+
+  for (const r of repos) {
+    const key = `${r.owner}/${r.name}`;
+    repositoryKeys.add(key);
+    const s = stats.get(key);
+    repositories.push({
+      owner: r.owner,
+      name: r.name,
+      description: r.description,
+      stars: r.stars,
+      visibility: r.visibility,
+      count: s?.count ?? 0,
+      lastDate: s?.lastDate ?? null,
+    });
+  }
+
+  for (const [key, s] of stats) {
+    if (repositoryKeys.has(key)) continue;
+    const [owner, name] = key.split("/");
+    repositories.push({
+      owner,
+      name,
+      stars: 0,
+      visibility: "public",
+      count: s.count,
+      lastDate: s.lastDate,
+    });
+  }
+
+  return repositories;
 }
