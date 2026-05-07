@@ -27,7 +27,7 @@ export function UserCommits({
   }
 
   return (
-    <div>
+    <div className="flex flex-col h-full min-h-0">
       <UserCommitsHeader
         startDate={startDate}
         endDate={endDate}
@@ -42,18 +42,20 @@ export function UserCommits({
         selectedMonth={selectedMonth}
         setSelectedMonth={setSelectedMonth}
       />
-      <UserCommitStatistics
-        commits={commitMap}
-        startDate={startDate}
-        endDate={endDate}
-        selectedMonth={selectedMonth}
-      />
-      <UserCommitsLog
-        commits={commitMap}
-        startDate={startDate}
-        endDate={endDate}
-        selectedMonth={selectedMonth}
-      />
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
+        <UserCommitStatistics
+          commits={commitMap}
+          startDate={startDate}
+          endDate={endDate}
+          selectedMonth={selectedMonth}
+        />
+        <UserCommitsLog
+          commits={commitMap}
+          startDate={startDate}
+          endDate={endDate}
+          selectedMonth={selectedMonth}
+        />
+      </div>
     </div>
   );
 }

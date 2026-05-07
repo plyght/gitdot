@@ -25,20 +25,22 @@ export default async function UserPage({ username }: { username: string }) {
   }
 
   return (
-    <div className="grid grid-cols-[8rem_1fr_1fr] items-start py-4 h-full overflow-y-auto scrollbar-thin">
-      <div className="flex flex-col items-end px-4 gap-6 border-r">
-        <UserProfile user={user} />
-        <UserLinks user={user} />
-        <UserActions />
+    <div className="grid grid-cols-[8rem_minmax(0,1fr)_minmax(0,1fr)] h-full">
+      <div className="overflow-y-auto scrollbar-none">
+        <div className="flex flex-col items-end px-4 my-2.5 pt-0.5 gap-6 border-r">
+          <UserProfile user={user} />
+          <UserLinks user={user} />
+          <UserActions />
+        </div>
       </div>
 
-      <div className="pl-4 pr-6 flex flex-col gap-8">
+      <div className="pl-4 pr-6 py-2 flex flex-col gap-8 overflow-y-auto scrollbar-none">
         <UserReadme readme={user.readme} />
         <UserOrgs orgs={orgs} />
         <UserRepos repos={repos} />
       </div>
 
-      <div className="px-4 border-l">
+      <div className="px-4 pt-2 border-l flex flex-col min-h-0">
         <UserCommits commits={commits ?? []} />
       </div>
     </div>
