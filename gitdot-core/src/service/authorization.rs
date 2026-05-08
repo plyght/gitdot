@@ -501,6 +501,8 @@ mod tests {
             owner_name: "owner".to_string(),
             owner_type,
             visibility,
+            description: None,
+            stars: 0,
             created_at: chrono::Utc::now(),
             settings: None,
         }
