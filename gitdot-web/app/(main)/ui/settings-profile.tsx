@@ -53,16 +53,18 @@ export function SettingsProfile({ user }: { user: UserResource }) {
   }
 
   return (
-    <div className="max-w-lg space-y-6 mx-auto p-4">
-      <ProfilePrimary user={user} />
-      <ProfileAbout
-        company={company}
-        location={location}
-        onCompanyChange={setCompany}
-        onLocationChange={setLocation}
-      />
-      <ProfileLinks links={links} onLinksChange={setLinks} />
-      <ProfileReadme readme={readme} onReadmeChange={setReadme} />
+    <div className="max-w-lg mx-auto p-4">
+      <div className="space-y-6">
+        <ProfilePrimary user={user} />
+        <ProfileAbout
+          company={company}
+          location={location}
+          onCompanyChange={setCompany}
+          onLocationChange={setLocation}
+        />
+        <ProfileLinks links={links} onLinksChange={setLinks} />
+        <ProfileReadme readme={readme} onReadmeChange={setReadme} />
+      </div>
       <div className="flex justify-end">
         <button
           type="button"
@@ -288,7 +290,7 @@ function ProfileReadme({
       <textarea
         value={readme}
         onChange={(e) => onReadmeChange(e.target.value)}
-        className="text-sm bg-transparent border-r border-border outline-none w-full min-h-24 placeholder:text-muted-foreground/40 transition-colors focus:border-foreground resize-none field-sizing-content"
+        className="text-sm bg-transparent border-l border-border pl-2 outline-none w-full min-h-24 placeholder:text-muted-foreground/40 transition-colors focus:border-foreground resize-none field-sizing-content"
         placeholder="what you love to do..."
       />
     </div>
