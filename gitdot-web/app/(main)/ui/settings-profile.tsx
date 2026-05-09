@@ -4,65 +4,53 @@ import type { UserResource } from "gitdot-api";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
+import { toast } from "@/(main)/context/toaster";
 import { useUserContext } from "@/(main)/context/user";
 import { updateUserAction, uploadUserImageAction } from "@/actions";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { formatDate, timeAgo } from "@/util/date";
 
-export function SettingsProfile({
-  user,
-  open,
-}: {
-  user: UserResource | null;
-  open: boolean;
-}) {
+export function SettingsProfile({ user }: { user: UserResource }) {
   const { refreshUser } = useUserContext();
   const router = useRouter();
   const pathname = usePathname();
-  const [location, setLocation] = useState(user?.location ?? "");
-  const [links, setLinks] = useState<string[]>(user?.links ?? []);
-  const [readme, setReadme] = useState(user?.readme ?? "");
-  const [company, setCompany] = useState(user?.company ?? "");
+  const [location, setLocation] = useState(user.location ?? "");
+  const [links, setLinks] = useState<string[]>(user.links ?? []);
+  const [readme, setReadme] = useState(user.readme ?? "");
+  const [company, setCompany] = useState(user.company ?? "");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setLocation(user?.location ?? "");
-    setLinks(user?.links ?? []);
-    setReadme(user?.readme ?? "");
-    setCompany(user?.company ?? "");
+    setLocation(user.location ?? "");
+    setLinks(user.links ?? []);
+    setReadme(user.readme ?? "");
+    setCompany(user.company ?? "");
   }, [user]);
 
-  useEffect(() => {
-    if (!open && user) {
-      const unchanged =
-        location === (user.location ?? "") &&
-        company === (user.company ?? "") &&
-        readme === (user.readme ?? "") &&
-        links.length === (user.links?.length ?? 0) &&
-        links.every((l, i) => l === user.links?.[i]);
-      if (unchanged) return;
-      const formData = new FormData();
-      formData.set("location", location);
-      formData.set("links", JSON.stringify(links));
-      formData.set("readme", readme);
-      formData.set("company", company);
-      updateUserAction(null, formData).then(() => {
-        refreshUser();
-        if (pathname === `/${user.name}`) router.refresh();
-      });
-    }
-  }, [
-    open,
-    user,
-    location,
-    links,
-    readme,
-    company,
-    refreshUser,
-    pathname,
-    router,
-  ]);
+  const dirty =
+    location !== (user.location ?? "") ||
+    company !== (user.company ?? "") ||
+    readme !== (user.readme ?? "") ||
+    links.length !== (user.links?.length ?? 0) ||
+    !links.every((l, i) => l === user.links?.[i]);
 
-  if (!user) return null;
+  async function handleSave() {
+    if (!dirty || saving) return;
+    setSaving(true);
+    const formData = new FormData();
+    formData.set("location", location);
+    formData.set("links", JSON.stringify(links));
+    formData.set("readme", readme);
+    formData.set("company", company);
+    await Promise.all([
+      updateUserAction(null, formData),
+      new Promise((resolve) => setTimeout(resolve, 1200)),
+    ]);
+    await refreshUser();
+    if (pathname === `/${user.name}`) router.refresh();
+    setSaving(false);
+    toast.success("Profile updated.");
+  }
 
   return (
     <div className="max-w-lg space-y-6 mx-auto p-4">
@@ -75,6 +63,18 @@ export function SettingsProfile({
       />
       <ProfileLinks links={links} onLinksChange={setLinks} />
       <ProfileReadme readme={readme} onReadmeChange={setReadme} />
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!dirty || saving}
+          className={`text-sm underline-offset-4 transition-colors cursor-pointer disabled:cursor-not-allowed ${
+            saving ? "" : "underline"
+          } ${dirty ? "text-foreground" : "text-muted-foreground"}`}
+        >
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </div>
     </div>
   );
 }

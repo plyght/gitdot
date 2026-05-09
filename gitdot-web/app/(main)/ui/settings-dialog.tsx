@@ -1,5 +1,6 @@
 "use client";
 
+import type { UserResource } from "gitdot-api";
 import { useEffect, useState } from "react";
 import { useShortcuts } from "@/(main)/context/shortcuts";
 import { useUserContext } from "@/(main)/context/user";
@@ -10,6 +11,12 @@ import { SettingsSidebar, type SettingsTab } from "./settings-sidebar";
 
 export function SettingsDialog() {
   const { user } = useUserContext();
+  if (!user) return null;
+
+  return <SettingsDialogInner user={user} />;
+}
+
+function SettingsDialogInner({ user }: { user: UserResource }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<SettingsTab>("profile");
 
@@ -18,19 +25,15 @@ export function SettingsDialog() {
       name: "Settings",
       description: "Open settings",
       keys: [","],
-      execute: () => {
-        if (user) setOpen(true);
-      },
+      execute: () => setOpen(true),
     },
   ]);
 
   useEffect(() => {
-    const handle = () => {
-      if (user) setOpen(true);
-    };
+    const handle = () => setOpen(true);
     window.addEventListener("openSettings", handle);
     return () => window.removeEventListener("openSettings", handle);
-  }, [user]);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -46,9 +49,7 @@ export function SettingsDialog() {
           <SettingsSidebar tab={tab} onTabChange={setTab} />
 
           <div className="flex-1 overflow-y-auto scrollbar-thin">
-            {tab === "profile" && (
-              <SettingsProfile user={user ?? null} open={open} />
-            )}
+            {tab === "profile" && <SettingsProfile user={user} />}
             {tab === "account" && <SettingsAccount />}
           </div>
         </div>
