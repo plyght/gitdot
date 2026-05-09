@@ -42,14 +42,11 @@ export function SettingsProfile({ user }: { user: UserResource }) {
     formData.set("links", JSON.stringify(links));
     formData.set("readme", readme);
     formData.set("company", company);
-    await Promise.all([
-      updateUserAction(null, formData),
-      new Promise((resolve) => setTimeout(resolve, 1200)),
-    ]);
+    await Promise.all([updateUserAction(null, formData)]);
     await refreshUser();
     if (pathname === `/${user.name}`) router.refresh();
     setSaving(false);
-    toast.success("Profile updated.");
+    toast.success("Profile saved.");
   }
 
   return (
@@ -65,7 +62,7 @@ export function SettingsProfile({ user }: { user: UserResource }) {
         <ProfileLinks links={links} onLinksChange={setLinks} />
         <ProfileReadme readme={readme} onReadmeChange={setReadme} />
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-end mt-2">
         <button
           type="button"
           onClick={handleSave}
@@ -74,7 +71,7 @@ export function SettingsProfile({ user }: { user: UserResource }) {
             saving ? "" : "underline"
           } ${dirty ? "text-foreground" : "text-muted-foreground"}`}
         >
-          {saving ? "Saving..." : "Save"}
+          {saving ? "Saving..." : "Save profile"}
         </button>
       </div>
     </div>
