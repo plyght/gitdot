@@ -2,6 +2,7 @@
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { useUserContext } from "@/(main)/context/user";
@@ -10,17 +11,40 @@ import {
   createRepositoryAction,
 } from "@/actions";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/ui/dropdown-menu";
 
 export function NewRepoDialog() {
   const { user } = useUserContext();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [repoName, setRepoName] = useState("");
+  const [repoDescription, setRepoDescription] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "private">("public");
+  const [addReadme, setAddReadme] = useState(false);
+  const [addGitignore, setAddGitignore] = useState(false);
+  const [addLicense, setAddLicense] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setRepoName("");
+      setRepoDescription("");
+      setVisibility("public");
+      setAddReadme(false);
+      setAddGitignore(false);
+      setAddLicense(false);
+    }
+  }, [open]);
   const [state, formAction, isPending] = useActionState(
     async (_prev: CreateRepositoryActionResult | null, formData: FormData) => {
       const result = await createRepositoryAction(formData);
       if ("repository" in result) {
         setOpen(false);
-        setRepoName("");
+        router.push(`/${result.repository.owner}/${result.repository.name}`);
       }
       return result;
     },
@@ -40,7 +64,7 @@ export function NewRepoDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className="max-w-md min-w-md border-black rounded-xs shadow-2xl top-[35%] p-0 overflow-hidden"
+        className="max-w-xl min-w-xl border-black rounded-xs shadow-2xl top-[35%] p-0 overflow-hidden"
         animations={true}
         showOverlay={true}
       >
@@ -48,67 +72,190 @@ export function NewRepoDialog() {
           <DialogTitle>New repository</DialogTitle>
         </VisuallyHidden>
         <form action={formAction} className="relative">
-          <div className="flex flex-col gap-1 p-2 border-b border-border">
-            <p className="text-xs text-muted-foreground font-mono">
-              <span className="text-foreground/40 select-none"># </span>
-              Name
-            </p>
-            <input
-              type="text"
-              id="repo-name"
-              name="repo-name"
-              placeholder="Name..."
-              value={repoName}
-              onChange={(e) => setRepoName(e.target.value)}
-              className="w-full text-sm bg-background outline-none"
-              disabled={isPending}
-            />
-          </div>
-          <div className="flex flex-col gap-1 p-2">
-            <p className="text-xs text-muted-foreground font-mono">
-              <span className="text-foreground/40 select-none"># </span>
-              Description
-            </p>
-            <input
-              type="text"
-              id="repo-description"
-              name="repo-description"
-              placeholder="Description..."
-              className="w-full text-sm bg-background outline-none"
-              disabled={isPending}
-            />
+          <div className="flex">
+            <div className="flex flex-col w-2/3 border-r border-border">
+              <div className="group flex flex-col gap-1 p-2 border-b border-border">
+                <p className="text-xs text-muted-foreground group-focus-within:text-foreground font-mono transition-colors">
+                  <span className="text-foreground/40 select-none"># </span>
+                  Name
+                </p>
+                <input
+                  type="text"
+                  id="repo-name"
+                  name="repo-name"
+                  placeholder="my-next-repo"
+                  value={repoName}
+                  onChange={(e) => setRepoName(e.target.value)}
+                  className="w-full text-sm bg-background outline-none"
+                  disabled={isPending}
+                />
+              </div>
+              <div className="group flex flex-col flex-1 gap-1 p-2 border-b border-border">
+                <p className="text-xs text-muted-foreground group-focus-within:text-foreground font-mono transition-colors">
+                  <span className="text-foreground/40 select-none"># </span>
+                  Description
+                </p>
+                <textarea
+                  id="repo-description"
+                  name="repo-description"
+                  placeholder="what it does and what it will do...."
+                  value={repoDescription}
+                  onChange={(e) => setRepoDescription(e.target.value)}
+                  className="w-full flex-1 text-sm bg-background outline-none resize-none"
+                  disabled={isPending}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 w-1/3 p-2 border-b border-border">
+              <div className="pb-4">
+                <h2 className="text-sm font-medium">New repository</h2>
+                <p className="text-xs text-muted-foreground leading-normal">
+                  A new home for your code and its history. Have a repo
+                  already?{" "}
+                  <button
+                    type="button"
+                    className="appearance-none p-0 m-0 bg-transparent border-0 underline hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    Import it.
+                  </button>
+                </p>
+              </div>
+              <div className="flex flex-col gap-1 mt-1 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Owner:</span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={isPending}
+                      className="flex items-center gap-1.5 hover:text-muted-foreground transition-colors cursor-pointer"
+                    >
+                      <UserImage userId={user?.id} px={14} />
+                      {user?.name}
+                      <ChevronDown className="size-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-32">
+                      <DropdownMenuItem className="text-xs">
+                        <UserImage userId={user?.id} px={14} />
+                        {user?.name}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Visibility:</span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={isPending}
+                      className="flex items-center gap-1 hover:text-muted-foreground transition-colors cursor-pointer"
+                    >
+                      {visibility}
+                      <ChevronDown className="size-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-20">
+                      <DropdownMenuItem
+                        className="text-xs"
+                        onClick={() => setVisibility("public")}
+                      >
+                        public
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-xs"
+                        onClick={() => setVisibility("private")}
+                      >
+                        private
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">README:</span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={isPending}
+                      className="flex items-center gap-1 hover:text-muted-foreground transition-colors cursor-pointer"
+                    >
+                      {addReadme ? "yes" : "no"}
+                      <ChevronDown className="size-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-20">
+                      <DropdownMenuItem
+                        className="text-xs"
+                        onClick={() => setAddReadme(true)}
+                      >
+                        yes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-xs"
+                        onClick={() => setAddReadme(false)}
+                      >
+                        no
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">.gitignore:</span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={isPending}
+                      className="flex items-center gap-1 hover:text-muted-foreground transition-colors cursor-pointer"
+                    >
+                      {addGitignore ? "yes" : "no"}
+                      <ChevronDown className="size-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-20">
+                      <DropdownMenuItem
+                        className="text-xs"
+                        onClick={() => setAddGitignore(true)}
+                      >
+                        yes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-xs"
+                        onClick={() => setAddGitignore(false)}
+                      >
+                        no
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">LICENSE:</span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={isPending}
+                      className="flex items-center gap-1 hover:text-muted-foreground transition-colors cursor-pointer"
+                    >
+                      {addLicense ? "yes" : "no"}
+                      <ChevronDown className="size-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-20">
+                      <DropdownMenuItem
+                        className="text-xs"
+                        onClick={() => setAddLicense(true)}
+                      >
+                        yes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-xs"
+                        onClick={() => setAddLicense(false)}
+                      >
+                        no
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </div>
           </div>
           {state && "error" in state && (
             <p className="text-xs text-red-500 px-3 pb-2">{state.error}</p>
           )}
-          <div className="flex items-center justify-between h-7 border-t border-border">
-            <div className="flex items-center h-full text-xs text-muted-foreground">
-              <span className="px-2">New repository in</span>
-              <div className="relative flex items-center gap-1.5 px-2 h-full border-l border-r border-border">
-                <UserImage userId={user?.id} px={14} />
-                <select
-                  id="owner"
-                  name="owner"
-                  className="appearance-none bg-transparent outline-none pr-4 cursor-pointer"
-                  disabled={isPending}
-                >
-                  <option value={user?.name}>{user?.name}</option>
-                </select>
-                <ChevronDown className="size-3 absolute right-1.5 pointer-events-none" />
-              </div>
-              <div className="relative flex items-center px-2 h-full border-r border-border">
-                <select
-                  id="visibility"
-                  name="visibility"
-                  className="appearance-none bg-transparent outline-none pr-4 cursor-pointer"
-                  disabled={isPending}
-                >
-                  <option value="public">Public</option>
-                  <option value="private">Private</option>
-                </select>
-                <ChevronDown className="size-3 absolute right-1.5 pointer-events-none" />
-              </div>
-            </div>
+          <div className="flex items-center justify-between h-7">
+            <input type="hidden" name="visibility" value={visibility} />
+            <input type="hidden" name="owner" value={user?.name ?? ""} />
+            <span className="pl-2 text-xs text-muted-foreground">
+              Create a new repository
+            </span>
             <div className="flex items-center h-full">
               <button
                 type="reset"
