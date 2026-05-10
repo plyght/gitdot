@@ -12,10 +12,10 @@ export async function getOrganization(
 
 export async function createOrganization(
   name: string,
+  readme?: string,
 ): Promise<OrganizationResource | null> {
-  const response = await authPost(
-    `${GITDOT_SERVER_URL}/organization/${name}`,
-    {},
-  );
+  const response = await authPost(`${GITDOT_SERVER_URL}/organization/${name}`, {
+    readme,
+  });
   return await handleResponse(response, OrganizationResource);
 }

@@ -13,6 +13,8 @@ impl Endpoint for CreateOrganization {
 }
 
 #[derive(ApiRequest, Debug, Serialize, Deserialize)]
-pub struct CreateOrganizationRequest {}
+pub struct CreateOrganizationRequest {
+    pub readme: Option<String>,
+}
 
 pub type CreateOrganizationResponse = OrganizationResource;

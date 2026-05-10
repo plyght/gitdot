@@ -7,6 +7,7 @@ import { useActionState, useEffect, useState } from "react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { useUserContext } from "@/(main)/context/user";
 import { createRepositoryAction } from "@/actions";
+import { AvatarBeam } from "@/ui/avatar-beam";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import {
   DropdownMenu,
@@ -17,10 +18,11 @@ import {
 import { cn } from "@/util";
 
 export function NewRepoDialog() {
-  const { user } = useUserContext();
+  const { user, organizations } = useUserContext();
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
+  const [owner, setOwner] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
@@ -29,7 +31,9 @@ export function NewRepoDialog() {
   const [license, setLicense] = useState(false);
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setOwner(user?.name ?? "");
+    } else {
       setName("");
       setDescription("");
       setVisibility("public");
@@ -37,7 +41,10 @@ export function NewRepoDialog() {
       setGitignore(false);
       setLicense(false);
     }
-  }, [open]);
+  }, [open, user?.name]);
+
+  const ownerType = owner === user?.name ? "user" : "organization";
+  const selectedOrg = organizations?.find((o) => o.name === owner);
 
   const [state, formAction, isPending] = useActionState(
     createRepositoryAction,
@@ -127,15 +134,34 @@ export function NewRepoDialog() {
                       disabled={isPending}
                       className="flex items-center gap-1.5 hover:text-muted-foreground transition-colors cursor-pointer"
                     >
-                      <UserImage userId={user?.id} px={14} />
-                      {user?.name}
+                      {selectedOrg ? (
+                        <AvatarBeam name={selectedOrg.name} size={14} />
+                      ) : (
+                        <UserImage userId={user?.id} px={14} />
+                      )}
+                      {owner}
                       <ChevronDown className="size-3" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-32">
-                      <DropdownMenuItem className="text-xs">
-                        <UserImage userId={user?.id} px={14} />
-                        {user?.name}
-                      </DropdownMenuItem>
+                      {user && (
+                        <DropdownMenuItem
+                          className="text-xs"
+                          onClick={() => setOwner(user.name)}
+                        >
+                          <UserImage userId={user.id} px={14} />
+                          {user.name}
+                        </DropdownMenuItem>
+                      )}
+                      {organizations?.map((org) => (
+                        <DropdownMenuItem
+                          key={org.id}
+                          className="text-xs"
+                          onClick={() => setOwner(org.name)}
+                        >
+                          <AvatarBeam name={org.name} size={14} />
+                          {org.name}
+                        </DropdownMenuItem>
+                      ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -248,7 +274,8 @@ export function NewRepoDialog() {
           </div>
           <div className="flex items-center justify-between h-7">
             <input type="hidden" name="visibility" value={visibility} />
-            <input type="hidden" name="owner" value={user?.name ?? ""} />
+            <input type="hidden" name="owner" value={owner} />
+            <input type="hidden" name="owner_type" value={ownerType} />
             <input type="hidden" name="repo-description" value={description} />
             <span
               className={cn(

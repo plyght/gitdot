@@ -34,6 +34,7 @@ export async function createRepositoryAction(
   const owner = formData.get("owner") as string;
   const name = formData.get("repo-name") as string;
   const visibility = formData.get("visibility") as string;
+  const ownerType = (formData.get("owner_type") as string) || "user";
   const description =
     (formData.get("repo-description") as string | null)?.trim() || undefined;
 
@@ -43,7 +44,7 @@ export async function createRepositoryAction(
 
   try {
     const result = await createRepository(owner, name, {
-      owner_type: "user",
+      owner_type: ownerType,
       visibility,
       description,
     });

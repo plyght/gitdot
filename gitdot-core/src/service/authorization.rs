@@ -389,7 +389,7 @@ mod tests {
         }
         #[async_trait]
         impl OrganizationRepository for OrganizationRepo {
-            async fn create(&self, org_name: &str, owner_id: Uuid) -> Result<Organization, crate::error::DatabaseError>;
+            async fn create(&self, org_name: &str, owner_id: Uuid, readme: Option<String>) -> Result<Organization, crate::error::DatabaseError>;
             async fn get(&self, org_name: &str) -> Result<Option<Organization>, crate::error::DatabaseError>;
             async fn is_member(&self, org_id: Uuid, user_id: Uuid) -> Result<bool, crate::error::DatabaseError>;
             async fn add_member(&self, org_name: &str, user_name: &str, role: OrganizationRole) -> Result<Option<OrganizationMember>, crate::error::DatabaseError>;

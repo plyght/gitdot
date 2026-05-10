@@ -95,7 +95,10 @@ where
             return Err(ConflictError::new("organization", &org_name).into());
         }
 
-        let org = self.org_repo.create(&org_name, request.owner_id).await?;
+        let org = self
+            .org_repo
+            .create(&org_name, request.owner_id, request.readme)
+            .await?;
         Ok(org.into())
     }
 

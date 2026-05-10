@@ -1,4 +1,5 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
 };
@@ -17,8 +18,9 @@ pub async fn create_organization(
     auth_user: Principal<User>,
     State(state): State<AppState>,
     Path(org_name): Path<String>,
+    Json(request): Json<api::CreateOrganizationRequest>,
 ) -> Result<AppResponse<api::CreateOrganizationResponse>, AppError> {
-    let request = CreateOrganizationRequest::new(&org_name, auth_user.id)?;
+    let request = CreateOrganizationRequest::new(&org_name, auth_user.id, request.readme)?;
     state
         .org_service
         .create_organization(request)

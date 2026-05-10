@@ -85,7 +85,8 @@ export function NewOrgDialog() {
                 </p>
                 <textarea
                   id="org-readme"
-                  placeholder="who you are and what you're building...."
+                  name="org-readme"
+                  placeholder="who you all are and what you're building...."
                   value={orgReadme}
                   onChange={(e) => setOrgReadme(e.target.value)}
                   className="w-full flex-1 text-sm bg-background outline-none resize-none"

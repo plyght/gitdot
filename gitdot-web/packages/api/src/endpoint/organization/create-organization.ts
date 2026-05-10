@@ -2,7 +2,9 @@ import { z } from "zod";
 import { OrganizationResource } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
-export const CreateOrganizationRequest = z.object({});
+export const CreateOrganizationRequest = z.object({
+  readme: z.string().optional(),
+});
 export type CreateOrganizationRequest = z.infer<
   typeof CreateOrganizationRequest
 >;

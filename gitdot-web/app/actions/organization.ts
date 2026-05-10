@@ -12,12 +12,14 @@ export async function createOrganizationAction(
   formData: FormData,
 ): Promise<CreateOrganizationActionResult> {
   const name = formData.get("org-name") as string;
+  const readmeRaw = formData.get("org-readme") as string | null;
+  const readme = (readmeRaw ?? "").trim() || undefined;
 
   if (!name) {
     return { error: "Organization name is required" };
   }
 
-  const result = await createOrganization(name);
+  const result = await createOrganization(name, readme);
   if (!result) {
     return { error: "Failed to create organization" };
   }

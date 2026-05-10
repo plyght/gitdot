@@ -9,7 +9,12 @@ use crate::{
 
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync + Clone + 'static {
-    async fn create(&self, org_name: &str, owner_id: Uuid) -> Result<Organization, DatabaseError>;
+    async fn create(
+        &self,
+        org_name: &str,
+        owner_id: Uuid,
+        readme: Option<String>,
+    ) -> Result<Organization, DatabaseError>;
 
     async fn get(&self, org_name: &str) -> Result<Option<Organization>, DatabaseError>;
 
@@ -53,13 +58,19 @@ impl OrganizationRepositoryImpl {
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl OrganizationRepository for OrganizationRepositoryImpl {
-    async fn create(&self, org_name: &str, owner_id: Uuid) -> Result<Organization, DatabaseError> {
+    async fn create(
+        &self,
+        org_name: &str,
+        owner_id: Uuid,
+        readme: Option<String>,
+    ) -> Result<Organization, DatabaseError> {
         let mut tx = self.pool.begin().await?;
 
         let org = sqlx::query_as::<_, Organization>(
-            "INSERT INTO core.organizations (name) VALUES ($1) RETURNING id, name, created_at",
+            "INSERT INTO core.organizations (name, readme) VALUES ($1, $2) RETURNING id, name, created_at, readme",
         )
         .bind(org_name)
+        .bind(readme)
         .fetch_one(&mut *tx)
         .await?;
 
@@ -78,7 +89,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
 
     async fn get(&self, org_name: &str) -> Result<Option<Organization>, DatabaseError> {
         let org = sqlx::query_as::<_, Organization>(
-            "SELECT id, name, created_at FROM core.organizations WHERE name = $1",
+            "SELECT id, name, created_at, readme FROM core.organizations WHERE name = $1",
         )
         .bind(org_name)
         .fetch_optional(&self.pool)
@@ -152,7 +163,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
 
     async fn list(&self) -> Result<Vec<Organization>, DatabaseError> {
         let orgs = sqlx::query_as::<_, Organization>(
-            "SELECT id, name, created_at FROM core.organizations ORDER BY created_at DESC",
+            "SELECT id, name, created_at, readme FROM core.organizations ORDER BY created_at DESC",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -163,7 +174,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, DatabaseError> {
         let orgs = sqlx::query_as::<_, Organization>(
             r#"
-            SELECT o.id, o.name, o.created_at
+            SELECT o.id, o.name, o.created_at, o.readme
             FROM core.organizations o
             JOIN core.organization_members om ON o.id = om.organization_id
             WHERE om.user_id = $1

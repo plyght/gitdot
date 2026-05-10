@@ -7,6 +7,7 @@ pub struct OrganizationResource {
     pub id: Uuid,
     pub name: String,
     pub created_at: DateTime<Utc>,
+    pub readme: Option<String>,
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

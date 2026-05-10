@@ -20,6 +20,7 @@ pub struct OrganizationResponse {
     pub id: Uuid,
     pub name: String,
     pub created_at: DateTime<Utc>,
+    pub readme: Option<String>,
 }
 
 impl From<Organization> for OrganizationResponse {
@@ -28,6 +29,7 @@ impl From<Organization> for OrganizationResponse {
             id: org.id,
             name: org.name,
             created_at: org.created_at,
+            readme: org.readme,
         }
     }
 }
