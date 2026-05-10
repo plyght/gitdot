@@ -151,6 +151,8 @@ impl AppState {
                 org_repo.clone(),
                 user_repo.clone(),
                 repo_repo.clone(),
+                image_client.clone(),
+                r2_client.clone(),
             )),
 
             repo_service: Arc::new(RepositoryServiceImpl::new(

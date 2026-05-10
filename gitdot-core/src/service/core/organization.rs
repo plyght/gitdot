@@ -1,10 +1,11 @@
 use async_trait::async_trait;
 
 use crate::{
+    client::{ImageClient, ImageClientImpl, R2Client, R2ClientImpl},
     dto::{
         AddMemberRequest, CreateOrganizationRequest, GetOrganizationRequest, ListMembersRequest,
         ListOrganizationRepositoriesRequest, OrganizationMemberResponse, OrganizationResponse,
-        RepositoryResponse,
+        RepositoryResponse, UpdateOrganizationImageRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, OrganizationError},
     repository::{
@@ -25,6 +26,11 @@ pub trait OrganizationService: Send + Sync + 'static {
         request: GetOrganizationRequest,
     ) -> Result<OrganizationResponse, OrganizationError>;
 
+    async fn update_organization_image(
+        &self,
+        request: UpdateOrganizationImageRequest,
+    ) -> Result<(), OrganizationError>;
+
     async fn add_member(
         &self,
         request: AddMemberRequest,
@@ -44,15 +50,19 @@ pub trait OrganizationService: Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct OrganizationServiceImpl<O, U, R>
+pub struct OrganizationServiceImpl<O, U, R, I, R2>
 where
     O: OrganizationRepository,
     U: UserRepository,
     R: RepositoryRepository,
+    I: ImageClient,
+    R2: R2Client,
 {
     org_repo: O,
     user_repo: U,
     repo_repo: R,
+    image_client: I,
+    r2_client: R2,
 }
 
 impl
@@ -60,28 +70,36 @@ impl
         OrganizationRepositoryImpl,
         UserRepositoryImpl,
         RepositoryRepositoryImpl,
+        ImageClientImpl,
+        R2ClientImpl,
     >
 {
     pub fn new(
         org_repo: OrganizationRepositoryImpl,
         user_repo: UserRepositoryImpl,
         repo_repo: RepositoryRepositoryImpl,
+        image_client: ImageClientImpl,
+        r2_client: R2ClientImpl,
     ) -> Self {
         Self {
             org_repo,
             user_repo,
             repo_repo,
+            image_client,
+            r2_client,
         }
     }
 }
 
 #[crate::instrument_all]
 #[async_trait]
-impl<O, U, R> OrganizationService for OrganizationServiceImpl<O, U, R>
+impl<O, U, R, I, R2> OrganizationService for OrganizationServiceImpl<O, U, R, I, R2>
 where
     O: OrganizationRepository,
     U: UserRepository,
     R: RepositoryRepository,
+    I: ImageClient,
+    R2: R2Client,
 {
     async fn create_organization(
         &self,
@@ -113,6 +131,22 @@ where
             .await?
             .or_not_found("organization", &org_name)?;
         Ok(org.into())
+    }
+
+    async fn update_organization_image(
+        &self,
+        request: UpdateOrganizationImageRequest,
+    ) -> Result<(), OrganizationError> {
+        let org_name = request.org_name.to_string();
+        let org = self
+            .org_repo
+            .get(&org_name)
+            .await?
+            .or_not_found("organization", &org_name)?;
+        let webp_bytes = self.image_client.convert_to_webp(request.bytes).await?;
+        let key = format!("orgs/{}.webp", org.id);
+        self.r2_client.upload_object(&key, webp_bytes).await?;
+        Ok(())
     }
 
     async fn add_member(

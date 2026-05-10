@@ -19,3 +19,19 @@ export async function createOrganization(
   });
   return await handleResponse(response, OrganizationResource);
 }
+
+export async function uploadOrganizationImage(
+  orgName: string,
+  file: File,
+): Promise<boolean> {
+  const bytes = await file.arrayBuffer();
+  const response = await authFetch(
+    `${GITDOT_SERVER_URL}/organization/${orgName}/image`,
+    {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: bytes,
+    },
+  );
+  return response.ok;
+}

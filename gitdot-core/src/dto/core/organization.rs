@@ -3,6 +3,7 @@ mod create_organization;
 mod get_organization;
 mod list_members;
 mod list_organization_repositories;
+mod update_organization_image;
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
@@ -14,6 +15,7 @@ pub use create_organization::CreateOrganizationRequest;
 pub use get_organization::GetOrganizationRequest;
 pub use list_members::ListMembersRequest;
 pub use list_organization_repositories::ListOrganizationRepositoriesRequest;
+pub use update_organization_image::UpdateOrganizationImageRequest;
 
 #[derive(Debug, Clone)]
 pub struct OrganizationResponse {

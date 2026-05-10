@@ -4,9 +4,11 @@ mod get_organization;
 mod list_organization_members;
 mod list_organization_repositories;
 mod list_organizations;
+mod upload_organization_image;
 
 use axum::{
     Router,
+    extract::DefaultBodyLimit,
     routing::{get, post},
 };
 
@@ -18,6 +20,7 @@ use get_organization::get_organization;
 use list_organization_members::list_organization_members;
 use list_organization_repositories::list_organization_repositories;
 use list_organizations::list_organizations;
+use upload_organization_image::upload_organization_image;
 
 pub fn create_organization_router() -> Router<AppState> {
     Router::new()
@@ -25,6 +28,10 @@ pub fn create_organization_router() -> Router<AppState> {
         .route(
             "/organization/{org_name}",
             get(get_organization).post(create_organization),
+        )
+        .route(
+            "/organization/{org_name}/image",
+            post(upload_organization_image).layer(DefaultBodyLimit::max(5 * 1024 * 1024)),
         )
         .route("/organization/{org_name}/member", post(add_member))
         .route(
