@@ -187,6 +187,7 @@ where
                 &request.owner_name,
                 &request.owner_type,
                 &request.visibility,
+                request.description,
             )
             .await
         {

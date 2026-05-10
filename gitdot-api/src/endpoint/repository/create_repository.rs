@@ -19,6 +19,9 @@ pub struct CreateRepositoryRequest {
 
     #[serde(default = "default_visibility")]
     pub visibility: String,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 pub type CreateRepositoryResponse = RepositoryResource;

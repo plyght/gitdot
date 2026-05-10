@@ -34,6 +34,8 @@ export async function createRepositoryAction(
   const owner = formData.get("owner") as string;
   const name = formData.get("repo-name") as string;
   const visibility = formData.get("visibility") as string;
+  const description =
+    (formData.get("repo-description") as string | null)?.trim() || undefined;
 
   if (!owner || !name) {
     return { error: "Owner and repository name are required" };
@@ -43,6 +45,7 @@ export async function createRepositoryAction(
     const result = await createRepository(owner, name, {
       owner_type: "user",
       visibility,
+      description,
     });
     if (!result) {
       return { error: "Failed to create repository" };

@@ -249,6 +249,7 @@ export function NewRepoDialog() {
           <div className="flex items-center justify-between h-7">
             <input type="hidden" name="visibility" value={visibility} />
             <input type="hidden" name="owner" value={user?.name ?? ""} />
+            <input type="hidden" name="repo-description" value={description} />
             <span
               className={cn(
                 "pl-2 text-xs truncate",

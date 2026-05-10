@@ -13,6 +13,7 @@ pub struct CreateRepositoryRequest {
     pub owner_name: OwnerName,
     pub owner_type: RepositoryOwnerType,
     pub visibility: RepositoryVisibility,
+    pub description: Option<String>,
 }
 
 impl CreateRepositoryRequest {
@@ -22,7 +23,12 @@ impl CreateRepositoryRequest {
         owner_name: &str,
         owner_type: &str,
         visibility: &str,
+        description: Option<&str>,
     ) -> Result<Self, RepositoryError> {
+        let description = description
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned);
         Ok(Self {
             name: RepositoryName::try_new(repo_name)
                 .map_err(|e| InputError::new("repository name", e))?,
@@ -31,6 +37,7 @@ impl CreateRepositoryRequest {
                 .map_err(|e| InputError::new("owner name", e))?,
             owner_type: owner_type.try_into()?,
             visibility: visibility.try_into()?,
+            description,
         })
     }
 }
@@ -43,20 +50,22 @@ mod tests {
     fn valid_request() {
         let user_id = Uuid::new_v4();
         let request =
-            CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "user", "public").unwrap();
+            CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "user", "public", None)
+                .unwrap();
 
         assert_eq!(request.name.as_ref(), "my-repo");
         assert_eq!(request.user_id, user_id);
         assert_eq!(request.owner_name.as_ref(), "johndoe");
         assert_eq!(request.owner_type, RepositoryOwnerType::User);
         assert_eq!(request.visibility, RepositoryVisibility::Public);
+        assert_eq!(request.description, None);
     }
 
     #[test]
     fn valid_private_org_repository() {
         let user_id = Uuid::new_v4();
         let request =
-            CreateRepositoryRequest::new("repo", user_id, "myorg", "organization", "private")
+            CreateRepositoryRequest::new("repo", user_id, "myorg", "organization", "private", None)
                 .unwrap();
 
         assert_eq!(request.owner_type, RepositoryOwnerType::Organization);
@@ -67,7 +76,7 @@ mod tests {
     fn strips_git_suffix_from_repo_name() {
         let user_id = Uuid::new_v4();
         let request =
-            CreateRepositoryRequest::new("my-repo.git", user_id, "johndoe", "user", "public")
+            CreateRepositoryRequest::new("my-repo.git", user_id, "johndoe", "user", "public", None)
                 .unwrap();
 
         assert_eq!(request.name.as_ref(), "my-repo");
@@ -76,8 +85,14 @@ mod tests {
     #[test]
     fn rejects_invalid_repo_name() {
         let user_id = Uuid::new_v4();
-        let result =
-            CreateRepositoryRequest::new("invalid/repo", user_id, "johndoe", "user", "public");
+        let result = CreateRepositoryRequest::new(
+            "invalid/repo",
+            user_id,
+            "johndoe",
+            "user",
+            "public",
+            None,
+        );
 
         assert!(matches!(result, Err(RepositoryError::Input(_))));
     }
@@ -85,8 +100,14 @@ mod tests {
     #[test]
     fn rejects_invalid_owner_name() {
         let user_id = Uuid::new_v4();
-        let result =
-            CreateRepositoryRequest::new("my-repo", user_id, "invalid@owner", "user", "public");
+        let result = CreateRepositoryRequest::new(
+            "my-repo",
+            user_id,
+            "invalid@owner",
+            "user",
+            "public",
+            None,
+        );
 
         assert!(matches!(result, Err(RepositoryError::Input(_))));
     }
@@ -95,7 +116,7 @@ mod tests {
     fn rejects_invalid_owner_type() {
         let user_id = Uuid::new_v4();
         let result =
-            CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "invalid", "public");
+            CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "invalid", "public", None);
 
         assert!(matches!(result, Err(RepositoryError::Input(_))));
     }
@@ -103,8 +124,41 @@ mod tests {
     #[test]
     fn rejects_invalid_visibility() {
         let user_id = Uuid::new_v4();
-        let result = CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "user", "invalid");
+        let result =
+            CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "user", "invalid", None);
 
         assert!(matches!(result, Err(RepositoryError::Input(_))));
+    }
+
+    #[test]
+    fn trims_and_keeps_description() {
+        let user_id = Uuid::new_v4();
+        let request = CreateRepositoryRequest::new(
+            "my-repo",
+            user_id,
+            "johndoe",
+            "user",
+            "public",
+            Some("  hello world  "),
+        )
+        .unwrap();
+
+        assert_eq!(request.description.as_deref(), Some("hello world"));
+    }
+
+    #[test]
+    fn empty_description_becomes_none() {
+        let user_id = Uuid::new_v4();
+        let request = CreateRepositoryRequest::new(
+            "my-repo",
+            user_id,
+            "johndoe",
+            "user",
+            "public",
+            Some("   "),
+        )
+        .unwrap();
+
+        assert_eq!(request.description, None);
     }
 }

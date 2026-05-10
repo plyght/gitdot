@@ -192,7 +192,9 @@ where
 
         let repository = self
             .repo_repo
-            .create(repo_name, owner_id, owner_name, owner_type, visibility)
+            .create(
+                repo_name, owner_id, owner_name, owner_type, visibility, None,
+            )
             .await?;
 
         let head_sha = self

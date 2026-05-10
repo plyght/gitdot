@@ -5,6 +5,7 @@ import type { Endpoint } from "../endpoint";
 export const CreateRepositoryRequest = z.object({
   owner_type: z.string(),
   visibility: z.string(),
+  description: z.string().optional(),
 });
 export type CreateRepositoryRequest = z.infer<typeof CreateRepositoryRequest>;
 

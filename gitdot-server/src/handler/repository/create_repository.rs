@@ -32,6 +32,7 @@ pub async fn create_repository(
         &owner,
         &request.owner_type,
         &request.visibility,
+        request.description.as_deref(),
     )?;
     state
         .repo_service

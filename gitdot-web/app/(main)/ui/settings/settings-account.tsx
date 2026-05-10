@@ -1,6 +1,5 @@
 "use client";
 
-import type { UserResource } from "gitdot-api";
 import { useState } from "react";
 import { cn } from "@/util";
 import { ChangeUsernameDialog } from "./change-username-dialog";
