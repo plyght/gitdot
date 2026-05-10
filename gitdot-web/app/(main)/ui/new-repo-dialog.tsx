@@ -4,10 +4,10 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
+import { OrgImage } from "@/(main)/[owner]/ui/org/org-image";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { useUserContext } from "@/(main)/context/user";
 import { createRepositoryAction } from "@/actions";
-import { AvatarBeam } from "@/ui/avatar-beam";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import {
   DropdownMenu,
@@ -135,7 +135,7 @@ export function NewRepoDialog() {
                       className="flex items-center gap-1.5 hover:text-muted-foreground transition-colors cursor-pointer"
                     >
                       {selectedOrg ? (
-                        <AvatarBeam name={selectedOrg.name} size={14} />
+                        <OrgImage orgId={selectedOrg.id} px={14} />
                       ) : (
                         <UserImage userId={user?.id} px={14} />
                       )}
@@ -158,7 +158,7 @@ export function NewRepoDialog() {
                           className="text-xs"
                           onClick={() => setOwner(org.name)}
                         >
-                          <AvatarBeam name={org.name} size={14} />
+                          <OrgImage orgId={org.id} px={14} />
                           {org.name}
                         </DropdownMenuItem>
                       ))}
