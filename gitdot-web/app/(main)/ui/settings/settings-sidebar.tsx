@@ -2,7 +2,7 @@
 
 import { cn } from "@/util";
 
-export type SettingsTab = "profile" | "account";
+export type SettingsTab = "profile" | "account" | "integrations";
 
 const GROUPS: { label: string; tabs: { id: SettingsTab; label: string }[] }[] =
   [
@@ -11,6 +11,7 @@ const GROUPS: { label: string; tabs: { id: SettingsTab; label: string }[] }[] =
       tabs: [
         { id: "profile", label: "/profile" },
         { id: "account", label: "/account" },
+        { id: "integrations", label: "/integrations" },
       ],
     },
   ];

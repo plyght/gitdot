@@ -2,6 +2,7 @@
 
 import type {
   CommitFilterResource,
+  GitHubInstallationResource,
   RepositoryBlobsResource,
   RepositoryResource,
   RepositorySettingsResource,
@@ -17,6 +18,7 @@ import {
   getRepositoryBlob,
   getRepositoryBlobs,
   getRepositorySettings,
+  listInstallations,
   migrateGitHubRepositories,
   updateRepositorySettings,
 } from "@/dal";
@@ -128,6 +130,12 @@ export async function migrateGitHubRepositoriesAction(
 
   redirect("/settings/migrations");
   return { success: true };
+}
+
+export async function listInstallationsAction(): Promise<
+  GitHubInstallationResource[]
+> {
+  return (await listInstallations()) ?? [];
 }
 
 export async function getRepositoryHastAction(
