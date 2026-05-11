@@ -22,6 +22,7 @@ export function UserImage({
       height={px}
       className="rounded-full shrink-0"
       style={{ width: px, height: px }}
+      unoptimized
     />
   );
 }

@@ -21,6 +21,7 @@ export function OrgImage({ orgId, px = 32 }: { orgId?: string; px?: number }) {
       height={px}
       className="rounded-full shrink-0"
       style={{ width: px, height: px }}
+      unoptimized
     />
   );
 }
