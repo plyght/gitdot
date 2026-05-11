@@ -188,20 +188,45 @@ export async function validateUsername(
 export async function uploadUserImageAction(
   file: File,
 ): Promise<{ success: true } | { error: string }> {
+  console.log("[uploadUserImageAction] start", {
+    name: file?.name,
+    size: file?.size,
+    type: file?.type,
+  });
+
   if (!file || file.size === 0) {
+    console.warn("[uploadUserImageAction] rejected: empty file");
     return { error: "No file provided" };
   } else if (file.size > 5 * 1024 * 1024) {
+    console.warn("[uploadUserImageAction] rejected: too large", {
+      size: file.size,
+    });
     return { error: "Image must be under 5 MB." };
   } else if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    console.warn("[uploadUserImageAction] rejected: bad mime", {
+      type: file.type,
+    });
     return { error: "Unsupported image type — use JPEG, PNG, or WebP." };
   }
 
   try {
     const ok = await uploadUserImage(file);
-    if (!ok) return { error: "Upload failed — please try again." };
+    if (!ok) {
+      console.error("[uploadUserImageAction] uploadUserImage returned false", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
+      return { error: "Upload failed — please try again." };
+    }
+    console.log("[uploadUserImageAction] success");
     return { success: true };
   } catch (e) {
-    console.error("uploadUserImageAction failed:", e);
+    console.error("[uploadUserImageAction] threw:", e, {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
     const msg = e instanceof Error ? e.message : "Unknown error";
     return { error: `Upload failed: ${msg}` };
   }

@@ -47,12 +47,50 @@ export async function updateCurrentUser(request: {
 }
 
 export async function uploadUserImage(file: File): Promise<boolean> {
-  const bytes = await file.arrayBuffer();
-  const response = await authFetch(`${GITDOT_SERVER_URL}/user/image`, {
-    method: "POST",
-    headers: { "Content-Type": file.type },
-    body: bytes,
+  const url = `${GITDOT_SERVER_URL}/user/image`;
+  console.log("[uploadUserImage] POST", url, {
+    type: file.type,
+    size: file.size,
   });
+
+  let bytes: ArrayBuffer;
+  try {
+    bytes = await file.arrayBuffer();
+  } catch (e) {
+    console.error("[uploadUserImage] file.arrayBuffer() failed:", e);
+    throw e;
+  }
+  console.log("[uploadUserImage] read bytes", { byteLength: bytes.byteLength });
+
+  let response: Response;
+  try {
+    response = await authFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: bytes,
+    });
+  } catch (e) {
+    console.error("[uploadUserImage] authFetch threw (network/proxy?):", e);
+    throw e;
+  }
+
+  if (!response.ok) {
+    let body = "";
+    try {
+      body = await response.text();
+    } catch (e) {
+      console.error("[uploadUserImage] failed to read error body:", e);
+    }
+    console.error("[uploadUserImage] non-OK response", {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get("content-type"),
+      contentLength: response.headers.get("content-length"),
+      body: body.slice(0, 500),
+    });
+  } else {
+    console.log("[uploadUserImage] ok", { status: response.status });
+  }
   return response.ok;
 }
 
