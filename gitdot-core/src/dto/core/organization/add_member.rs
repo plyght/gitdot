@@ -12,10 +12,16 @@ pub struct AddMemberRequest {
     pub org_name: OwnerName,
     pub user_name: OwnerName,
     pub role: OrganizationRole,
+    pub role_description: Option<String>,
 }
 
 impl AddMemberRequest {
-    pub fn new(org_name: &str, user_name: &str, role: &str) -> Result<Self, OrganizationError> {
+    pub fn new(
+        org_name: &str,
+        user_name: &str,
+        role: &str,
+        role_description: Option<String>,
+    ) -> Result<Self, OrganizationError> {
         let role = match role {
             "admin" => OrganizationRole::Admin,
             "member" => OrganizationRole::Member,
@@ -28,6 +34,7 @@ impl AddMemberRequest {
             user_name: OwnerName::try_new(user_name)
                 .map_err(|e| InputError::new("user name", e))?,
             role,
+            role_description,
         })
     }
 }
@@ -38,6 +45,7 @@ pub struct OrganizationMemberResponse {
     pub user_id: Uuid,
     pub organization_id: Uuid,
     pub role: OrganizationRole,
+    pub role_description: Option<String>,
     pub created_at: DateTime<Utc>,
     pub user_name: String,
 }
@@ -49,6 +57,7 @@ impl From<OrganizationMember> for OrganizationMemberResponse {
             user_id: member.user_id,
             organization_id: member.organization_id,
             role: member.role,
+            role_description: member.role_description,
             created_at: member.created_at,
             user_name: member.user_name,
         }

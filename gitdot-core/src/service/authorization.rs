@@ -3,10 +3,10 @@ use async_trait::async_trait;
 use crate::{
     dto::{
         AnswerAuthorizationRequest, CommentAuthorizationRequest, MigrationAuthorizationRequest,
-        OrganizationAuthorizationRequest, QuestionAuthorizationRequest,
-        RepositoryAuthorizationRequest, RepositoryCreationAuthorizationRequest,
-        RepositoryPermission, ReviewAuthorizationRequest, ReviewCommentAuthorizationRequest,
-        ReviewingAuthorizationRequest,
+        OrganizationAuthorizationRequest, OrganizationMemberAuthorizationRequest,
+        QuestionAuthorizationRequest, RepositoryAuthorizationRequest,
+        RepositoryCreationAuthorizationRequest, RepositoryPermission, ReviewAuthorizationRequest,
+        ReviewCommentAuthorizationRequest, ReviewingAuthorizationRequest,
     },
     error::AuthorizationError,
     model::{OrganizationRole, RepositoryOwnerType},
@@ -32,6 +32,11 @@ pub trait AuthorizationService: Send + Sync + 'static {
     async fn verify_authorized_for_organization(
         &self,
         request: OrganizationAuthorizationRequest,
+    ) -> Result<(), AuthorizationError>;
+
+    async fn verify_authorized_for_organization_member(
+        &self,
+        request: OrganizationMemberAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
     async fn verify_authorized_for_question(
@@ -201,6 +206,31 @@ where
         let role = self
             .org_repo
             .get_member_role(request.org_name.as_ref(), request.user_id)
+            .await?;
+
+        match role {
+            Some(OrganizationRole::Admin) => Ok(()),
+            _ => Err(AuthorizationError::Unauthorized),
+        }
+    }
+
+    async fn verify_authorized_for_organization_member(
+        &self,
+        request: OrganizationMemberAuthorizationRequest,
+    ) -> Result<(), AuthorizationError> {
+        let member = self
+            .org_repo
+            .get_member(request.org_name.as_ref(), request.member_id)
+            .await?
+            .ok_or(AuthorizationError::Unauthorized)?;
+
+        if member.user_id == request.auth_user_id {
+            return Ok(());
+        }
+
+        let role = self
+            .org_repo
+            .get_member_role(request.org_name.as_ref(), request.auth_user_id)
             .await?;
 
         match role {
@@ -392,8 +422,10 @@ mod tests {
             async fn create(&self, org_name: &str, owner_id: Uuid, readme: Option<String>) -> Result<Organization, crate::error::DatabaseError>;
             async fn get(&self, org_name: &str) -> Result<Option<Organization>, crate::error::DatabaseError>;
             async fn is_member(&self, org_id: Uuid, user_id: Uuid) -> Result<bool, crate::error::DatabaseError>;
-            async fn add_member(&self, org_name: &str, user_name: &str, role: OrganizationRole) -> Result<Option<OrganizationMember>, crate::error::DatabaseError>;
+            async fn add_member(&self, org_name: &str, user_name: &str, role: OrganizationRole, role_description: Option<String>) -> Result<Option<OrganizationMember>, crate::error::DatabaseError>;
             async fn get_member_role(&self, org_name: &str, user_id: Uuid) -> Result<Option<OrganizationRole>, crate::error::DatabaseError>;
+            async fn get_member(&self, org_name: &str, member_id: Uuid) -> Result<Option<OrganizationMember>, crate::error::DatabaseError>;
+            async fn update_member(&self, org_name: &str, member_id: Uuid, role_description: Option<String>) -> Result<Option<OrganizationMember>, crate::error::DatabaseError>;
             async fn list(&self) -> Result<Vec<Organization>, crate::error::DatabaseError>;
             async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, crate::error::DatabaseError>;
             async fn list_members(&self, org_name: &str, role: Option<OrganizationRole>) -> Result<Vec<OrganizationMember>, crate::error::DatabaseError>;

@@ -16,6 +16,7 @@ impl Endpoint for AddMember {
 pub struct AddMemberRequest {
     pub user_name: String,
     pub role: String,
+    pub role_description: Option<String>,
 }
 
 pub type AddMemberResponse = OrganizationMemberResource;

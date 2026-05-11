@@ -5,6 +5,7 @@ import type { Endpoint } from "../endpoint";
 export const AddMemberRequest = z.object({
   user_name: z.string(),
   role: z.string(),
+  role_description: z.string().nullable().optional(),
 });
 export type AddMemberRequest = z.infer<typeof AddMemberRequest>;
 

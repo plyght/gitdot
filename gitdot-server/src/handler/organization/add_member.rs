@@ -26,7 +26,12 @@ pub async fn add_member(
         .verify_authorized_for_organization(auth_request)
         .await?;
 
-    let request = AddMemberRequest::new(&org_name, &request.user_name, &request.role)?;
+    let request = AddMemberRequest::new(
+        &org_name,
+        &request.user_name,
+        &request.role,
+        request.role_description,
+    )?;
     state
         .org_service
         .add_member(request)

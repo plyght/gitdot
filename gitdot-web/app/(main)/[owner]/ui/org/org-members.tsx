@@ -19,17 +19,6 @@ const MEMBER_SORT_LABELS: Record<MemberSort, string> = {
   oldest: "Oldest",
 };
 
-const MOCK_ROLE_DESCRIPTIONS = [
-  "Leads infrastructure work and keeps the build pipeline healthy across all repositories.",
-  "Focuses on frontend architecture and the design system. Reviews most UI-heavy pull requests.",
-  "Owns the data platform and analytics tooling. Author of the migration framework.",
-  "Maintains the public API and SDK packages. Writes most of the integration docs.",
-];
-
-function mockRoleDescription(index: number): string {
-  return MOCK_ROLE_DESCRIPTIONS[index % MOCK_ROLE_DESCRIPTIONS.length];
-}
-
 export function OrgMembers({
   members,
 }: {
@@ -74,15 +63,23 @@ export function OrgMembers({
         </DropdownMenu>
       </div>
       <div className="flex flex-col gap-4">
-        {sortedMembers.map((member, i) => (
+        {sortedMembers.map((member) => (
           <div key={member.id} className="flex items-start gap-3">
             <UserImage userId={member.user_id} px={32} className="mt-0.5" />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{member.user_name}</span>
-              <p className="text-xs text-foreground -mt-0.5">
-                {mockRoleDescription(i)}
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-sm font-medium mb-0.5">
+                {member.user_name}
+              </span>
+              <p
+                className={
+                  member.role_description
+                    ? "text-xs text-foreground"
+                    : "text-xs text-muted-foreground"
+                }
+              >
+                {member.role_description || "no description found"}
               </p>
-              <span className="text-xs font-mono text-muted-foreground mt-0.5">
+              <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
                 Joined {formatDate(new Date(member.created_at))}
               </span>
             </div>

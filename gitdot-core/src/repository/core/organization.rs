@@ -25,6 +25,7 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         org_name: &str,
         user_name: &str,
         role: OrganizationRole,
+        role_description: Option<String>,
     ) -> Result<Option<OrganizationMember>, DatabaseError>;
 
     async fn get_member_role(
@@ -32,6 +33,19 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         org_name: &str,
         user_id: Uuid,
     ) -> Result<Option<OrganizationRole>, DatabaseError>;
+
+    async fn get_member(
+        &self,
+        org_name: &str,
+        member_id: Uuid,
+    ) -> Result<Option<OrganizationMember>, DatabaseError>;
+
+    async fn update_member(
+        &self,
+        org_name: &str,
+        member_id: Uuid,
+        role_description: Option<String>,
+    ) -> Result<Option<OrganizationMember>, DatabaseError>;
 
     async fn list(&self) -> Result<Vec<Organization>, DatabaseError>;
 
@@ -120,18 +134,19 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         org_name: &str,
         user_name: &str,
         role: OrganizationRole,
+        role_description: Option<String>,
     ) -> Result<Option<OrganizationMember>, DatabaseError> {
         let member = sqlx::query_as::<_, OrganizationMember>(
             r#"
             WITH inserted AS (
-                INSERT INTO core.organization_members (user_id, organization_id, role)
-                SELECT u.id, o.id, $3
+                INSERT INTO core.organization_members (user_id, organization_id, role, role_description)
+                SELECT u.id, o.id, $3, $4
                 FROM core.users u, core.organizations o
                 WHERE u.name = $1 AND o.name = $2
                 ON CONFLICT (user_id, organization_id) DO NOTHING
-                RETURNING id, user_id, organization_id, role, created_at
+                RETURNING id, user_id, organization_id, role, role_description, created_at
             )
-            SELECT i.id, i.user_id, i.organization_id, i.role, i.created_at, u.name AS user_name
+            SELECT i.id, i.user_id, i.organization_id, i.role, i.role_description, i.created_at, u.name AS user_name
             FROM inserted i
             JOIN core.users u ON i.user_id = u.id
             "#,
@@ -139,6 +154,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         .bind(user_name)
         .bind(org_name)
         .bind(role)
+        .bind(role_description)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -164,6 +180,59 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         .await?;
 
         Ok(role)
+    }
+
+    async fn get_member(
+        &self,
+        org_name: &str,
+        member_id: Uuid,
+    ) -> Result<Option<OrganizationMember>, DatabaseError> {
+        let member = sqlx::query_as::<_, OrganizationMember>(
+            r#"
+            SELECT om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at, u.name AS user_name
+            FROM core.organization_members om
+            JOIN core.organizations o ON om.organization_id = o.id
+            JOIN core.users u ON om.user_id = u.id
+            WHERE o.name = $1 AND om.id = $2
+            "#,
+        )
+        .bind(org_name)
+        .bind(member_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(member)
+    }
+
+    async fn update_member(
+        &self,
+        org_name: &str,
+        member_id: Uuid,
+        role_description: Option<String>,
+    ) -> Result<Option<OrganizationMember>, DatabaseError> {
+        let member = sqlx::query_as::<_, OrganizationMember>(
+            r#"
+            WITH updated AS (
+                UPDATE core.organization_members om
+                SET role_description = COALESCE($3, om.role_description)
+                FROM core.organizations o
+                WHERE om.organization_id = o.id
+                  AND o.name = $1
+                  AND om.id = $2
+                RETURNING om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at
+            )
+            SELECT updated.id, updated.user_id, updated.organization_id, updated.role, updated.role_description, updated.created_at, u.name AS user_name
+            FROM updated
+            JOIN core.users u ON updated.user_id = u.id
+            "#,
+        )
+        .bind(org_name)
+        .bind(member_id)
+        .bind(role_description)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(member)
     }
 
     async fn list(&self) -> Result<Vec<Organization>, DatabaseError> {
@@ -200,7 +269,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     ) -> Result<Vec<OrganizationMember>, DatabaseError> {
         let members = sqlx::query_as::<_, OrganizationMember>(
             r#"
-            SELECT om.id, om.user_id, om.organization_id, om.role, om.created_at, u.name AS user_name
+            SELECT om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at, u.name AS user_name
             FROM core.organization_members om
             JOIN core.organizations o ON om.organization_id = o.id
             JOIN core.users u ON om.user_id = u.id

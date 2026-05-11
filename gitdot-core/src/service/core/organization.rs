@@ -5,7 +5,7 @@ use crate::{
     dto::{
         AddMemberRequest, CreateOrganizationRequest, GetOrganizationRequest, ListMembersRequest,
         ListOrganizationRepositoriesRequest, OrganizationMemberResponse, OrganizationResponse,
-        RepositoryResponse, UpdateOrganizationImageRequest,
+        RepositoryResponse, UpdateOrganizationImageRequest, UpdateOrganizationMemberRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, OrganizationError},
     repository::{
@@ -34,6 +34,11 @@ pub trait OrganizationService: Send + Sync + 'static {
     async fn add_member(
         &self,
         request: AddMemberRequest,
+    ) -> Result<OrganizationMemberResponse, OrganizationError>;
+
+    async fn update_member(
+        &self,
+        request: UpdateOrganizationMemberRequest,
     ) -> Result<OrganizationMemberResponse, OrganizationError>;
 
     async fn list_repositories(
@@ -166,7 +171,7 @@ where
 
         let member = self
             .org_repo
-            .add_member(&org_name, &user_name, request.role)
+            .add_member(&org_name, &user_name, request.role, request.role_description)
             .await?;
 
         match member {
@@ -181,6 +186,22 @@ where
                 Err(ConflictError::new("member", &user_name).into())
             }
         }
+    }
+
+    async fn update_member(
+        &self,
+        request: UpdateOrganizationMemberRequest,
+    ) -> Result<OrganizationMemberResponse, OrganizationError> {
+        let org_name = request.org_name.to_string();
+        let member_id = request.member_id;
+
+        let member = self
+            .org_repo
+            .update_member(&org_name, member_id, request.role_description)
+            .await?
+            .or_not_found("member", &member_id.to_string())?;
+
+        Ok(member.into())
     }
 
     async fn list_organizations(&self) -> Result<Vec<OrganizationResponse>, OrganizationError> {
