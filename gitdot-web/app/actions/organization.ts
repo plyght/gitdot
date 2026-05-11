@@ -2,6 +2,7 @@
 
 import type { OrganizationResource } from "gitdot-api";
 import { refresh } from "next/cache";
+import { ApiError } from "@/dal";
 import {
   createOrganization,
   uploadOrganizationImage,
@@ -12,6 +13,7 @@ export type CreateOrganizationActionResult =
   | { error: string };
 
 export async function createOrganizationAction(
+  _prev: CreateOrganizationActionResult | null,
   formData: FormData,
 ): Promise<CreateOrganizationActionResult> {
   const name = formData.get("org-name") as string;
@@ -22,13 +24,20 @@ export async function createOrganizationAction(
     return { error: "Organization name is required" };
   }
 
-  const result = await createOrganization(name, readme);
-  if (!result) {
-    return { error: "Failed to create organization" };
-  }
+  try {
+    const result = await createOrganization(name, readme);
+    if (!result) {
+      return { error: "Failed to create organization" };
+    }
 
-  refresh();
-  return { organization: result };
+    refresh();
+    return { organization: result };
+  } catch (e) {
+    return {
+      error:
+        e instanceof ApiError ? e.message : "Failed to create organization",
+    };
+  }
 }
 
 export async function uploadOrganizationImageAction(

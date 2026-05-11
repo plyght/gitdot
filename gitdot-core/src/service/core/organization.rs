@@ -117,6 +117,14 @@ where
             .org_repo
             .create(&org_name, request.owner_id, request.readme)
             .await?;
+
+        if let Ok(image_bytes) = self.image_client.generate_org_image(&org_name).await {
+            self.r2_client
+                .upload_object(&format!("orgs/{}.webp", org.id), image_bytes)
+                .await
+                .ok();
+        }
+
         Ok(org.into())
     }
 

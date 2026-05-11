@@ -126,3 +126,21 @@ pub fn beam_svg(email: &str) -> String {
         rex = 20 + eye_spread,
     )
 }
+
+pub fn building_svg(name: &str) -> String {
+    let n = hash_code(name);
+    let bg = get_random_color(n);
+
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="64" height="64">
+<circle cx="18" cy="18" r="18" fill="{bg}"/>
+<g transform="translate(6 6)" fill="none" stroke="#F3F4F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M10 12h4"/>
+<path d="M10 8h4"/>
+<path d="M14 21v-3a2 2 0 0 0-4 0v3"/>
+<path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/>
+<path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/>
+</g>
+</svg>"##
+    )
+}

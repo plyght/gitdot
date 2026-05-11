@@ -4,11 +4,9 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { useUserContext } from "@/(main)/context/user";
-import {
-  type CreateOrganizationActionResult,
-  createOrganizationAction,
-} from "@/actions";
+import { createOrganizationAction } from "@/actions";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
+import { cn } from "@/util";
 
 export function NewOrgDialog() {
   const { user } = useUserContext();
@@ -25,19 +23,16 @@ export function NewOrgDialog() {
   }, [open]);
 
   const [state, formAction, isPending] = useActionState(
-    async (
-      _prev: CreateOrganizationActionResult | null,
-      formData: FormData,
-    ) => {
-      const result = await createOrganizationAction(formData);
-      if ("organization" in result) {
-        setOpen(false);
-        router.push(`/${result.organization.name}`);
-      }
-      return result;
-    },
+    createOrganizationAction,
     null,
   );
+
+  useEffect(() => {
+    if (state && "organization" in state) {
+      setOpen(false);
+      router.push(`/${state.organization.name}`);
+    }
+  }, [state, router]);
 
   useEffect(() => {
     const handle = () => {
@@ -107,12 +102,18 @@ export function NewOrgDialog() {
               </p>
             </div>
           </div>
-          {state && "error" in state && (
-            <p className="text-xs text-red-500 px-3 pb-2">{state.error}</p>
-          )}
           <div className="flex items-center justify-between h-7">
-            <span className="pl-2 text-xs text-muted-foreground">
-              Create a new organization
+            <span
+              className={cn(
+                "pl-2 text-xs truncate",
+                state && "error" in state
+                  ? "text-red-500"
+                  : "text-muted-foreground",
+              )}
+            >
+              {state && "error" in state
+                ? state.error
+                : "Create a new organization"}
             </span>
             <div className="flex items-center h-full">
               <button
