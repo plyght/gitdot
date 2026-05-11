@@ -1,10 +1,15 @@
 "use client";
 
-export function OrgActions() {
+import type { OrganizationResource } from "gitdot-api";
+
+export function OrgActions({ org }: { org: OrganizationResource }) {
   const actions: { label: string; onClick: () => void }[] = [
     {
       label: "new repo",
-      onClick: () => window.dispatchEvent(new CustomEvent("openNewRepo")),
+      onClick: () =>
+        window.dispatchEvent(
+          new CustomEvent("openNewRepo", { detail: { owner: org.name } }),
+        ),
     },
     { label: "members", onClick: () => {} },
     { label: "settings", onClick: () => {} },

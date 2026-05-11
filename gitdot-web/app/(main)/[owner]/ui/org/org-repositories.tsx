@@ -31,7 +31,7 @@ export function OrgRepositories({
   const privateRepos = repositories.filter((r) => r.visibility === "private");
 
   return (
-    <div className="px-3">
+    <div>
       <div className="flex items-baseline justify-between mb-2">
         <span className="text-xs text-muted-foreground font-mono">
           <span className="text-foreground/40 select-none"># </span>

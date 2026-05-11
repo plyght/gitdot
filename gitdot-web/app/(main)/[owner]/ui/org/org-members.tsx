@@ -1,4 +1,5 @@
 import type { OrganizationMemberResource } from "gitdot-api";
+import { formatDate } from "@/util/date";
 import { UserImage } from "../user/user-image";
 
 const MOCK_ROLE_DESCRIPTIONS = [
@@ -20,7 +21,7 @@ export function OrgMembers({
   if (!members?.length) return null;
 
   return (
-    <div>
+    <div className="px-3">
       <p className="text-xs text-muted-foreground font-mono mb-2">
         <span className="text-foreground/40 select-none"># </span>
         Members
@@ -29,11 +30,14 @@ export function OrgMembers({
         {members.map((member, i) => (
           <div key={member.id} className="flex items-start gap-3">
             <UserImage userId={member.user_id} px={32} className="mt-0.5" />
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col">
               <span className="text-sm font-medium">{member.user_name}</span>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-foreground -mt-0.5">
                 {mockRoleDescription(i)}
               </p>
+              <span className="text-xs font-mono text-muted-foreground mt-0.5">
+                Joined {formatDate(new Date(member.created_at))}
+              </span>
             </div>
           </div>
         ))}

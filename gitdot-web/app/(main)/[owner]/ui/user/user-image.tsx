@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { AvatarBeam } from "@/ui/avatar-beam";
 import { cn } from "@/util";
 
@@ -13,8 +14,12 @@ export function UserImage({
   px?: number;
   className?: string;
 }) {
-  if (!userId) {
-    return <AvatarBeam name="anonymous" size={px} className={className} />;
+  const [errored, setErrored] = useState(false);
+
+  if (!userId || errored) {
+    return (
+      <AvatarBeam name={userId ?? "anonymous"} size={px} className={className} />
+    );
   }
 
   return (
@@ -26,6 +31,7 @@ export function UserImage({
       className={cn("rounded-full shrink-0", className)}
       style={{ width: px, height: px }}
       unoptimized
+      onError={() => setErrored(true)}
     />
   );
 }

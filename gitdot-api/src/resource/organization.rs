@@ -15,8 +15,9 @@ pub struct OrganizationResource {
 pub struct OrganizationMemberResource {
     pub id: Uuid,
     pub user_id: Uuid,
+    pub user_name: String,
+
     pub organization_id: Uuid,
     pub role: String,
     pub created_at: DateTime<Utc>,
-    pub user_name: String,
 }

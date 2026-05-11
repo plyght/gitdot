@@ -31,9 +31,7 @@ export function NewRepoDialog() {
   const [license, setLicense] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setOwner(user?.name ?? "");
-    } else {
+    if (!open) {
       setName("");
       setDescription("");
       setVisibility("public");
@@ -41,7 +39,7 @@ export function NewRepoDialog() {
       setGitignore(false);
       setLicense(false);
     }
-  }, [open, user?.name]);
+  }, [open]);
 
   const ownerType = owner === user?.name ? "user" : "organization";
   const selectedOrg = organizations?.find((o) => o.name === owner);
@@ -59,8 +57,11 @@ export function NewRepoDialog() {
   }, [state, router]);
 
   useEffect(() => {
-    const handle = () => {
-      if (user) setOpen(true);
+    const handle = (e: Event) => {
+      if (!user) return;
+      const detail = (e as CustomEvent<{ owner?: string }>).detail;
+      setOwner(detail?.owner ?? user.name);
+      setOpen(true);
     };
     window.addEventListener("openNewRepo", handle);
     return () => window.removeEventListener("openNewRepo", handle);
