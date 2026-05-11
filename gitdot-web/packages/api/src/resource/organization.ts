@@ -15,6 +15,7 @@ export const OrganizationMemberResource = z.object({
   organization_id: z.uuid(),
   role: z.string(),
   created_at: z.iso.datetime(),
+  user_name: z.string(),
 });
 export type OrganizationMemberResource = z.infer<
   typeof OrganizationMemberResource

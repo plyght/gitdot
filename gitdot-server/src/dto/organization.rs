@@ -31,6 +31,7 @@ impl IntoApi for OrganizationMemberResponse {
                 OrganizationRole::Member => "member".to_string(),
             },
             created_at: self.created_at,
+            user_name: self.user_name,
         }
     }
 }

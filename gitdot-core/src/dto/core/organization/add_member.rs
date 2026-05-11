@@ -39,6 +39,7 @@ pub struct OrganizationMemberResponse {
     pub organization_id: Uuid,
     pub role: OrganizationRole,
     pub created_at: DateTime<Utc>,
+    pub user_name: String,
 }
 
 impl From<OrganizationMember> for OrganizationMemberResponse {
@@ -49,6 +50,7 @@ impl From<OrganizationMember> for OrganizationMemberResponse {
             organization_id: member.organization_id,
             role: member.role,
             created_at: member.created_at,
+            user_name: member.user_name,
         }
     }
 }

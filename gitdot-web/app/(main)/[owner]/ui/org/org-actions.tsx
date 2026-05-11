@@ -6,10 +6,8 @@ export function OrgActions() {
       label: "new repo",
       onClick: () => window.dispatchEvent(new CustomEvent("openNewRepo")),
     },
-    {
-      label: "settings",
-      onClick: () => window.dispatchEvent(new CustomEvent("openOrgSettings")),
-    },
+    { label: "members", onClick: () => {} },
+    { label: "settings", onClick: () => {} },
   ];
 
   return (

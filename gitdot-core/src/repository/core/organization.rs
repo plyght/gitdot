@@ -123,12 +123,17 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     ) -> Result<Option<OrganizationMember>, DatabaseError> {
         let member = sqlx::query_as::<_, OrganizationMember>(
             r#"
-            INSERT INTO core.organization_members (user_id, organization_id, role)
-            SELECT u.id, o.id, $3
-            FROM core.users u, core.organizations o
-            WHERE u.name = $1 AND o.name = $2
-            ON CONFLICT (user_id, organization_id) DO NOTHING
-            RETURNING id, user_id, organization_id, role, created_at
+            WITH inserted AS (
+                INSERT INTO core.organization_members (user_id, organization_id, role)
+                SELECT u.id, o.id, $3
+                FROM core.users u, core.organizations o
+                WHERE u.name = $1 AND o.name = $2
+                ON CONFLICT (user_id, organization_id) DO NOTHING
+                RETURNING id, user_id, organization_id, role, created_at
+            )
+            SELECT i.id, i.user_id, i.organization_id, i.role, i.created_at, u.name AS user_name
+            FROM inserted i
+            JOIN core.users u ON i.user_id = u.id
             "#,
         )
         .bind(user_name)
@@ -195,9 +200,10 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     ) -> Result<Vec<OrganizationMember>, DatabaseError> {
         let members = sqlx::query_as::<_, OrganizationMember>(
             r#"
-            SELECT om.id, om.user_id, om.organization_id, om.role, om.created_at
+            SELECT om.id, om.user_id, om.organization_id, om.role, om.created_at, u.name AS user_name
             FROM core.organization_members om
             JOIN core.organizations o ON om.organization_id = o.id
+            JOIN core.users u ON om.user_id = u.id
             WHERE o.name = $1
             AND ($2::core.organization_role IS NULL OR om.role = $2)
             ORDER BY om.created_at DESC

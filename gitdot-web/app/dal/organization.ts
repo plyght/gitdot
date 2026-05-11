@@ -1,6 +1,7 @@
 import "server-only";
 
-import { OrganizationResource } from "gitdot-api";
+import { OrganizationMemberResource, OrganizationResource } from "gitdot-api";
+import { z } from "zod";
 import { authFetch, authPost, GITDOT_SERVER_URL, handleResponse } from "./util";
 
 export async function getOrganization(
@@ -8,6 +9,15 @@ export async function getOrganization(
 ): Promise<OrganizationResource | null> {
   const response = await authFetch(`${GITDOT_SERVER_URL}/organization/${name}`);
   return await handleResponse(response, OrganizationResource);
+}
+
+export async function listOrganizationMembers(
+  name: string,
+): Promise<OrganizationMemberResource[] | null> {
+  const response = await authFetch(
+    `${GITDOT_SERVER_URL}/organization/${name}/members`,
+  );
+  return await handleResponse(response, z.array(OrganizationMemberResource));
 }
 
 export async function createOrganization(
