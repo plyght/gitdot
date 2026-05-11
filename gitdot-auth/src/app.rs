@@ -68,15 +68,18 @@ fn create_router(state: AppState) -> Router {
         .finish()
         .expect("Failed to build governor config");
 
+    let web_origin = state
+        .settings
+        .gitdot_web_url
+        .parse()
+        .expect("GITDOT_WEB_URL must be a valid origin");
+
     let middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
         .layer(
             CorsLayer::new()
-                .allow_origin(AllowOrigin::list([
-                    "https://gitdot.io".parse().unwrap(),
-                    "http://localhost:3000".parse().unwrap(),
-                ]))
+                .allow_origin(AllowOrigin::list([web_origin]))
                 .allow_methods([http::Method::GET, http::Method::POST])
                 .allow_headers([http::header::CONTENT_TYPE, http::header::COOKIE])
                 .allow_credentials(true),
