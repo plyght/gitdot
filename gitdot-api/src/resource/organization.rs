@@ -8,6 +8,7 @@ pub struct OrganizationResource {
     pub name: String,
     pub created_at: DateTime<Utc>,
     pub readme: Option<String>,
+    pub links: Vec<String>,
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

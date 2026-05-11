@@ -8,6 +8,7 @@ pub struct Organization {
     pub name: String,
     pub created_at: DateTime<Utc>,
     pub readme: Option<String>,
+    pub links: Vec<String>,
 }
 
 #[derive(Debug, Clone, FromRow)]

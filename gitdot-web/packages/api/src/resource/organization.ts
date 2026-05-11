@@ -5,6 +5,7 @@ export const OrganizationResource = z.object({
   name: z.string(),
   created_at: z.iso.datetime(),
   readme: z.string().nullable().optional(),
+  links: z.array(z.string()).default([]),
 });
 export type OrganizationResource = z.infer<typeof OrganizationResource>;
 

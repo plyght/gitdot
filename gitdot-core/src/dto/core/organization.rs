@@ -23,6 +23,7 @@ pub struct OrganizationResponse {
     pub name: String,
     pub created_at: DateTime<Utc>,
     pub readme: Option<String>,
+    pub links: Vec<String>,
 }
 
 impl From<Organization> for OrganizationResponse {
@@ -32,6 +33,7 @@ impl From<Organization> for OrganizationResponse {
             name: org.name,
             created_at: org.created_at,
             readme: org.readme,
+            links: org.links,
         }
     }
 }

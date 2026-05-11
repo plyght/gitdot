@@ -14,6 +14,7 @@ impl IntoApi for OrganizationResponse {
             name: self.name,
             created_at: self.created_at,
             readme: self.readme,
+            links: self.links,
         }
     }
 }
