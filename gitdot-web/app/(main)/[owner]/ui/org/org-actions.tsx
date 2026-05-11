@@ -1,0 +1,30 @@
+"use client";
+
+export function OrgActions() {
+  const actions: { label: string; onClick: () => void }[] = [
+    {
+      label: "new repo",
+      onClick: () => window.dispatchEvent(new CustomEvent("openNewRepo")),
+    },
+    {
+      label: "settings",
+      onClick: () => window.dispatchEvent(new CustomEvent("openOrgSettings")),
+    },
+  ];
+
+  return (
+    <div className="flex flex-col items-end">
+      <p className="font-semibold text-sm mb-0.5">actions</p>
+      {actions.map((action) => (
+        <button
+          key={action.label}
+          type="button"
+          onClick={action.onClick}
+          className="text-xs underline decoration-transparent hover:decoration-current transition-colors duration-200 cursor-pointer"
+        >
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+}
