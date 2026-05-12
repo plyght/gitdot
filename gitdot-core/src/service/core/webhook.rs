@@ -7,9 +7,10 @@ use crate::{
     },
     dto::{
         CreateWebhookRequest, DeleteWebhookRequest, GetWebhookRequest, ListSlackWebhooksRequest,
-        ListWebhooksRequest, NotifyRepoPushRequest, PublishRepoPushRequest, RepoPushCommit,
-        RepoPushEvent, SlackWebhookResponse, SubscribeSlackWebhookRequest,
-        UnsubscribeSlackWebhookRequest, UpdateWebhookRequest, WebhookResponse,
+        ListWebhooksRequest, NotifyRepoPushRequest, ProcessGithubPushRequest,
+        PublishRepoPushRequest, RepoPushCommit, RepoPushEvent, SlackWebhookResponse,
+        SubscribeSlackWebhookRequest, UnsubscribeSlackWebhookRequest, UpdateWebhookRequest,
+        WebhookResponse,
     },
     error::{NotFoundError, OptionNotFoundExt, WebhookError},
     model::WebhookEventType,
@@ -66,6 +67,13 @@ pub trait WebhookService: Send + Sync + 'static {
     async fn notify_slack_of_repo_push(
         &self,
         request: NotifyRepoPushRequest,
+    ) -> Result<(), WebhookError>;
+
+    // --- GitHub event operations ---
+
+    async fn process_github_push(
+        &self,
+        request: ProcessGithubPushRequest,
     ) -> Result<(), WebhookError>;
 
     // --- Event operations ---
@@ -358,6 +366,21 @@ where
         self.slack_bot_client
             .notify_event(WebhookEventType::Push, &request)
             .await?;
+        Ok(())
+    }
+
+    async fn process_github_push(
+        &self,
+        request: ProcessGithubPushRequest,
+    ) -> Result<(), WebhookError> {
+        tracing::info!(
+            owner = %request.repository.owner.login,
+            repo = %request.repository.name,
+            ref_name = %request.ref_name,
+            installation_id = request.installation.id,
+            commits = request.commits.len(),
+            "received github push event",
+        );
         Ok(())
     }
 
