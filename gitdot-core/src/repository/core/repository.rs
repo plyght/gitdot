@@ -68,7 +68,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
             r#"
             INSERT INTO core.repositories (name, owner_id, owner_name, owner_type, visibility, description)
             VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, name, owner_id, owner_name, owner_type, visibility, description, stars, created_at
+            RETURNING id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
             "#,
         )
         .bind(name)
@@ -86,7 +86,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     async fn get(&self, owner: &str, repo: &str) -> Result<Option<Repository>, DatabaseError> {
         let repository = sqlx::query_as::<_, Repository>(
             r#"
-            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, created_at
+            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
             FROM core.repositories
             WHERE owner_name = $1 AND name = $2
             "#,
@@ -102,7 +102,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     async fn get_by_id(&self, id: Uuid) -> Result<Option<Repository>, DatabaseError> {
         let repository = sqlx::query_as::<_, Repository>(
             r#"
-            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, created_at
+            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
             FROM core.repositories
             WHERE id = $1
             "#,
@@ -117,7 +117,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Repository>, DatabaseError> {
         let repositories = sqlx::query_as::<_, Repository>(
             r#"
-            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, created_at
+            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
             FROM core.repositories
             WHERE owner_name = $1
             ORDER BY created_at DESC

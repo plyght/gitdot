@@ -536,6 +536,7 @@ mod tests {
             visibility,
             description: None,
             stars: 0,
+            readonly: false,
             created_at: chrono::Utc::now(),
             settings: None,
         }

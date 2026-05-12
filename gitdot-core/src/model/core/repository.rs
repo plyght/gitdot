@@ -18,6 +18,7 @@ pub struct Repository {
     pub visibility: RepositoryVisibility,
     pub description: Option<String>,
     pub stars: i32,
+    pub readonly: bool,
     pub created_at: DateTime<Utc>,
 
     #[sqlx(json(nullable), default)]
