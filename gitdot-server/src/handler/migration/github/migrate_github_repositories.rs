@@ -32,6 +32,7 @@ pub async fn migrate_github_repositories(
         .verify_authorized_for_migration(auth_request)
         .await?;
 
+    let readonly = request.readonly;
     let request = CreateGitHubMigrationRequest::new(
         auth_user.id,
         installation_id,
@@ -59,6 +60,7 @@ pub async fn migrate_github_repositories(
             owner_name: response.owner_name,
             owner_type: response.owner_type,
             migration_repositories,
+            readonly,
         };
         let response = migration_service.migrate_github_repositories(request).await;
 

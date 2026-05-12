@@ -13,6 +13,7 @@ pub struct MigrateGitHubRepositoriesRequest {
     pub owner_type: RepositoryOwnerType,
     pub migration_id: Uuid,
     pub migration_repositories: Vec<MigrationRepository>,
+    pub readonly: bool,
 }
 
 #[derive(Debug, Clone)]

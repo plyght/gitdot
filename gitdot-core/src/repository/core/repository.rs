@@ -17,6 +17,7 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         owner_type: &RepositoryOwnerType,
         visibility: &RepositoryVisibility,
         description: Option<String>,
+        readonly: bool,
     ) -> Result<Repository, DatabaseError>;
 
     async fn get(&self, owner: &str, repo: &str) -> Result<Option<Repository>, DatabaseError>;
@@ -63,11 +64,12 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         owner_type: &RepositoryOwnerType,
         visibility: &RepositoryVisibility,
         description: Option<String>,
+        readonly: bool,
     ) -> Result<Repository, DatabaseError> {
         let repository = sqlx::query_as::<_, Repository>(
             r#"
-            INSERT INTO core.repositories (name, owner_id, owner_name, owner_type, visibility, description)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO core.repositories (name, owner_id, owner_name, owner_type, visibility, description, readonly)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
             "#,
         )
@@ -77,6 +79,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         .bind(owner_type)
         .bind(visibility)
         .bind(description)
+        .bind(readonly)
         .fetch_one(&self.pool)
         .await?;
 

@@ -129,6 +129,7 @@ where
         full_name: &str,
         visibility: &RepositoryVisibility,
         token: &str,
+        readonly: bool,
     ) -> Result<(Repository, Option<String>), MigrationError> {
         let repo_name = full_name
             .split('/')
@@ -147,7 +148,9 @@ where
             .await?;
 
         let result = self
-            .setup_mirrored_repository(owner_name, repo_name, owner_id, owner_type, visibility)
+            .setup_mirrored_repository(
+                owner_name, repo_name, owner_id, owner_type, visibility, readonly,
+            )
             .await;
         if result.is_err() {
             let _ = self.git_client.delete_repo(owner_name, repo_name).await;
@@ -163,6 +166,7 @@ where
         owner_id: Uuid,
         owner_type: &RepositoryOwnerType,
         visibility: &RepositoryVisibility,
+        readonly: bool,
     ) -> Result<(Repository, Option<String>), MigrationError> {
         self.git_client.empty_hooks(owner_name, repo_name).await?;
         self.git_client
@@ -193,7 +197,7 @@ where
         let repository = self
             .repo_repo
             .create(
-                repo_name, owner_id, owner_name, owner_type, visibility, None,
+                repo_name, owner_id, owner_name, owner_type, visibility, None, readonly,
             )
             .await?;
 
@@ -377,6 +381,7 @@ where
             .update_status(request.migration_id, MigrationStatus::Running)
             .await?;
 
+        let readonly = request.readonly;
         let mut handles = Vec::new();
         for migration_repo_entry in request.migration_repositories {
             let service = self.clone();
@@ -406,6 +411,7 @@ where
                         &full_name,
                         &visibility,
                         &token,
+                        readonly,
                     )
                     .await
                 {

@@ -19,6 +19,7 @@ pub struct MigrateGitHubRepositoriesRequest {
     pub destination: String,
     pub destination_type: String,
     pub repositories: Vec<String>,
+    pub readonly: bool,
 }
 
 pub type MigrateGitHubRepositoriesResponse = MigrationResource;
