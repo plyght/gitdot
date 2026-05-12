@@ -130,7 +130,7 @@ where
         visibility: &RepositoryVisibility,
         token: &str,
         readonly: bool,
-    ) -> Result<(Repository, Option<String>), MigrationError> {
+    ) -> Result<(Repository, Option<String>, String), MigrationError> {
         let repo_name = full_name
             .split('/')
             .nth(1)
@@ -167,7 +167,7 @@ where
         owner_type: &RepositoryOwnerType,
         visibility: &RepositoryVisibility,
         readonly: bool,
-    ) -> Result<(Repository, Option<String>), MigrationError> {
+    ) -> Result<(Repository, Option<String>, String), MigrationError> {
         self.git_client.empty_hooks(owner_name, repo_name).await?;
         self.git_client
             .install_hook(
@@ -208,7 +208,13 @@ where
             .ok()
             .map(|c| c.sha);
 
-        Ok((repository, head_sha))
+        let default_ref_name = self
+            .git_client
+            .get_default_ref(owner_name, repo_name)
+            .await
+            .unwrap_or_else(|_| "refs/heads/main".to_string());
+
+        Ok((repository, head_sha, default_ref_name))
     }
 }
 
@@ -416,7 +422,7 @@ where
                     )
                     .await
                 {
-                    Ok((repository, head_sha)) => {
+                    Ok((repository, head_sha, default_ref_name)) => {
                         let _ = service
                             .migration_repo
                             .update_migration_repository_status(
@@ -433,6 +439,7 @@ where
                         Some(MigratedRepositoryInfo {
                             owner_name: owner_name.clone(),
                             repo_name: repository.name,
+                            default_ref_name,
                             head_sha,
                         })
                     }

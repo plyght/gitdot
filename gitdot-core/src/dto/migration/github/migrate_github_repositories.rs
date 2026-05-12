@@ -25,5 +25,6 @@ pub struct MigrateGitHubRepositoriesResponse {
 pub struct MigratedRepositoryInfo {
     pub owner_name: String,
     pub repo_name: String,
+    pub default_ref_name: String,
     pub head_sha: Option<String>,
 }

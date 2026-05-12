@@ -24,6 +24,8 @@ pub trait GitClient: Send + Sync + Clone + 'static {
 
     async fn mirror_repo(&self, owner: &str, repo: &str, url: &str) -> Result<(), GitError>;
 
+    async fn get_default_ref(&self, owner: &str, repo: &str) -> Result<String, GitError>;
+
     async fn fetch_ref(
         &self,
         owner: &str,
@@ -359,6 +361,26 @@ impl GitClient for Git2Client {
         fs::write(&export_ok_path, "").await?;
 
         Ok(())
+    }
+
+    async fn get_default_ref(&self, owner: &str, repo: &str) -> Result<String, GitError> {
+        let repo_path = self.get_repo_path(owner, repo);
+
+        let output = tokio::process::Command::new("git")
+            .arg("-C")
+            .arg(&repo_path)
+            .arg("symbolic-ref")
+            .arg("HEAD")
+            .output()
+            .await?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(GitError::Git2Error(git2::Error::from_str(&format!(
+                "git symbolic-ref HEAD failed: {}",
+                stderr
+            ))));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     }
 
     async fn fetch_ref(

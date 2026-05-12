@@ -76,14 +76,12 @@ pub async fn migrate_github_repositories(
             .unwrap_or_default()
         {
             if let Some(head_sha) = info.head_sha {
-                // Only create commits for HEAD ref for migrated repositories
-                // TODO: replace hard-coded default branch
                 if let Ok(req) = CreateCommitsRequest::new(
                     &info.owner_name,
                     &info.repo_name,
                     zero_sha.clone(),
                     head_sha,
-                    "refs/heads/main".to_string(),
+                    info.default_ref_name,
                     None,
                     Default::default(),
                 ) {
