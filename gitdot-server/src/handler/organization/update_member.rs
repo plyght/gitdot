@@ -6,9 +6,7 @@ use axum::{
 use uuid::Uuid;
 
 use gitdot_api::endpoint::update_organization_member as api;
-use gitdot_core::dto::{
-    OrganizationMemberAuthorizationRequest, UpdateOrganizationMemberRequest,
-};
+use gitdot_core::dto::{OrganizationMemberAuthorizationRequest, UpdateOrganizationMemberRequest};
 
 use crate::{
     app::{AppError, AppResponse, AppState},

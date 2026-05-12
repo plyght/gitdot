@@ -4,6 +4,7 @@ export const OrganizationResource = z.object({
   id: z.uuid(),
   name: z.string(),
   created_at: z.iso.datetime(),
+  location: z.string().nullable().optional(),
   readme: z.string().nullable().optional(),
   links: z.array(z.string()).default([]),
 });

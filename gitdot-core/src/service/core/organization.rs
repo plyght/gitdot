@@ -6,6 +6,7 @@ use crate::{
         AddMemberRequest, CreateOrganizationRequest, GetOrganizationRequest, ListMembersRequest,
         ListOrganizationRepositoriesRequest, OrganizationMemberResponse, OrganizationResponse,
         RepositoryResponse, UpdateOrganizationImageRequest, UpdateOrganizationMemberRequest,
+        UpdateOrganizationRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, OrganizationError},
     repository::{
@@ -24,6 +25,11 @@ pub trait OrganizationService: Send + Sync + 'static {
     async fn get_organization(
         &self,
         request: GetOrganizationRequest,
+    ) -> Result<OrganizationResponse, OrganizationError>;
+
+    async fn update_organization(
+        &self,
+        request: UpdateOrganizationRequest,
     ) -> Result<OrganizationResponse, OrganizationError>;
 
     async fn update_organization_image(
@@ -146,6 +152,19 @@ where
         Ok(org.into())
     }
 
+    async fn update_organization(
+        &self,
+        request: UpdateOrganizationRequest,
+    ) -> Result<OrganizationResponse, OrganizationError> {
+        let org_name = request.org_name.to_string();
+        let org = self
+            .org_repo
+            .update(&org_name, request.location, request.readme, request.links)
+            .await?
+            .or_not_found("organization", &org_name)?;
+        Ok(org.into())
+    }
+
     async fn update_organization_image(
         &self,
         request: UpdateOrganizationImageRequest,
@@ -171,7 +190,12 @@ where
 
         let member = self
             .org_repo
-            .add_member(&org_name, &user_name, request.role, request.role_description)
+            .add_member(
+                &org_name,
+                &user_name,
+                request.role,
+                request.role_description,
+            )
             .await?;
 
         match member {

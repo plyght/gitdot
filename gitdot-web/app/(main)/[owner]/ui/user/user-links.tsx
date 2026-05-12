@@ -4,7 +4,7 @@ export function UserLinks({ user }: { user: UserResource }) {
   if (!user.links?.length) return null;
 
   return (
-    <div className="flex flex-col items-end">
+    <div className="flex flex-col items-start">
       <p className="font-semibold text-sm mb-0.5">links</p>
       {user.links.map((link, i) => (
         <a

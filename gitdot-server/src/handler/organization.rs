@@ -5,6 +5,7 @@ mod list_organization_members;
 mod list_organization_repositories;
 mod list_organizations;
 mod update_member;
+mod update_organization;
 mod upload_organization_image;
 
 use axum::{
@@ -22,6 +23,7 @@ use list_organization_members::list_organization_members;
 use list_organization_repositories::list_organization_repositories;
 use list_organizations::list_organizations;
 use update_member::update_member;
+use update_organization::update_organization;
 use upload_organization_image::upload_organization_image;
 
 pub fn create_organization_router() -> Router<AppState> {
@@ -29,7 +31,9 @@ pub fn create_organization_router() -> Router<AppState> {
         .route("/organizations", get(list_organizations))
         .route(
             "/organization/{org_name}",
-            get(get_organization).post(create_organization),
+            get(get_organization)
+                .post(create_organization)
+                .patch(update_organization),
         )
         .route(
             "/organization/{org_name}/image",

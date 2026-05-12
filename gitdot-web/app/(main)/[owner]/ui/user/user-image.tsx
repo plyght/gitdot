@@ -18,7 +18,11 @@ export function UserImage({
 
   if (!userId || errored) {
     return (
-      <AvatarBeam name={userId ?? "anonymous"} size={px} className={className} />
+      <AvatarBeam
+        name={userId ?? "anonymous"}
+        size={px}
+        className={className}
+      />
     );
   }
 

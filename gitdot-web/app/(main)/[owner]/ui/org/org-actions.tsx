@@ -22,12 +22,12 @@ export function OrgActions({ org }: { org: OrganizationResource }) {
           new CustomEvent("openNewRepo", { detail: { owner: org.name } }),
         ),
     },
-    { label: "members", onClick: () => openSettings("members") },
+    { label: "new member", onClick: () => openSettings("members") },
     { label: "settings", onClick: () => openSettings("profile") },
   ];
 
   return (
-    <div className="flex flex-col items-end">
+    <div className="flex flex-col items-start">
       <p className="font-semibold text-sm mb-0.5">actions</p>
       {actions.map((action) => (
         <button

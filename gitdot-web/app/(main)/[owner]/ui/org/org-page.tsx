@@ -14,12 +14,14 @@ export default async function OrgPage({ org }: { org: OrganizationResource }) {
     listOrganizationRepositories(org.name),
     getUserMetadata(),
   ]);
-  const isMember = metadata.orgs.some((entry) => entry.split(":")[0] === org.name);
+  const isMember = metadata.orgs.some(
+    (entry) => entry.split(":")[0] === org.name,
+  );
 
   return (
     <div className="grid grid-cols-[8rem_minmax(0,3fr)_minmax(0,2fr)] h-full">
       <div className="overflow-y-auto scrollbar-none">
-        <div className="flex flex-col items-end px-4 my-2.5 pt-0.5 gap-6 border-r">
+        <div className="flex flex-col items-start px-4 my-2.5 pt-0.5 gap-6 border-r">
           <OrgProfile org={org} />
           <OrgLinks org={org} />
           <OrgActions org={org} />

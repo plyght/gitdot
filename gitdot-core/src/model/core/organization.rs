@@ -7,6 +7,7 @@ pub struct Organization {
     pub id: Uuid,
     pub name: String,
     pub created_at: DateTime<Utc>,
+    pub location: Option<String>,
     pub readme: Option<String>,
     pub links: Vec<String>,
 }

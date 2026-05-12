@@ -40,6 +40,14 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         member_id: Uuid,
     ) -> Result<Option<OrganizationMember>, DatabaseError>;
 
+    async fn update(
+        &self,
+        org_name: &str,
+        location: Option<String>,
+        readme: Option<String>,
+        links: Option<Vec<String>>,
+    ) -> Result<Option<Organization>, DatabaseError>;
+
     async fn update_member(
         &self,
         org_name: &str,
@@ -81,7 +89,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         let mut tx = self.pool.begin().await?;
 
         let org = sqlx::query_as::<_, Organization>(
-            "INSERT INTO core.organizations (name, readme) VALUES ($1, $2) RETURNING id, name, created_at, readme, links",
+            "INSERT INTO core.organizations (name, readme) VALUES ($1, $2) RETURNING id, name, created_at, location, readme, links",
         )
         .bind(org_name)
         .bind(readme)
@@ -103,7 +111,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
 
     async fn get(&self, org_name: &str) -> Result<Option<Organization>, DatabaseError> {
         let org = sqlx::query_as::<_, Organization>(
-            "SELECT id, name, created_at, readme, links FROM core.organizations WHERE name = $1",
+            "SELECT id, name, created_at, location, readme, links FROM core.organizations WHERE name = $1",
         )
         .bind(org_name)
         .fetch_optional(&self.pool)
@@ -204,6 +212,37 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         Ok(member)
     }
 
+    async fn update(
+        &self,
+        org_name: &str,
+        location: Option<String>,
+        readme: Option<String>,
+        links: Option<Vec<String>>,
+    ) -> Result<Option<Organization>, DatabaseError> {
+        let mut builder = sqlx::QueryBuilder::new("UPDATE core.organizations SET ");
+        let mut sep = builder.separated(", ");
+
+        if let Some(loc) = location {
+            sep.push("location = ").push_bind_unseparated(loc);
+        }
+        if let Some(r) = readme {
+            sep.push("readme = ").push_bind_unseparated(r);
+        }
+        if let Some(l) = links {
+            sep.push("links = ").push_bind_unseparated(l);
+        }
+
+        builder
+            .push(" WHERE name = ")
+            .push_bind(org_name)
+            .push(" RETURNING id, name, created_at, location, readme, links");
+
+        Ok(builder
+            .build_query_as::<Organization>()
+            .fetch_optional(&self.pool)
+            .await?)
+    }
+
     async fn update_member(
         &self,
         org_name: &str,
@@ -237,7 +276,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
 
     async fn list(&self) -> Result<Vec<Organization>, DatabaseError> {
         let orgs = sqlx::query_as::<_, Organization>(
-            "SELECT id, name, created_at, readme, links FROM core.organizations ORDER BY created_at DESC",
+            "SELECT id, name, created_at, location, readme, links FROM core.organizations ORDER BY created_at DESC",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -248,7 +287,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, DatabaseError> {
         let orgs = sqlx::query_as::<_, Organization>(
             r#"
-            SELECT o.id, o.name, o.created_at, o.readme, o.links
+            SELECT o.id, o.name, o.created_at, o.location, o.readme, o.links
             FROM core.organizations o
             JOIN core.organization_members om ON o.id = om.organization_id
             WHERE om.user_id = $1

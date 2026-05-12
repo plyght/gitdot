@@ -4,5 +4,6 @@ pub mod get_organization;
 pub mod list_organization_members;
 pub mod list_organization_repositories;
 pub mod list_organizations;
+pub mod update_organization;
 pub mod update_organization_member;
 pub mod upload_organization_image;

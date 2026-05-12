@@ -3,7 +3,7 @@ import { UserImage } from "./user-image";
 
 export function UserProfile({ user }: { user: UserResource }) {
   return (
-    <div className="flex flex-col items-end">
+    <div className="flex flex-col items-start">
       <div className="mb-0.5">
         <UserImage userId={user.id} />
       </div>
