@@ -1,5 +1,6 @@
 pub const REPO_SUFFIX: &str = ".git";
 pub const DEFAULT_BRANCH: &str = "main";
+pub const ZERO_SHA: &str = "0000000000000000000000000000000000000000";
 
 /// include git hook scripts in the binary during compilation
 pub const PRE_RECEIVE_SCRIPT: &str = include_str!("../../hooks/pre-receive");

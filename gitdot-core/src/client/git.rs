@@ -24,7 +24,14 @@ pub trait GitClient: Send + Sync + Clone + 'static {
 
     async fn mirror_repo(&self, owner: &str, repo: &str, url: &str) -> Result<(), GitError>;
 
-    async fn update_mirror(&self, owner: &str, repo: &str, url: &str) -> Result<(), GitError>;
+    async fn fetch_ref(
+        &self,
+        owner: &str,
+        repo: &str,
+        url: &str,
+        ref_name: &str,
+        sha: &str,
+    ) -> Result<(), GitError>;
 
     async fn create_ref(
         &self,
@@ -354,16 +361,23 @@ impl GitClient for Git2Client {
         Ok(())
     }
 
-    async fn update_mirror(&self, owner: &str, repo: &str, url: &str) -> Result<(), GitError> {
+    async fn fetch_ref(
+        &self,
+        owner: &str,
+        repo: &str,
+        url: &str,
+        ref_name: &str,
+        sha: &str,
+    ) -> Result<(), GitError> {
         let repo_path = self.get_repo_path(owner, repo);
+        let refspec = format!("+{}:{}", sha, ref_name);
 
         let output = tokio::process::Command::new("git")
             .arg("-C")
             .arg(&repo_path)
             .arg("fetch")
-            .arg("--prune")
             .arg(url)
-            .arg("+refs/*:refs/*")
+            .arg(&refspec)
             .output()
             .await?;
         if !output.status.success() {

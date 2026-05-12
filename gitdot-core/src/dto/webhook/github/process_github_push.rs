@@ -17,6 +17,7 @@ pub struct GithubRepository {
     pub id: i64,
     pub name: String,
     pub owner: GithubRepositoryOwner,
+    pub default_branch: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

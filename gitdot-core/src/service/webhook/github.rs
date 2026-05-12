@@ -8,7 +8,7 @@ use crate::{
         MigrationRepository, MigrationRepositoryImpl, RepositoryRepository,
         RepositoryRepositoryImpl,
     },
-    util::github::get_github_clone_url,
+    util::{git::ZERO_SHA, github::get_github_clone_url},
 };
 
 #[async_trait]
@@ -69,6 +69,15 @@ where
         &self,
         request: ProcessGithubPushRequest,
     ) -> Result<(), WebhookError> {
+        let default_ref = format!("refs/heads/{}", request.repository.default_branch);
+        if request.ref_name != default_ref {
+            // only sync pushes to the default branch
+            return Ok(());
+        }
+        if request.after == ZERO_SHA {
+            return Ok(());
+        }
+
         let origin_full_name = format!(
             "{}/{}",
             request.repository.owner.login, request.repository.name
@@ -99,7 +108,13 @@ where
             }
 
             self.git_client
-                .update_mirror(&dest.owner_name, &dest.name, &url)
+                .fetch_ref(
+                    &dest.owner_name,
+                    &dest.name,
+                    &url,
+                    &request.ref_name,
+                    &request.after,
+                )
                 .await?
         }
 
