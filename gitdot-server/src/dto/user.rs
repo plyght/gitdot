@@ -2,9 +2,7 @@ use gitdot_api::{
     endpoint::user::update_current_user_settings as api_endpoint, resource::user as api,
 };
 use gitdot_core::{
-    dto::{
-        GetCurrentUserResponse, UserRepoSettingsResponse, UserResponse, UserSettingsResponse,
-    },
+    dto::{GetCurrentUserResponse, UserRepoSettingsResponse, UserResponse, UserSettingsResponse},
     model::UserRepoSettings,
 };
 
