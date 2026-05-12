@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useUserContext } from "@/(main)/context/user";
 import Link from "@/ui/link";
 import { OverlayScroll } from "@/ui/scroll";
 import { Sidebar, SidebarContent } from "@/ui/sidebar";
@@ -48,6 +49,11 @@ function IndexSidebar({
   const pathname = usePathname();
   const path = pathname.replace(`/${owner}/${repo}`, "") || "/";
 
+  const { repositories } = useUserContext();
+  const description = repositories?.find(
+    (r) => r.owner === owner && r.name === repo,
+  )?.description;
+
   const items = NAV_ITEMS.filter(
     (i) => (!i.protected || showSettings) && (!i.beta || IS_BETA),
   );
@@ -72,7 +78,7 @@ function IndexSidebar({
               {repo}
             </Link>
             <p className="text-xs text-muted-foreground mt-0.5 leading-tight">
-              no description
+              {description || "no description found"}
             </p>
           </div>
           {items.map((item) => {

@@ -9,13 +9,17 @@ export function RepoActions() {
   const [subscribed, setSubscribed] = useState(false);
   const [cloned, setCloned] = useState(false);
 
+  const starCount = 142 + (starred ? 1 : 0);
+  const subscribeCount = 12 + (subscribed ? 1 : 0);
+
   return (
-    <div className="flex border-b">
+    <div className="flex flex-col border-b">
       <RepoActionButton
         icon={
           <Star className="size-3.5" fill={starred ? "currentColor" : "none"} />
         }
         label={starred ? "Starred" : "Star"}
+        count={starCount}
         active={starred}
         onClick={() => setStarred((v) => !v)}
       />
@@ -27,15 +31,17 @@ export function RepoActions() {
           />
         }
         label={subscribed ? "Subscribed" : "Subscribe"}
+        count={subscribeCount}
         active={subscribed}
         onClick={() => setSubscribed((v) => !v)}
+        className="border-t"
       />
       <RepoActionButton
         icon={<Download className="size-3.5" />}
         label="Clone"
         active={cloned}
-        primary
         onClick={() => setCloned((v) => !v)}
+        className="border-t"
       />
     </div>
   );
@@ -44,31 +50,39 @@ export function RepoActions() {
 function RepoActionButton({
   icon,
   label,
+  count,
   active,
   primary,
   onClick,
+  className,
 }: {
   icon: React.ReactNode;
   label: string;
+  count?: number;
   active: boolean;
   primary?: boolean;
   onClick: () => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "flex-1 h-7 flex items-center justify-center gap-1.5 border-r last:border-r-0 text-xs font-mono cursor-default transition-colors focus:outline-none",
+        "w-full h-8 flex items-center justify-start gap-1.5 px-2 text-xs font-mono cursor-default transition-colors focus:outline-none",
         primary
           ? "bg-primary text-primary-foreground hover:bg-primary/90"
           : active
             ? "bg-accent text-foreground"
             : "hover:bg-accent/50 text-muted-foreground",
+        className,
       )}
     >
       {icon}
       <span>{label}</span>
+      {count !== undefined && (
+        <span className="ml-auto tabular-nums">{count}</span>
+      )}
     </button>
   );
 }

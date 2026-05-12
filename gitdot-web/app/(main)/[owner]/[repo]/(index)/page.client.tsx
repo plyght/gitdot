@@ -38,12 +38,14 @@ function PageContent({ promises }: { promises: ResourcePromises }) {
 
   return (
     <div className="flex h-full w-full overflow-hidden">
-      <div className="p-4 w-full max-w-4xl shrink-0 overflow-y-auto scrollbar-none">
-        {readme && readme.type === "file" ? (
-          <MarkdownBody content={readme.content} />
-        ) : (
-          <div className="p-2 text-sm">README.md not found</div>
-        )}
+      <div className="flex-1 min-w-0 overflow-y-auto scrollbar-none">
+        <div className="p-4 w-full">
+          {readme && readme.type === "file" ? (
+            <MarkdownBody content={readme.content} />
+          ) : (
+            <div className="p-2 text-sm">README.md not found</div>
+          )}
+        </div>
       </div>
       <RepoPanel />
     </div>
