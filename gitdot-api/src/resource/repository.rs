@@ -18,6 +18,7 @@ pub struct RepositoryResource {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub stars: u32,
+    pub readonly: bool,
     pub created_at: DateTime<Utc>,
 }
 
