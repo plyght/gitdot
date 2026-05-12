@@ -7,6 +7,9 @@ pub enum AuthorizationError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[error("Repository is readonly")]
+    ReadonlyRepository,
+
     #[error(transparent)]
     Input(#[from] InputError),
 

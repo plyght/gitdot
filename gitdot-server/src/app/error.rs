@@ -94,6 +94,7 @@ impl HttpStatus for AuthorizationError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
+            Self::ReadonlyRepository => StatusCode::FORBIDDEN,
             Self::Input(_) => StatusCode::BAD_REQUEST,
             Self::NotFound(_) => StatusCode::NOT_FOUND,
             Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,

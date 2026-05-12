@@ -169,6 +169,10 @@ where
             .await?
             .ok_or(AuthorizationError::Unauthorized)?;
 
+        if request.permission != RepositoryPermission::Read && repository.readonly {
+            return Err(AuthorizationError::ReadonlyRepository);
+        }
+
         if request.permission == RepositoryPermission::Read && repository.is_public() {
             return Ok(());
         }
@@ -1139,5 +1143,75 @@ mod tests {
             .unwrap_err();
 
         assert!(matches!(err, AuthorizationError::DatabaseError(_)));
+    }
+
+    #[tokio::test]
+    async fn write_readonly_repo_by_owner() {
+        let owner_id = Uuid::new_v4();
+        let mut repo_repo = MockRepositoryRepo::new();
+        repo_repo.expect_get().returning(move |_, _| {
+            let mut repo = create_repository(
+                owner_id,
+                RepositoryOwnerType::User,
+                RepositoryVisibility::Public,
+            );
+            repo.readonly = true;
+            Ok(Some(repo))
+        });
+
+        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let request = create_repo_auth_request(Some(owner_id), RepositoryPermission::Write);
+        let err = service
+            .verify_authorized_for_repository(request)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, AuthorizationError::ReadonlyRepository));
+    }
+
+    #[tokio::test]
+    async fn admin_readonly_repo_by_owner() {
+        let owner_id = Uuid::new_v4();
+        let mut repo_repo = MockRepositoryRepo::new();
+        repo_repo.expect_get().returning(move |_, _| {
+            let mut repo = create_repository(
+                owner_id,
+                RepositoryOwnerType::User,
+                RepositoryVisibility::Public,
+            );
+            repo.readonly = true;
+            Ok(Some(repo))
+        });
+
+        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let request = create_repo_auth_request(Some(owner_id), RepositoryPermission::Admin);
+        let err = service
+            .verify_authorized_for_repository(request)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, AuthorizationError::ReadonlyRepository));
+    }
+
+    #[tokio::test]
+    async fn read_readonly_public_repo_anonymous() {
+        let owner_id = Uuid::new_v4();
+        let mut repo_repo = MockRepositoryRepo::new();
+        repo_repo.expect_get().returning(move |_, _| {
+            let mut repo = create_repository(
+                owner_id,
+                RepositoryOwnerType::User,
+                RepositoryVisibility::Public,
+            );
+            repo.readonly = true;
+            Ok(Some(repo))
+        });
+
+        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let request = create_repo_auth_request(None, RepositoryPermission::Read);
+        service
+            .verify_authorized_for_repository(request)
+            .await
+            .unwrap();
     }
 }
