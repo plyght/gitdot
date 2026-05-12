@@ -1,9 +1,13 @@
 "use server";
 
-import type { OrganizationResource } from "gitdot-api";
+import type {
+  OrganizationMemberResource,
+  OrganizationResource,
+} from "gitdot-api";
 import { refresh } from "next/cache";
 import { ApiError } from "@/dal";
 import {
+  addOrganizationMember,
   createOrganization,
   updateOrganization,
   uploadOrganizationImage,
@@ -69,6 +73,40 @@ export async function updateOrganizationAction(
     return {
       error:
         e instanceof ApiError ? e.message : "Failed to update organization",
+    };
+  }
+}
+
+export type AddOrganizationMemberActionResult =
+  | { member: OrganizationMemberResource }
+  | { error: string };
+
+export async function addOrganizationMemberAction(
+  orgName: string,
+  _prev: AddOrganizationMemberActionResult | null,
+  formData: FormData,
+): Promise<AddOrganizationMemberActionResult> {
+  const userName = (formData.get("user_name") as string | null)?.trim();
+  if (!userName) return { error: "Username is required" };
+
+  const roleDescriptionRaw = (
+    formData.get("role_description") as string | null
+  )?.trim();
+  const roleDescription = roleDescriptionRaw || null;
+
+  try {
+    const result = await addOrganizationMember(orgName, {
+      user_name: userName,
+      role: "member",
+      role_description: roleDescription,
+    });
+    if (!result) return { error: "Failed to add member" };
+
+    refresh();
+    return { member: result };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to add member",
     };
   }
 }

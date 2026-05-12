@@ -86,7 +86,7 @@ export function ChangeUsernameDialog({
     });
   }
 
-  let footerMessage: string | null = null;
+  let footerMessage: string = "Change username";
   let footerColor = "text-muted-foreground";
   if (submitError) {
     footerMessage = submitError;
@@ -125,10 +125,10 @@ export function ChangeUsernameDialog({
             spellCheck={false}
           />
           <div className="flex items-center justify-between h-7 border-t border-border">
-            <div className="flex items-center px-2">
-              {footerMessage && (
-                <p className={cn("text-xs", footerColor)}>{footerMessage}</p>
-              )}
+            <div className="flex items-center px-2 min-w-0">
+              <p className={cn("text-xs truncate", footerColor)}>
+                {footerMessage}
+              </p>
             </div>
             <div className="flex items-center h-full">
               <button

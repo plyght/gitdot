@@ -30,6 +30,21 @@ export async function listOrganizationMembers(
   return await handleResponse(response, z.array(OrganizationMemberResource));
 }
 
+export async function addOrganizationMember(
+  orgName: string,
+  request: {
+    user_name: string;
+    role: string;
+    role_description?: string | null;
+  },
+): Promise<OrganizationMemberResource | null> {
+  const response = await authPost(
+    `${GITDOT_SERVER_URL}/organization/${orgName}/member`,
+    request,
+  );
+  return await handleResponse(response, OrganizationMemberResource);
+}
+
 export async function listOrganizationRepositories(
   name: string,
 ): Promise<RepositoryResource[] | null> {
