@@ -55,7 +55,7 @@ impl WebhookRepository for WebhookRepositoryImpl {
     ) -> Result<Webhook, DatabaseError> {
         let webhook = sqlx::query_as::<_, Webhook>(
             r#"
-            INSERT INTO core.webhooks (repository_id, url, secret, events)
+            INSERT INTO webhook.webhooks (repository_id, url, secret, events)
             VALUES ($1, $2, $3, $4)
             RETURNING id, repository_id, url, secret, events, created_at, updated_at
             "#,
@@ -74,7 +74,7 @@ impl WebhookRepository for WebhookRepositoryImpl {
         let webhook = sqlx::query_as::<_, Webhook>(
             r#"
             SELECT id, repository_id, url, secret, events, created_at, updated_at
-            FROM core.webhooks WHERE id = $1
+            FROM webhook.webhooks WHERE id = $1
             "#,
         )
         .bind(id)
@@ -88,7 +88,7 @@ impl WebhookRepository for WebhookRepositoryImpl {
         let webhooks = sqlx::query_as::<_, Webhook>(
             r#"
             SELECT id, repository_id, url, secret, events, created_at, updated_at
-            FROM core.webhooks WHERE repository_id = $1
+            FROM webhook.webhooks WHERE repository_id = $1
             ORDER BY created_at DESC
             "#,
         )
@@ -108,7 +108,7 @@ impl WebhookRepository for WebhookRepositoryImpl {
     ) -> Result<Webhook, DatabaseError> {
         let webhook = sqlx::query_as::<_, Webhook>(
             r#"
-            UPDATE core.webhooks
+            UPDATE webhook.webhooks
             SET url = COALESCE($2, url),
                 secret = COALESCE($3, secret),
                 events = COALESCE($4, events),
@@ -128,7 +128,7 @@ impl WebhookRepository for WebhookRepositoryImpl {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError> {
-        sqlx::query("DELETE FROM core.webhooks WHERE id = $1")
+        sqlx::query("DELETE FROM webhook.webhooks WHERE id = $1")
             .bind(id)
             .execute(&self.pool)
             .await?;

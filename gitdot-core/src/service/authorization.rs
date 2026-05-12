@@ -441,7 +441,7 @@ mod tests {
         }
         #[async_trait]
         impl RepositoryRepository for RepositoryRepo {
-            async fn create(&self, name: &str, owner_id: Uuid, owner_name: &str, owner_type: &RepositoryOwnerType, visibility: &RepositoryVisibility, description: Option<String>) -> Result<Repository, crate::error::DatabaseError>;
+            async fn create(&self, name: &str, owner_id: Uuid, owner_name: &str, owner_type: &RepositoryOwnerType, visibility: &RepositoryVisibility, description: Option<String>, readonly: bool) -> Result<Repository, crate::error::DatabaseError>;
             async fn get(&self, owner: &str, repo: &str) -> Result<Option<Repository>, crate::error::DatabaseError>;
             async fn get_by_id(&self, id: Uuid) -> Result<Option<Repository>, crate::error::DatabaseError>;
             async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Repository>, crate::error::DatabaseError>;

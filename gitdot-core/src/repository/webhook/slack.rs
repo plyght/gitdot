@@ -55,7 +55,7 @@ impl SlackWebhookRepository for SlackWebhookRepositoryImpl {
     ) -> Result<SlackWebhook, DatabaseError> {
         let webhook = sqlx::query_as::<_, SlackWebhook>(
             r#"
-            INSERT INTO core.slack_webhooks
+            INSERT INTO webhook.slack_webhooks
                 (user_id, repository_id, events, slack_user_id, slack_team_id, slack_channel_id)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id, user_id, repository_id, events,
@@ -79,7 +79,7 @@ impl SlackWebhookRepository for SlackWebhookRepositoryImpl {
             r#"
             SELECT id, user_id, repository_id, events,
                 slack_user_id, slack_team_id, slack_channel_id, created_at
-            FROM core.slack_webhooks WHERE id = $1
+            FROM webhook.slack_webhooks WHERE id = $1
             "#,
         )
         .bind(id)
@@ -98,7 +98,7 @@ impl SlackWebhookRepository for SlackWebhookRepositoryImpl {
             r#"
             SELECT id, user_id, repository_id, events,
                 slack_user_id, slack_team_id, slack_channel_id, created_at
-            FROM core.slack_webhooks
+            FROM webhook.slack_webhooks
             WHERE repository_id = $1 AND $2 = ANY(events)
             ORDER BY created_at ASC
             "#,
@@ -112,7 +112,7 @@ impl SlackWebhookRepository for SlackWebhookRepositoryImpl {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError> {
-        sqlx::query("DELETE FROM core.slack_webhooks WHERE id = $1")
+        sqlx::query("DELETE FROM webhook.slack_webhooks WHERE id = $1")
             .bind(id)
             .execute(&self.pool)
             .await?;

@@ -3,6 +3,7 @@ mod authorization;
 mod ci;
 mod core;
 mod migration;
+mod webhook;
 
 pub(crate) mod common;
 
@@ -15,3 +16,4 @@ pub use authorization::*;
 pub use ci::*;
 pub use core::*;
 pub use migration::*;
+pub use webhook::*;

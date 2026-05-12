@@ -30,7 +30,7 @@ pub struct SlackWebhook {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Type, Serialize, Deserialize)]
-#[sqlx(type_name = "core.webhook_event_type", rename_all = "snake_case")]
+#[sqlx(type_name = "webhook.webhook_event_type", rename_all = "snake_case")]
 pub enum WebhookEventType {
     Push,
     ReviewPublish,
