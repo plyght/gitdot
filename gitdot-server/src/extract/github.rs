@@ -1,10 +1,16 @@
+use std::str::FromStr;
+
 use axum::{
     body::Body,
     extract::{FromRef, FromRequest, Request},
     http::request::Parts,
 };
+use uuid::Uuid;
 
-use gitdot_core::{dto::VerifyGithubSignatureRequest, error::AuthenticationError};
+use gitdot_core::{
+    dto::VerifyGithubSignatureRequest,
+    error::{AuthenticationError, InputError, WebhookError},
+};
 
 use crate::app::{AppError, AppState};
 
@@ -15,9 +21,25 @@ const GITHUB_SIGNATURE_HEADER: &str = "X-Hub-Signature-256";
 const MAX_BODY_BYTES: usize = 5 * 1024 * 1024;
 
 pub struct GithubSigned {
-    pub event: String,
-    pub delivery: String,
+    pub event: GithubEvent,
+    pub delivery: Uuid,
     pub body: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GithubEvent {
+    Push,
+}
+
+impl FromStr for GithubEvent {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "push" => Ok(Self::Push),
+            other => Err(format!("unsupported github event: {other}")),
+        }
+    }
 }
 
 impl<S> FromRequest<S> for GithubSigned
@@ -31,14 +53,20 @@ where
         let app_state = AppState::from_ref(state);
         let (parts, body) = req.into_parts();
 
-        let event = header_value(&parts, GITHUB_EVENT_HEADER)?;
-        let delivery = header_value(&parts, GITHUB_DELIVERY_HEADER)?;
+        let event_str = header_value(&parts, GITHUB_EVENT_HEADER)?;
+        let delivery_str = header_value(&parts, GITHUB_DELIVERY_HEADER)?;
         let signature = header_value(&parts, GITHUB_SIGNATURE_HEADER)?;
         let body_bytes = read_body(body).await?;
         let request = VerifyGithubSignatureRequest::new(body_bytes.clone(), signature);
         app_state
             .authentication_service
             .verify_github_signature(request)?;
+
+        let event = GithubEvent::from_str(&event_str)
+            .map_err(|reason| WebhookError::Input(InputError::new(GITHUB_EVENT_HEADER, reason)))?;
+        let delivery = Uuid::parse_str(&delivery_str).map_err(|e| {
+            WebhookError::Input(InputError::new(GITHUB_DELIVERY_HEADER, e.to_string()))
+        })?;
 
         Ok(GithubSigned {
             event,

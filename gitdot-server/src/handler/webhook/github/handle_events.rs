@@ -17,8 +17,8 @@ pub async fn handle_events(
     }: GithubSigned,
 ) -> Result<AppResponse<()>, AppError> {
     tracing::info!(
-        event,
-        delivery,
+        event = ?event,
+        %delivery,
         body_len = body.len(),
         "received github webhook event",
     );
