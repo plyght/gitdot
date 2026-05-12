@@ -36,6 +36,7 @@ pub trait MigrationRepository: Send + Sync + Clone + 'static {
         &self,
         migration_id: Uuid,
         origin_full_name: &str,
+        origin_repository_id: i64,
         destination_full_name: &str,
         visibility: &RepositoryVisibility,
     ) -> Result<MigrationRepositoryModel, DatabaseError>;
@@ -46,6 +47,17 @@ pub trait MigrationRepository: Send + Sync + Clone + 'static {
         status: MigrationRepositoryStatus,
         error: Option<&str>,
     ) -> Result<MigrationRepositoryModel, DatabaseError>;
+
+    async fn set_destination_repository_id(
+        &self,
+        migration_repository_id: Uuid,
+        destination_repository_id: Uuid,
+    ) -> Result<(), DatabaseError>;
+
+    async fn list_by_origin_repository_id(
+        &self,
+        origin_repository_id: i64,
+    ) -> Result<Vec<MigrationRepositoryModel>, DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -103,7 +115,9 @@ impl MigrationRepository for MigrationRepositoryImpl {
                            'id', mr.id,
                            'migration_id', mr.migration_id,
                            'origin_full_name', mr.origin_full_name,
+                           'origin_repository_id', mr.origin_repository_id,
                            'destination_full_name', mr.destination_full_name,
+                           'destination_repository_id', mr.destination_repository_id,
                            'visibility', mr.visibility,
                            'status', mr.status,
                            'error', mr.error,
@@ -135,7 +149,9 @@ impl MigrationRepository for MigrationRepositoryImpl {
                            'id', mr.id,
                            'migration_id', mr.migration_id,
                            'origin_full_name', mr.origin_full_name,
+                           'origin_repository_id', mr.origin_repository_id,
                            'destination_full_name', mr.destination_full_name,
+                           'destination_repository_id', mr.destination_repository_id,
                            'visibility', mr.visibility,
                            'status', mr.status,
                            'error', mr.error,
@@ -181,18 +197,21 @@ impl MigrationRepository for MigrationRepositoryImpl {
         &self,
         migration_id: Uuid,
         origin_full_name: &str,
+        origin_repository_id: i64,
         destination_full_name: &str,
         visibility: &RepositoryVisibility,
     ) -> Result<MigrationRepositoryModel, DatabaseError> {
         let repo = sqlx::query_as::<_, MigrationRepositoryModel>(
             r#"
-            INSERT INTO migration.migration_repositories (migration_id, origin_full_name, destination_full_name, visibility)
-            VALUES ($1, $2, $3, $4)
-            RETURNING id, migration_id, origin_full_name, destination_full_name, visibility, status, error, created_at, updated_at
+            INSERT INTO migration.migration_repositories
+                (migration_id, origin_full_name, origin_repository_id, destination_full_name, visibility)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, migration_id, origin_full_name, origin_repository_id, destination_full_name, destination_repository_id, visibility, status, error, created_at, updated_at
             "#,
         )
         .bind(migration_id)
         .bind(origin_full_name)
+        .bind(origin_repository_id)
         .bind(destination_full_name)
         .bind(visibility)
         .fetch_one(&self.pool)
@@ -212,7 +231,7 @@ impl MigrationRepository for MigrationRepositoryImpl {
             UPDATE migration.migration_repositories
             SET status = $2, error = $3, updated_at = NOW()
             WHERE id = $1
-            RETURNING id, migration_id, origin_full_name, destination_full_name, visibility, status, error, created_at, updated_at
+            RETURNING id, migration_id, origin_full_name, origin_repository_id, destination_full_name, destination_repository_id, visibility, status, error, created_at, updated_at
             "#,
         )
         .bind(id)
@@ -222,5 +241,45 @@ impl MigrationRepository for MigrationRepositoryImpl {
         .await?;
 
         Ok(repo)
+    }
+
+    async fn set_destination_repository_id(
+        &self,
+        migration_repository_id: Uuid,
+        destination_repository_id: Uuid,
+    ) -> Result<(), DatabaseError> {
+        sqlx::query(
+            r#"
+            UPDATE migration.migration_repositories
+            SET destination_repository_id = $2, updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(migration_repository_id)
+        .bind(destination_repository_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn list_by_origin_repository_id(
+        &self,
+        origin_repository_id: i64,
+    ) -> Result<Vec<MigrationRepositoryModel>, DatabaseError> {
+        let rows = sqlx::query_as::<_, MigrationRepositoryModel>(
+            r#"
+            SELECT id, migration_id, origin_full_name, origin_repository_id,
+                   destination_full_name, destination_repository_id, visibility,
+                   status, error, created_at, updated_at
+            FROM migration.migration_repositories
+            WHERE origin_repository_id = $1 AND destination_repository_id IS NOT NULL
+            "#,
+        )
+        .bind(origin_repository_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
     }
 }

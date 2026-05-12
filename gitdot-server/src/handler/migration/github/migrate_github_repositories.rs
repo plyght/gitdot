@@ -33,6 +33,11 @@ pub async fn migrate_github_repositories(
         .await?;
 
     let readonly = request.readonly;
+    let repositories = request
+        .repositories
+        .into_iter()
+        .map(|r| (r.name, r.id))
+        .collect();
     let request = CreateGitHubMigrationRequest::new(
         auth_user.id,
         installation_id,
@@ -40,7 +45,7 @@ pub async fn migrate_github_repositories(
         &request.origin_type,
         &request.destination,
         &request.destination_type,
-        request.repositories,
+        repositories,
     )?;
     let response = state
         .migration_service

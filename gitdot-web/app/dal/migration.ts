@@ -59,7 +59,7 @@ export async function migrateGitHubRepositories(
   originType: string,
   destination: string,
   destinationType: string,
-  repositories: string[],
+  repositories: { name: string; id: number }[],
   readonly: boolean,
 ): Promise<MigrationResource | null> {
   const response = await authPost(

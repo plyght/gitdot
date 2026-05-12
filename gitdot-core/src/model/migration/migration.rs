@@ -49,7 +49,9 @@ pub struct MigrationRepository {
     pub migration_id: Uuid,
 
     pub origin_full_name: String,
+    pub origin_repository_id: i64,
     pub destination_full_name: String,
+    pub destination_repository_id: Option<Uuid>,
     pub visibility: RepositoryVisibility,
 
     pub status: MigrationRepositoryStatus,

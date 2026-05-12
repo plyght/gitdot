@@ -338,7 +338,7 @@ where
             .await?;
 
         let mut repositories = Vec::new();
-        for name in &request.repositories {
+        for (name, origin_repository_id) in &request.repositories {
             let origin_full_name = format!("{}/{}", request.origin, name);
             let destination_full_name = format!("{}/{}", request.destination.as_ref(), name);
             let visibility = visibility_map
@@ -350,6 +350,7 @@ where
                 .create_migration_repository(
                     migration.id,
                     &origin_full_name,
+                    *origin_repository_id,
                     &destination_full_name,
                     &visibility,
                 )
@@ -423,6 +424,10 @@ where
                                 MigrationRepositoryStatus::Completed,
                                 None,
                             )
+                            .await;
+                        let _ = service
+                            .migration_repo
+                            .set_destination_repository_id(migration_repo_id, repository.id)
                             .await;
 
                         Some(MigratedRepositoryInfo {

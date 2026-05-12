@@ -27,7 +27,9 @@ export function CreateMigrationForm({
   const defaultLogin = defaultOrigin ?? installations[0]?.github_login ?? "";
 
   const [origin, setOrigin] = useState(defaultLogin);
-  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
+  const [selectedRepos, setSelectedRepos] = useState<Map<number, string>>(
+    new Map(),
+  );
   const [destination, setDestination] = useState(user.name);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -36,16 +38,16 @@ export function CreateMigrationForm({
 
   function handleOriginChange(login: string) {
     setOrigin(login);
-    setSelectedRepos(new Set());
+    setSelectedRepos(new Map());
   }
 
-  function toggleRepo(name: string) {
+  function toggleRepo(id: number, name: string) {
     setSelectedRepos((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
+      const next = new Map(prev);
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        next.add(name);
+        next.set(id, name);
       }
       return next;
     });
@@ -66,7 +68,7 @@ export function CreateMigrationForm({
         originType,
         destination,
         destinationType,
-        [...selectedRepos],
+        Array.from(selectedRepos, ([id, name]) => ({ id, name })),
         true,
       );
       if ("error" in result) {
@@ -132,9 +134,9 @@ export function CreateMigrationForm({
                     <input
                       type="checkbox"
                       name="repositories"
-                      value={repo.name}
-                      checked={selectedRepos.has(repo.name)}
-                      onChange={() => toggleRepo(repo.name)}
+                      value={repo.id}
+                      checked={selectedRepos.has(repo.id)}
+                      onChange={() => toggleRepo(repo.id, repo.name)}
                     />
                     <span className="flex-1 truncate">{repo.name}</span>
                     {repo.private && (

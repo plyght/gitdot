@@ -2,12 +2,18 @@ import { z } from "zod";
 import { MigrationResource } from "../../../resource";
 import type { Endpoint } from "../../endpoint";
 
+export const GitHubRepositoryRef = z.object({
+  name: z.string(),
+  id: z.number(),
+});
+export type GitHubRepositoryRef = z.infer<typeof GitHubRepositoryRef>;
+
 export const MigrateGitHubRepositoriesRequest = z.object({
   origin: z.string(),
   origin_type: z.string(),
   destination: z.string(),
   destination_type: z.string(),
-  repositories: z.array(z.string()),
+  repositories: z.array(GitHubRepositoryRef),
   readonly: z.boolean(),
 });
 export type MigrateGitHubRepositoriesRequest = z.infer<

@@ -14,7 +14,7 @@ pub struct CreateGitHubMigrationRequest {
     pub origin_type: RepositoryOwnerType,
     pub destination: OwnerName,
     pub destination_type: RepositoryOwnerType,
-    pub repositories: Vec<String>,
+    pub repositories: Vec<(String, i64)>,
 }
 
 impl CreateGitHubMigrationRequest {
@@ -25,7 +25,7 @@ impl CreateGitHubMigrationRequest {
         origin_type: &str,
         destination: &str,
         destination_type: &str,
-        repositories: Vec<String>,
+        repositories: Vec<(String, i64)>,
     ) -> Result<Self, MigrationError> {
         Ok(Self {
             author_id,

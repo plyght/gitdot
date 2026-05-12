@@ -118,7 +118,7 @@ export async function migrateGitHubRepositoriesAction(
   originType: string,
   destination: string,
   destinationType: string,
-  repositories: string[],
+  repositories: { name: string; id: number }[],
   readonly: boolean,
 ): Promise<MigrateGitHubRepositoriesActionResult> {
   if (!destination || repositories.length === 0) {

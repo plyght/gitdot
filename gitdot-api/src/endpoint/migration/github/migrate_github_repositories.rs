@@ -18,8 +18,14 @@ pub struct MigrateGitHubRepositoriesRequest {
     pub origin_type: String,
     pub destination: String,
     pub destination_type: String,
-    pub repositories: Vec<String>,
+    pub repositories: Vec<GitHubRepository>,
     pub readonly: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubRepository {
+    pub name: String,
+    pub id: i64,
 }
 
 pub type MigrateGitHubRepositoriesResponse = MigrationResource;

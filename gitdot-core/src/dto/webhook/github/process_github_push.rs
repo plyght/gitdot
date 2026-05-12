@@ -14,6 +14,7 @@ pub struct ProcessGithubPushRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct GithubRepository {
+    pub id: i64,
     pub name: String,
     pub owner: GithubRepositoryOwner,
 }
