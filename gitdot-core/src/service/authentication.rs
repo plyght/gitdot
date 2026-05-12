@@ -13,7 +13,7 @@ use crate::{
         LinkSlackAccountRequest, LinkSlackAccountResponse, LogoutRequest, OAuthRedirectResponse,
         PollTokenRequest, RefreshSessionRequest, SendAuthEmailRequest, TokenResponse,
         ValidateTokenRequest, ValidateTokenResponse, VerifyAuthCodeRequest,
-        VerifySlackBotSignatureRequest,
+        VerifyGithubSignatureRequest, VerifySlackBotSignatureRequest,
     },
     error::{AuthenticationError, InputError, OptionNotFoundExt},
     model::{AuthProvider, DeviceAuthorizationStatus, TokenType},
@@ -68,6 +68,13 @@ pub trait AuthenticationService: Send + Sync + 'static {
     fn verify_slack_bot_signature(
         &self,
         request: VerifySlackBotSignatureRequest,
+    ) -> Result<(), AuthenticationError>;
+
+    // --- GitHub webhook operations ---
+
+    fn verify_github_signature(
+        &self,
+        request: VerifyGithubSignatureRequest,
     ) -> Result<(), AuthenticationError>;
 
     // --- Device flow opxerations ---
@@ -254,9 +261,7 @@ where
         let is_new = !user.is_email_verified;
 
         self.user_repo.verify_email(auth_code.user_id).await?;
-        let access_token = self
-            .token_client
-            .generate_gitdot_jwt(user.id, &user.name)?;
+        let access_token = self.token_client.generate_gitdot_jwt(user.id, &user.name)?;
 
         let (refresh_token, refresh_token_hash) = self.token_client.generate_high_entropic_code();
         let refresh_expiry_secs = self.token_client.get_refresh_token_expiry_in_seconds();
@@ -309,9 +314,7 @@ where
             .get_by_id(session.user_id)
             .await?
             .or_not_found("user", session.user_id)?;
-        let access_token = self
-            .token_client
-            .generate_gitdot_jwt(user.id, &user.name)?;
+        let access_token = self.token_client.generate_gitdot_jwt(user.id, &user.name)?;
 
         let (refresh_token, refresh_token_hash) = self.token_client.generate_high_entropic_code();
         let refresh_expiry_secs = self.token_client.get_refresh_token_expiry_in_seconds();
@@ -379,9 +382,7 @@ where
             }
         };
 
-        let access_token = self
-            .token_client
-            .generate_gitdot_jwt(user.id, &user.name)?;
+        let access_token = self.token_client.generate_gitdot_jwt(user.id, &user.name)?;
 
         let (refresh_token, refresh_token_hash) = self.token_client.generate_high_entropic_code();
         let refresh_expiry_secs = self.token_client.get_refresh_token_expiry_in_seconds();
@@ -437,6 +438,15 @@ where
     ) -> Result<(), AuthenticationError> {
         self.slack_bot_client
             .verify_request_signature(&request.timestamp, &request.body, &request.signature)
+            .map_err(|_| AuthenticationError::Unauthorized)
+    }
+
+    fn verify_github_signature(
+        &self,
+        request: VerifyGithubSignatureRequest,
+    ) -> Result<(), AuthenticationError> {
+        self.github_client
+            .verify_webhook_signature(&request.body, &request.signature)
             .map_err(|_| AuthenticationError::Unauthorized)
     }
 

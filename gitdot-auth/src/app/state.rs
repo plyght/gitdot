@@ -42,6 +42,7 @@ impl AppState {
             settings.github_app_private_key.clone(),
             settings.github_client_id.clone(),
             settings.github_client_secret.clone(),
+            settings.gitdot_github_secret.clone(),
         );
         let image_client = ImageClientImpl::new();
         let r2_client = R2ClientImpl::new(

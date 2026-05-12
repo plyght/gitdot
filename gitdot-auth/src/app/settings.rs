@@ -12,6 +12,7 @@ pub struct Settings {
     pub gitdot_public_key: String,
     pub gitdot_private_key: String,
     pub gitdot_slack_secret: String,
+    pub gitdot_github_secret: String,
 
     // app URLs
     #[serde(default = "default_web_url")]

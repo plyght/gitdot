@@ -81,6 +81,7 @@ impl AppState {
             settings.github_app_private_key.clone(),
             settings.github_client_id.clone(),
             settings.github_client_secret.clone(),
+            settings.gitdot_github_secret.clone(),
         );
         let s2_client =
             S2ClientImpl::new(&settings.s2_server_url, settings.gitdot_private_key.clone());

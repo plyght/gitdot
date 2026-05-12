@@ -1,7 +1,9 @@
 use async_trait::async_trait;
+use hmac::{Hmac, Mac};
 use octocrab::models::{AppId, Installation, InstallationId, InstallationRepositories};
 use secrecy::ExposeSecret;
 use serde::Deserialize;
+use sha2::Sha256;
 
 use crate::error::GitHubError;
 
@@ -22,6 +24,13 @@ pub trait GitHubClient: Send + Sync + Clone + 'static {
         &self,
         installation_id: u64,
     ) -> Result<InstallationRepositories, GitHubError>;
+
+    // Webhook operations
+    fn verify_webhook_signature(
+        &self,
+        body: &[u8],
+        signature_header: &str,
+    ) -> Result<(), GitHubError>;
 }
 
 #[derive(Debug, Clone)]
@@ -30,10 +39,17 @@ pub struct OctocrabClient {
     oauth_client: octocrab::Octocrab,
     client_id: String,
     client_secret: String,
+    gitdot_github_secret: String,
 }
 
 impl OctocrabClient {
-    pub fn new(app_id: u64, private_key: String, client_id: String, client_secret: String) -> Self {
+    pub fn new(
+        app_id: u64,
+        private_key: String,
+        client_id: String,
+        client_secret: String,
+        gitdot_github_secret: String,
+    ) -> Self {
         let key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes())
             .expect("Invalid RSA private key PEM");
 
@@ -54,6 +70,7 @@ impl OctocrabClient {
             oauth_client,
             client_id,
             client_secret,
+            gitdot_github_secret,
         }
     }
 }
@@ -145,5 +162,22 @@ impl GitHubClient for OctocrabClient {
             .await?;
 
         Ok(repositories)
+    }
+
+    fn verify_webhook_signature(
+        &self,
+        body: &[u8],
+        signature_header: &str,
+    ) -> Result<(), GitHubError> {
+        let hex_sig = signature_header
+            .strip_prefix("sha256=")
+            .ok_or(GitHubError::InvalidSignature)?;
+        let sig_bytes = hex::decode(hex_sig).map_err(|_| GitHubError::InvalidSignature)?;
+        let mut mac = Hmac::<Sha256>::new_from_slice(self.gitdot_github_secret.as_bytes())
+            .map_err(|_| GitHubError::InvalidSignature)?;
+        mac.update(body);
+        mac.verify_slice(&sig_bytes)
+            .map_err(|_| GitHubError::InvalidSignature)?;
+        Ok(())
     }
 }

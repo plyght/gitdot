@@ -47,11 +47,7 @@ pub trait TokenClient: Send + Sync + Clone + 'static {
 
     // JWT operations
     fn generate_jwt<T: Serialize + Send + Sync>(&self, claims: &T) -> Result<String, TokenError>;
-    fn generate_gitdot_jwt(
-        &self,
-        user_id: Uuid,
-        username: &str,
-    ) -> Result<String, TokenError>;
+    fn generate_gitdot_jwt(&self, user_id: Uuid, username: &str) -> Result<String, TokenError>;
 }
 
 #[derive(Debug, Clone)]
@@ -210,11 +206,7 @@ impl TokenClient for TokenClientImpl {
             .map_err(|e| TokenError::SigningError(e.to_string()))
     }
 
-    fn generate_gitdot_jwt(
-        &self,
-        user_id: Uuid,
-        username: &str,
-    ) -> Result<String, TokenError> {
+    fn generate_gitdot_jwt(&self, user_id: Uuid, username: &str) -> Result<String, TokenError> {
         let now = Utc::now().timestamp() as usize;
         let claims = GitdotClaims {
             iss: GITDOT_SERVER_ID.to_string(),

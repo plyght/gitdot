@@ -7,4 +7,7 @@ pub enum GitHubError {
 
     #[error("GitHub error: {0}")]
     OctocrabError(#[from] octocrab::Error),
+
+    #[error("Invalid GitHub webhook signature")]
+    InvalidSignature,
 }
