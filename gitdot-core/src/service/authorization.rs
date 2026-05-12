@@ -488,7 +488,6 @@ mod tests {
             async fn get_by_email(&self, email: &str) -> Result<Option<User>, crate::error::DatabaseError>;
             async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<User>, crate::error::DatabaseError>;
             async fn verify_email(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
-            async fn get_org_memberships(&self, user_id: Uuid) -> Result<Vec<(String, String)>, crate::error::DatabaseError>;
             async fn get_settings(&self, id: Uuid) -> Result<Option<UserSettings>, crate::error::DatabaseError>;
             async fn update_settings(&self, id: Uuid, settings: UserSettings) -> Result<Option<UserSettings>, crate::error::DatabaseError>;
             async fn is_name_taken(&self, name: &str) -> Result<bool, crate::error::DatabaseError>;

@@ -10,6 +10,7 @@ import {
   addOrganizationMember,
   createOrganization,
   updateOrganization,
+  updateOrganizationMember,
   uploadOrganizationImage,
 } from "@/dal/organization";
 
@@ -107,6 +108,34 @@ export async function addOrganizationMemberAction(
   } catch (e) {
     return {
       error: e instanceof ApiError ? e.message : "Failed to add member",
+    };
+  }
+}
+
+export type UpdateOrganizationMemberActionResult =
+  | { member: OrganizationMemberResource }
+  | { error: string };
+
+export async function updateOrganizationMemberAction(
+  orgName: string,
+  memberId: string,
+  _prev: UpdateOrganizationMemberActionResult | null,
+  formData: FormData,
+): Promise<UpdateOrganizationMemberActionResult> {
+  const raw = (formData.get("role_description") as string | null)?.trim();
+  const roleDescription = raw || null;
+
+  try {
+    const result = await updateOrganizationMember(orgName, memberId, {
+      role_description: roleDescription,
+    });
+    if (!result) return { error: "Failed to update member" };
+
+    refresh();
+    return { member: result };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to update member",
     };
   }
 }

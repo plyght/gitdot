@@ -1,6 +1,9 @@
 import type { OrganizationResource } from "gitdot-api";
-import { listOrganizationMembers, listOrganizationRepositories } from "@/dal";
-import { getUserMetadata } from "@/lib/auth";
+import {
+  getCurrentUser,
+  listOrganizationMembers,
+  listOrganizationRepositories,
+} from "@/dal";
 import { OrgActions } from "./org-actions";
 import { OrgLinks } from "./org-links";
 import { OrgMembers } from "./org-members";
@@ -9,13 +12,13 @@ import { OrgReadme } from "./org-readme";
 import { OrgRepositories } from "./org-repositories";
 
 export default async function OrgPage({ org }: { org: OrganizationResource }) {
-  const [members, repos, metadata] = await Promise.all([
+  const [members, repos, current] = await Promise.all([
     listOrganizationMembers(org.name),
     listOrganizationRepositories(org.name),
-    getUserMetadata(),
+    getCurrentUser(false),
   ]);
-  const isMember = metadata.orgs.some(
-    (entry) => entry.split(":")[0] === org.name,
+  const isMember = (current?.memberships ?? []).some(
+    (m) => m.org_name === org.name,
   );
 
   return (

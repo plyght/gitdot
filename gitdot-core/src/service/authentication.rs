@@ -254,13 +254,9 @@ where
         let is_new = !user.is_email_verified;
 
         self.user_repo.verify_email(auth_code.user_id).await?;
-        let orgs = self
-            .user_repo
-            .get_org_memberships(auth_code.user_id)
-            .await?;
         let access_token = self
             .token_client
-            .generate_gitdot_jwt(user.id, &user.name, &orgs)?;
+            .generate_gitdot_jwt(user.id, &user.name)?;
 
         let (refresh_token, refresh_token_hash) = self.token_client.generate_high_entropic_code();
         let refresh_expiry_secs = self.token_client.get_refresh_token_expiry_in_seconds();
@@ -313,10 +309,9 @@ where
             .get_by_id(session.user_id)
             .await?
             .or_not_found("user", session.user_id)?;
-        let orgs = self.user_repo.get_org_memberships(session.user_id).await?;
         let access_token = self
             .token_client
-            .generate_gitdot_jwt(user.id, &user.name, &orgs)?;
+            .generate_gitdot_jwt(user.id, &user.name)?;
 
         let (refresh_token, refresh_token_hash) = self.token_client.generate_high_entropic_code();
         let refresh_expiry_secs = self.token_client.get_refresh_token_expiry_in_seconds();
@@ -384,10 +379,9 @@ where
             }
         };
 
-        let orgs = self.user_repo.get_org_memberships(user.id).await?;
         let access_token = self
             .token_client
-            .generate_gitdot_jwt(user.id, &user.name, &orgs)?;
+            .generate_gitdot_jwt(user.id, &user.name)?;
 
         let (refresh_token, refresh_token_hash) = self.token_client.generate_high_entropic_code();
         let refresh_expiry_secs = self.token_client.get_refresh_token_expiry_in_seconds();

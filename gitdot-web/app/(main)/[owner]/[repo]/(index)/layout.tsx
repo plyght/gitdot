@@ -1,4 +1,4 @@
-import { getUserMetadata } from "@/lib/auth";
+import { getCurrentUser } from "@/dal";
 import { LayoutClient } from "./layout.client";
 
 export default async function Layout({
@@ -9,8 +9,12 @@ export default async function Layout({
   params: Promise<{ owner: string; repo: string }>;
 }) {
   const { owner, repo } = await params;
-  const { username, orgs } = await getUserMetadata();
-  const isAdmin = username === owner || orgs.includes(`${owner}:admin`);
+  const current = await getCurrentUser(false);
+  const isAdmin =
+    current?.user.name === owner ||
+    (current?.memberships ?? []).some(
+      (m) => m.org_name === owner && m.role === "admin",
+    );
 
   return (
     <LayoutClient owner={owner} repo={repo} showSettings={isAdmin}>

@@ -45,6 +45,18 @@ export async function addOrganizationMember(
   return await handleResponse(response, OrganizationMemberResource);
 }
 
+export async function updateOrganizationMember(
+  orgName: string,
+  memberId: string,
+  request: { role_description: string | null },
+): Promise<OrganizationMemberResource | null> {
+  const response = await authPatch(
+    `${GITDOT_SERVER_URL}/organization/${orgName}/member/${memberId}`,
+    request,
+  );
+  return await handleResponse(response, OrganizationMemberResource);
+}
+
 export async function listOrganizationRepositories(
   name: string,
 ): Promise<RepositoryResource[] | null> {

@@ -1,10 +1,10 @@
 import type { UserResource } from "gitdot-api";
 import {
+  getCurrentUser,
   listUserCommits,
   listUserOrganizations,
   listUserRepositories,
 } from "@/dal";
-import { getUserMetadata } from "@/lib/auth";
 import { UserActions } from "./user-actions";
 import { UserCommits } from "./user-commits";
 import { UserLinks } from "./user-links";
@@ -14,14 +14,14 @@ import { UserReadme } from "./user-readme";
 import { UserRepos } from "./user-repos";
 
 export default async function UserPage({ user }: { user: UserResource }) {
-  const [commits, repos, orgs, metadata] = await Promise.all([
+  const [commits, repos, orgs, current] = await Promise.all([
     listUserCommits(user.name),
     listUserRepositories(user.name),
     listUserOrganizations(user.name),
-    getUserMetadata(),
+    getCurrentUser(false),
   ]);
 
-  const isOwner = metadata.username === user.name;
+  const isOwner = current?.user.name === user.name;
 
   return (
     <div className="grid grid-cols-[8rem_minmax(0,3fr)_minmax(0,2fr)] h-full">

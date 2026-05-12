@@ -1,43 +1,44 @@
 "use client";
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import type { OrganizationMemberResource } from "gitdot-api";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "@/(main)/context/toaster";
-import { addOrganizationMemberAction } from "@/actions";
+import { updateOrganizationMemberAction } from "@/actions";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import { cn } from "@/util";
 
-export function NewMemberDialog({
+export function EditMemberDialog({
   orgName,
+  member,
   open,
   setOpen,
 }: {
   orgName: string;
+  member: OrganizationMemberResource;
   open: boolean;
   setOpen: (open: boolean) => void;
 }) {
-  const [userName, setUserName] = useState("");
-  const [roleDescription, setRoleDescription] = useState("");
+  const [roleDescription, setRoleDescription] = useState(
+    member.role_description ?? "",
+  );
   const [state, formAction, isPending] = useActionState(
-    addOrganizationMemberAction.bind(null, orgName),
+    updateOrganizationMemberAction.bind(null, orgName, member.id),
     null,
   );
 
   useEffect(() => {
     if (open) {
-      setUserName("");
-      setRoleDescription("");
+      setRoleDescription(member.role_description ?? "");
     }
-  }, [open]);
+  }, [open, member.role_description]);
 
   useEffect(() => {
     if (state && "member" in state) {
       setOpen(false);
-      toast.success("Member added");
+      toast.success("Member updated");
     }
   }, [state, setOpen]);
-
-  const isValid = userName.trim() !== "";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -47,26 +48,17 @@ export function NewMemberDialog({
         showOverlay
       >
         <VisuallyHidden>
-          <DialogTitle>Add member</DialogTitle>
+          <DialogTitle>Edit member</DialogTitle>
         </VisuallyHidden>
         <form action={formAction}>
           <div className="group flex flex-col gap-1 p-2 border-b border-border">
-            <p className="text-xs text-muted-foreground group-focus-within:text-foreground font-mono transition-colors">
+            <p className="text-xs text-muted-foreground font-mono">
               <span className="text-foreground/40 select-none"># </span>
               Username
             </p>
-            <input
-              type="text"
-              name="user_name"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              placeholder="username..."
-              className="w-full text-sm bg-background outline-none"
-              disabled={isPending}
-              autoFocus
-              autoComplete="off"
-              spellCheck={false}
-            />
+            <p className="w-full text-sm text-muted-foreground">
+              {member.user_name}
+            </p>
           </div>
           <div className="group flex flex-col gap-1 p-2 border-b border-border">
             <p className="text-xs text-muted-foreground group-focus-within:text-foreground font-mono transition-colors">
@@ -80,6 +72,7 @@ export function NewMemberDialog({
               placeholder="what do they do in your org?"
               className="w-full text-sm bg-background outline-none resize-none min-h-20"
               disabled={isPending}
+              autoFocus
               autoComplete="off"
               spellCheck={false}
             />
@@ -96,7 +89,7 @@ export function NewMemberDialog({
               >
                 {state && "error" in state
                   ? state.error
-                  : `Add member to ${orgName}`}
+                  : `Edit ${member.user_name}'s membership`}
               </p>
             </div>
             <div className="flex items-center h-full">
@@ -109,10 +102,10 @@ export function NewMemberDialog({
               </button>
               <button
                 type="submit"
-                disabled={!isValid || isPending}
+                disabled={isPending}
                 className="flex items-center px-3 h-full text-xs bg-primary text-primary-foreground border-l border-primary enabled:hover:opacity-90 disabled:opacity-60 transition-opacity disabled:cursor-not-allowed"
               >
-                {isPending ? "Adding..." : "Add"}
+                {isPending ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

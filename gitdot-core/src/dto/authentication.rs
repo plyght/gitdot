@@ -50,7 +50,6 @@ pub struct GitdotClaims {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserMetadata {
     pub username: String,
-    pub orgs: Vec<String>,
 }
 
 fn deserialize_aud<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<String>, D::Error> {

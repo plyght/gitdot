@@ -51,7 +51,6 @@ pub trait TokenClient: Send + Sync + Clone + 'static {
         &self,
         user_id: Uuid,
         username: &str,
-        orgs: &[(String, String)],
     ) -> Result<String, TokenError>;
 }
 
@@ -215,7 +214,6 @@ impl TokenClient for TokenClientImpl {
         &self,
         user_id: Uuid,
         username: &str,
-        orgs: &[(String, String)],
     ) -> Result<String, TokenError> {
         let now = Utc::now().timestamp() as usize;
         let claims = GitdotClaims {
@@ -226,10 +224,6 @@ impl TokenClient for TokenClientImpl {
             exp: now + ACCESS_TOKEN_EXPIRY_SECONDS as usize,
             user_metadata: UserMetadata {
                 username: username.to_string(),
-                orgs: orgs
-                    .iter()
-                    .map(|(name, role)| format!("{name}:{role}"))
-                    .collect(),
             },
         };
         self.generate_jwt(&claims)

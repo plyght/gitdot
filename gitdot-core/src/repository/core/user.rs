@@ -45,11 +45,6 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
 
     async fn verify_email(&self, id: Uuid) -> Result<(), DatabaseError>;
 
-    async fn get_org_memberships(
-        &self,
-        user_id: Uuid,
-    ) -> Result<Vec<(String, String)>, DatabaseError>;
-
     async fn is_name_taken(&self, name: &str) -> Result<bool, DatabaseError>;
 
     async fn is_email_taken(&self, email: &str) -> Result<bool, DatabaseError>;
@@ -252,25 +247,6 @@ impl UserRepository for UserRepositoryImpl {
         .await?;
 
         Ok(())
-    }
-
-    async fn get_org_memberships(
-        &self,
-        user_id: Uuid,
-    ) -> Result<Vec<(String, String)>, DatabaseError> {
-        let rows = sqlx::query_as::<_, (String, String)>(
-            r#"
-            SELECT o.name, om.role::text
-            FROM core.organization_members om
-            JOIN core.organizations o ON o.id = om.organization_id
-            WHERE om.user_id = $1
-            "#,
-        )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(rows)
     }
 
     async fn is_name_taken(&self, name: &str) -> Result<bool, DatabaseError> {

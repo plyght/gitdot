@@ -46,24 +46,10 @@ async function clearTokenCookies() {
   store.delete(REFRESH_TOKEN_COOKIE);
 }
 
-// --- User metadata ---
-
-export interface UserMetadata {
-  username: string;
-  orgs: string[];
-}
-
-export async function getUserMetadata(): Promise<UserMetadata> {
-  const session = await getSession();
-  if (!session) return { username: "", orgs: [] };
-  return session.user_metadata;
-}
-
 // --- Session ---
 
 export async function getSession(): Promise<{
   access_token: string;
-  user_metadata: UserMetadata;
 } | null> {
   const store = await cookies();
   const token = store.get(ACCESS_TOKEN_COOKIE)?.value;
@@ -72,7 +58,7 @@ export async function getSession(): Promise<{
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     if (payload.exp * 1000 < Date.now()) return null;
-    return { access_token: token, user_metadata: payload.user_metadata };
+    return { access_token: token };
   } catch {
     return null;
   }
