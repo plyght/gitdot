@@ -1,7 +1,7 @@
 "use client";
 
 import type { RepositoryResource } from "gitdot-api";
-import { Bell, Download, Star } from "lucide-react";
+import { Bell, Copy, Download, Star } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/(main)/context/toaster";
 import { cn } from "@/util";
@@ -20,7 +20,18 @@ export function RepoActions({
   const handleClone = () => {
     const url = `${window.location.origin}/${repository.owner}/${repository.name}`;
     navigator.clipboard.writeText(url);
-    toast('Copied "git clone url"');
+    toast(
+      <div className="flex flex-col gap-1">
+        <span>Copied to clipboard</span>
+        <span className="font-mono bg-accent text-foreground px-1 rounded self-start whitespace-nowrap">
+          git clone {url}
+        </span>
+      </div>,
+      {
+        icon: <Copy className="size-4" />,
+        style: { "--width": "max-content" } as React.CSSProperties,
+      },
+    );
   };
 
   return (
