@@ -13,6 +13,8 @@ anyhow = { workspace = true }
 base64 = { workspace = true }
 clap = { version = "4.5.54", features = ["derive"] }
 dirs-next = "2.0.0"
+dotenvy = { workspace = true }
+figment = { workspace = true, features = ["toml"] }
 futures = { workspace = true }
 git2 = { workspace = true }
 gitdot-api = { workspace = true }

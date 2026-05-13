@@ -2566,6 +2566,8 @@ dependencies = [
  "base64",
  "clap",
  "dirs-next",
+ "dotenvy",
+ "figment",
  "futures",
  "git2",
  "gitdot-api",

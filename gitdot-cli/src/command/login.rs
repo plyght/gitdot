@@ -36,7 +36,7 @@ impl LoginArgs {
                 Ok(response) => {
                     config.user_name = response.user_name.clone();
                     config.user_email = response.user_email;
-                    config.save().await?;
+                    config.save()?;
 
                     GitCredentialStore::store(
                         api_client.get_web_url(),

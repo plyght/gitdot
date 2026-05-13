@@ -1,6 +1,10 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
+use figment::{
+    Figment,
+    providers::{Env, Format, Serialized, Toml},
+};
 use serde::{Deserialize, Serialize};
 
 use super::{default_gitdot_auth_server_url, default_gitdot_server_url, default_gitdot_web_url};
@@ -10,24 +14,18 @@ const CONFIG_FILE_NAME: &str = "config.toml";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserConfig {
-    #[serde(default = "default_gitdot_web_url")]
     pub gitdot_web_url: String,
-    #[serde(default = "default_gitdot_server_url")]
     pub gitdot_server_url: String,
-    #[serde(default = "default_gitdot_auth_server_url")]
     pub gitdot_auth_server_url: String,
-
-    #[serde(default)]
     pub user_name: String,
-    #[serde(default)]
     pub user_email: String,
 }
 
 impl Default for UserConfig {
     fn default() -> Self {
         Self {
-            gitdot_server_url: default_gitdot_server_url(),
             gitdot_web_url: default_gitdot_web_url(),
+            gitdot_server_url: default_gitdot_server_url(),
             gitdot_auth_server_url: default_gitdot_auth_server_url(),
             user_name: String::new(),
             user_email: String::new(),
@@ -36,36 +34,28 @@ impl Default for UserConfig {
 }
 
 impl UserConfig {
-    pub async fn load() -> anyhow::Result<Self> {
+    pub fn load() -> anyhow::Result<Self> {
         let config_path = Self::get_config_path()?;
 
-        if !config_path.exists() {
-            return Ok(Self::default());
-        }
-
-        let contents = tokio::fs::read_to_string(&config_path)
-            .await
-            .with_context(|| format!("Failed to read config file: {}", config_path.display()))?;
-
-        let config: UserConfig = toml::from_str(&contents)
-            .with_context(|| format!("Failed to parse config file: {}", config_path.display()))?;
-
-        Ok(config)
+        // you can override config values via environment variable
+        Figment::new()
+            .merge(Serialized::defaults(Self::default()))
+            .merge(Toml::file(&config_path))
+            .merge(Env::raw())
+            .extract()
+            .with_context(|| format!("Failed to load config from {}", config_path.display()))
     }
 
-    pub async fn save(&self) -> anyhow::Result<()> {
+    pub fn save(&self) -> anyhow::Result<()> {
         let config_path = Self::get_config_path()?;
-
         if let Some(parent) = config_path.parent() {
-            tokio::fs::create_dir_all(parent).await.with_context(|| {
+            std::fs::create_dir_all(parent).with_context(|| {
                 format!("Failed to create config directory: {}", parent.display())
             })?;
         }
 
         let contents = toml::to_string_pretty(self).context("Failed to serialize config")?;
-
-        tokio::fs::write(&config_path, contents)
-            .await
+        std::fs::write(&config_path, contents)
             .with_context(|| format!("Failed to write config file: {}", config_path.display()))?;
 
         Ok(())

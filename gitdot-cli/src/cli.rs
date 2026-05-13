@@ -1,6 +1,7 @@
 use crate::{command::Args, config::UserConfig};
 
 pub async fn setup() -> anyhow::Result<()> {
+    dotenvy::dotenv().ok();
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("failed to install rustls crypto provider");
@@ -8,7 +9,8 @@ pub async fn setup() -> anyhow::Result<()> {
 }
 
 pub async fn run(args: &Args) -> anyhow::Result<()> {
-    let config = UserConfig::load().await?;
+    let config = UserConfig::load()?;
+    println!("{:?}", config);
     match args {
         Args::Login(login_args) => login_args.execute(config).await,
         Args::Status(status_args) => status_args.execute(config).await,
