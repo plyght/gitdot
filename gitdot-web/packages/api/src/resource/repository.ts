@@ -157,6 +157,7 @@ export const RepositoryResource = z.object({
   visibility: z.string(),
   description: z.string().optional(),
   stars: z.number().int().nonnegative(),
+  user_star: z.boolean(),
   readonly: z.boolean(),
   created_at: z.iso.datetime(),
 });

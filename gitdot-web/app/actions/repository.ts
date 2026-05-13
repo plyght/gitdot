@@ -20,6 +20,8 @@ import {
   getRepositorySettings,
   listInstallations,
   migrateGitHubRepositories,
+  starRepository,
+  unstarRepository,
   updateRepositorySettings,
 } from "@/dal";
 
@@ -173,4 +175,36 @@ export async function getRepositoryBlobsAction(
   path: string,
 ): Promise<RepositoryBlobsResource | null> {
   return getRepositoryBlobs(owner, repo, { refs, paths: [path] });
+}
+
+export type StarRepositoryActionResult = { success: true } | { error: string };
+
+export async function starRepositoryAction(
+  owner: string,
+  repo: string,
+): Promise<StarRepositoryActionResult> {
+  try {
+    await starRepository(owner, repo);
+    refresh();
+    return { success: true };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to star repository",
+    };
+  }
+}
+
+export async function unstarRepositoryAction(
+  owner: string,
+  repo: string,
+): Promise<StarRepositoryActionResult> {
+  try {
+    await unstarRepository(owner, repo);
+    refresh();
+    return { success: true };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to unstar repository",
+    };
+  }
 }

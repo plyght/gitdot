@@ -27,6 +27,7 @@ import {
   authPatch,
   authPost,
   GITDOT_SERVER_URL,
+  handleEmptyResponse,
   handleResponse,
 } from "./util";
 
@@ -188,4 +189,26 @@ export async function deleteRepository(
     } catch {}
     throw new Error(message);
   }
+}
+
+export async function starRepository(
+  owner: string,
+  repo: string,
+): Promise<void> {
+  const response = await authPost(
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/star`,
+    {},
+  );
+  await handleEmptyResponse(response);
+}
+
+export async function unstarRepository(
+  owner: string,
+  repo: string,
+): Promise<void> {
+  const response = await authPost(
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/unstar`,
+    {},
+  );
+  await handleEmptyResponse(response);
 }

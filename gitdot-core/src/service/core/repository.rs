@@ -231,7 +231,12 @@ where
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
-        Ok(repository.into())
+        let user_star = match request.user_id {
+            Some(uid) => self.repo_repo.is_starred(repository.id, uid).await?,
+            None => false,
+        };
+
+        Ok(RepositoryResponse::from(repository).with_user_star(user_star))
     }
 
     async fn get_repository_blob(

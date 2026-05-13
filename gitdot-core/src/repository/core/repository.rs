@@ -46,6 +46,8 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
     async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, DatabaseError>;
 
     async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError>;
+
+    async fn is_starred(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -246,5 +248,22 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
 
         tx.commit().await?;
         Ok(deleted > 0)
+    }
+
+    async fn is_starred(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError> {
+        let row = sqlx::query(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM core.stars
+                WHERE repository_id = $1 AND user_id = $2
+            ) AS "starred"
+            "#,
+        )
+        .bind(id)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.try_get("starred")?)
     }
 }
