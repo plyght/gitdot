@@ -5,14 +5,11 @@ use figment::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{
-    default_gitdot_api_server_url, default_gitdot_web_url, default_num_executors,
-    default_s2_server_url,
-};
+use crate::util::url::{API_SERVER_URL, S2_SERVER_URL, WEB_URL};
 
-pub const SYSTEM_USER: &str = "gitdot";
-
-pub const RUNNER_CONFIG_PATH: &str = "/etc/gitdot/runner.toml";
+const SYSTEM_USER: &str = "gitdot";
+const RUNNER_CONFIG_PATH: &str = "/etc/gitdot/runner.toml";
+const DEFAULT_NUM_EXECUTORS: i8 = 4;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunnerConfig {
@@ -26,11 +23,11 @@ pub struct RunnerConfig {
 impl Default for RunnerConfig {
     fn default() -> Self {
         Self {
-            gitdot_server_url: default_gitdot_api_server_url(),
-            gitdot_web_url: default_gitdot_web_url(),
-            s2_server_url: default_s2_server_url(),
+            gitdot_server_url: API_SERVER_URL.to_string(),
+            gitdot_web_url: WEB_URL.to_string(),
+            s2_server_url: S2_SERVER_URL.to_string(),
             runner_token: None,
-            num_executors: default_num_executors(),
+            num_executors: DEFAULT_NUM_EXECUTORS,
         }
     }
 }

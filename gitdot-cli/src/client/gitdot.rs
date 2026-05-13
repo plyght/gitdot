@@ -4,9 +4,7 @@ use reqwest::RequestBuilder;
 
 use gitdot_api::{ApiRequest, ApiResource};
 
-const WEB_URL: &str = "https://www.gitdot.io";
-const SERVER_URL: &str = "https://api.gitdot.io";
-const AUTH_SERVER_URL: &str = "https://auth.gitdot.io";
+use crate::util::url::{API_SERVER_URL, AUTH_SERVER_URL, WEB_URL};
 
 pub enum Credentials {
     Token(String),
@@ -18,7 +16,7 @@ pub struct GitdotClient {
     client_id: String,
     credentials: Option<Credentials>,
     web_url: String,
-    server_url: String,
+    api_server_url: String,
     auth_server_url: String,
 }
 
@@ -29,7 +27,7 @@ impl GitdotClient {
             client_id: String::from(client_id),
             credentials: None,
             web_url: WEB_URL.to_string(),
-            server_url: SERVER_URL.to_string(),
+            api_server_url: API_SERVER_URL.to_string(),
             auth_server_url: AUTH_SERVER_URL.to_string(),
         }
     }
@@ -40,7 +38,7 @@ impl GitdotClient {
     }
 
     pub fn with_server_url(mut self, server_url: &str) -> Self {
-        self.server_url = server_url.to_string();
+        self.api_server_url = server_url.to_string();
         self
     }
 
@@ -86,7 +84,7 @@ impl GitdotClient {
 
     #[allow(dead_code)]
     pub fn get_server_url(&self) -> &str {
-        &self.server_url
+        &self.api_server_url
     }
 
     pub(crate) async fn get<T, R>(&self, path: String, request: T) -> Result<R, Error>
@@ -94,7 +92,7 @@ impl GitdotClient {
         T: ApiRequest,
         R: ApiResource,
     {
-        let url = format!("{}/{}", self.server_url, path);
+        let url = format!("{}/{}", self.api_server_url, path);
         let response = self
             .client
             .get(&url)
@@ -114,7 +112,7 @@ impl GitdotClient {
     where
         T: ApiRequest,
     {
-        let url = format!("{}/{}", self.server_url, path);
+        let url = format!("{}/{}", self.api_server_url, path);
         self.client
             .head(&url)
             .auth(&self.credentials)
@@ -151,7 +149,7 @@ impl GitdotClient {
         T: ApiRequest,
         R: ApiResource,
     {
-        let url = format!("{}/{}", self.server_url, path);
+        let url = format!("{}/{}", self.api_server_url, path);
         let response = self
             .client
             .post(&url)
@@ -171,7 +169,7 @@ impl GitdotClient {
         T: ApiRequest,
         R: ApiResource,
     {
-        let url = format!("{}/{}", self.server_url, path);
+        let url = format!("{}/{}", self.api_server_url, path);
         let response = self
             .client
             .patch(&url)
@@ -192,7 +190,7 @@ impl GitdotClient {
         T: ApiRequest,
         R: ApiResource,
     {
-        let url = format!("{}/{}", self.server_url, path);
+        let url = format!("{}/{}", self.api_server_url, path);
         let response = self
             .client
             .delete(&url)
