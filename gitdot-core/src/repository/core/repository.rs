@@ -4,7 +4,9 @@ use uuid::Uuid;
 
 use crate::{
     error::DatabaseError,
-    model::{Repository, RepositoryOwnerType, RepositorySettings, RepositoryVisibility},
+    model::{
+        Repository, RepositoryOwnerType, RepositorySettings, RepositoryStar, RepositoryVisibility,
+    },
 };
 
 #[async_trait]
@@ -40,6 +42,10 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         repo: &str,
         settings: RepositorySettings,
     ) -> Result<Option<RepositorySettings>, DatabaseError>;
+
+    async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, DatabaseError>;
+
+    async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -189,5 +195,56 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
                     commit_filters: None,
                 }),
         ))
+    }
+
+    async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+
+        let star = sqlx::query_as::<_, RepositoryStar>(
+            r#"
+            INSERT INTO core.stars (user_id, repository_id)
+            VALUES ($1, $2)
+            ON CONFLICT (user_id, repository_id) DO NOTHING
+            RETURNING id, user_id, repository_id, created_at
+            "#,
+        )
+        .bind(user_id)
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        if star.is_some() {
+            sqlx::query("UPDATE core.repositories SET stars = stars + 1 WHERE id = $1")
+                .bind(id)
+                .execute(&mut *tx)
+                .await?;
+        }
+
+        tx.commit().await?;
+        Ok(star)
+    }
+
+    async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+
+        let deleted =
+            sqlx::query("DELETE FROM core.stars WHERE user_id = $1 AND repository_id = $2")
+                .bind(user_id)
+                .bind(id)
+                .execute(&mut *tx)
+                .await?
+                .rows_affected();
+
+        if deleted > 0 {
+            sqlx::query(
+                "UPDATE core.repositories SET stars = GREATEST(stars - 1, 0) WHERE id = $1",
+            )
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+        Ok(deleted > 0)
     }
 }

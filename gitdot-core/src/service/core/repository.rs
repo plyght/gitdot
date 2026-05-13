@@ -10,7 +10,8 @@ use crate::{
         GetRepositoryBlobRequest, GetRepositoryBlobsRequest, GetRepositoryPathsRequest,
         GetRepositoryRequest, GetRepositorySettingsRequest, RepositoryBlobDiffsResponse,
         RepositoryBlobResponse, RepositoryBlobsResponse, RepositoryPathsResponse,
-        RepositoryResponse, RepositorySettingsResponse, UpdateRepositorySettingsRequest,
+        RepositoryResponse, RepositorySettingsResponse, StarRepositoryRequest,
+        UnstarRepositoryRequest, UpdateRepositorySettingsRequest,
     },
     error::{ConflictError, OptionNotFoundExt, RepositoryError},
     model::{RepositoryOwnerType, RepositorySettings},
@@ -76,6 +77,13 @@ pub trait RepositoryService: Send + Sync + 'static {
         &self,
         request: UpdateRepositorySettingsRequest,
     ) -> Result<RepositorySettingsResponse, RepositoryError>;
+
+    async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError>;
+
+    async fn unstar_repository(
+        &self,
+        request: UnstarRepositoryRequest,
+    ) -> Result<(), RepositoryError>;
 }
 
 #[derive(Debug, Clone)]
@@ -389,5 +397,51 @@ where
         Ok(RepositorySettingsResponse {
             commit_filters: settings.commit_filters,
         })
+    }
+
+    async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError> {
+        let owner = request.owner.as_ref();
+        let repo = request.repo.as_ref();
+
+        let repository = self
+            .repo_repo
+            .get(owner, repo)
+            .await?
+            .or_not_found("repository", format!("{}/{}", owner, repo))?;
+
+        let star = self.repo_repo.star(repository.id, request.user_id).await?;
+        if star.is_none() {
+            return Err(RepositoryError::Conflict(ConflictError::new(
+                "star",
+                format!("{}/{}", owner, repo),
+            )));
+        }
+        Ok(())
+    }
+
+    async fn unstar_repository(
+        &self,
+        request: UnstarRepositoryRequest,
+    ) -> Result<(), RepositoryError> {
+        let owner = request.owner.as_ref();
+        let repo = request.repo.as_ref();
+
+        let repository = self
+            .repo_repo
+            .get(owner, repo)
+            .await?
+            .or_not_found("repository", format!("{}/{}", owner, repo))?;
+
+        let removed = self
+            .repo_repo
+            .unstar(repository.id, request.user_id)
+            .await?;
+        if !removed {
+            return Err(RepositoryError::Conflict(ConflictError::new(
+                "star",
+                format!("{}/{}", owner, repo),
+            )));
+        }
+        Ok(())
     }
 }

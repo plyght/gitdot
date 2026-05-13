@@ -1,0 +1,24 @@
+use uuid::Uuid;
+
+use crate::{
+    dto::{OwnerName, RepositoryName},
+    error::{InputError, RepositoryError},
+};
+
+#[derive(Debug, Clone)]
+pub struct UnstarRepositoryRequest {
+    pub user_id: Uuid,
+    pub owner: OwnerName,
+    pub repo: RepositoryName,
+}
+
+impl UnstarRepositoryRequest {
+    pub fn new(user_id: Uuid, owner: &str, repo: &str) -> Result<Self, RepositoryError> {
+        Ok(Self {
+            user_id,
+            owner: OwnerName::try_new(owner).map_err(|e| InputError::new("owner name", e))?,
+            repo: RepositoryName::try_new(repo)
+                .map_err(|e| InputError::new("repository name", e))?,
+        })
+    }
+}

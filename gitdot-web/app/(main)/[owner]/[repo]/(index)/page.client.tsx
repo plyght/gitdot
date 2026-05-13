@@ -9,7 +9,6 @@ import {
 import { Loading } from "@/ui/loading";
 import { MarkdownBody } from "../ui/markdown/markdown-body";
 import type { Resources } from "./page";
-import { RepoPanel } from "./ui/repo-panel";
 
 type ResourceRequests = ResourceRequestsType<Resources>;
 type ResourcePromises = ResourcePromisesType<Resources>;
@@ -27,14 +26,9 @@ export function PageClient({
 }) {
   const resolvedPromises = useResolvePromises(owner, repo, requests, promises);
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      <div className="flex-1 min-w-0 overflow-y-auto scrollbar-none">
-        <Suspense fallback={<Loading />}>
-          <Readme promise={resolvedPromises.readme} />
-        </Suspense>
-      </div>
-      <Suspense fallback={null}>
-        <RepoPanel repositoryPromise={resolvedPromises.repository} />
+    <div className="flex-1 min-w-0 overflow-y-auto scrollbar-none">
+      <Suspense fallback={<Loading />}>
+        <Readme promise={resolvedPromises.readme} />
       </Suspense>
     </div>
   );

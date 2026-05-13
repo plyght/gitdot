@@ -4,12 +4,14 @@ import type {
   RepositoryPathsResource,
   RepositorySettingsResource,
 } from "gitdot-api";
+import { getRepository } from "@/dal/repository";
 import type {
   ResourcePromisesType,
   ResourceRequestsType,
 } from "@/provider/types";
 import { RepoResources } from "./resources/context";
 import { RepoDialogs } from "./ui/dialog/repo-dialogs";
+import { RepoNotFound } from "./ui/repo-not-found";
 import { RepoShortcuts } from "./ui/shortcuts";
 
 type Resources = {
@@ -29,6 +31,8 @@ export default async function Layout({
   params: Promise<{ owner: string; repo: string }>;
 }>) {
   const { owner, repo } = await params;
+  const repository = await getRepository(owner, repo);
+  if (!repository) return <RepoNotFound owner={owner} repo={repo} />;
 
   return (
     <RepoResources owner={owner} repo={repo}>

@@ -3,15 +3,11 @@ import { RepoActions } from "./repo-actions";
 import { RepoActivity } from "./repo-activity";
 import { RepoInfo } from "./repo-info";
 
-export function RepoPanel({
-  repositoryPromise,
-}: {
-  repositoryPromise: Promise<RepositoryResource | null>;
-}) {
+export function RepoPanel({ repository }: { repository: RepositoryResource }) {
   return (
     <div className="w-64 shrink-0 h-full border-l flex flex-col">
-      <RepoInfo repositoryPromise={repositoryPromise} />
-      <RepoActions />
+      <RepoInfo repository={repository} />
+      <RepoActions repository={repository} />
       <RepoActivity />
     </div>
   );

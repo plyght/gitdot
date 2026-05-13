@@ -1,22 +1,12 @@
-"use client";
-
 import type { RepositoryResource } from "gitdot-api";
-import { use } from "react";
 import { formatDate } from "@/util/date";
 
-export function RepoInfo({
-  repositoryPromise,
-}: {
-  repositoryPromise: Promise<RepositoryResource | null>;
-}) {
-  const repository = use(repositoryPromise);
+export function RepoInfo({ repository }: { repository: RepositoryResource }) {
   const rows: { label: string; value: string }[] = [
-    { label: "visibility", value: repository?.visibility ?? "public" },
+    { label: "visibility", value: repository.visibility },
     {
       label: "created",
-      value: repository?.created_at
-        ? formatDate(new Date(repository.created_at))
-        : "—",
+      value: formatDate(new Date(repository.created_at)),
     },
   ];
 
@@ -26,7 +16,7 @@ export function RepoInfo({
         About
       </span>
       <p className="text-xs text-foreground mb-2">
-        {repository?.description ??
+        {repository.description ??
           "This repository does not yet have a description. Descriptions help others quickly understand what the project does and why it exists. Consider adding one in the repository settings to give visitors a concise overview before they dive into the code."}
       </p>
       <div className="flex flex-col gap-1 font-mono text-xs">

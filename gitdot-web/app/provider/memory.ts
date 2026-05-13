@@ -7,7 +7,6 @@ import type {
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  RepositoryResource,
   RepositorySettingsResource,
   ReviewResource,
 } from "gitdot-api";
@@ -43,10 +42,6 @@ export class InMemoryProvider extends ClientProvider {
     review: new Map(),
     build: new Map(),
   };
-
-  async getRepository(): Promise<RepositoryResource | null> {
-    return null;
-  }
 
   async getPaths(): Promise<RepositoryPathsResource | null> {
     return this.store.paths ?? null;

@@ -7,7 +7,6 @@ import type {
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  RepositoryResource,
   RepositorySettingsResource,
   ReviewResource,
 } from "gitdot-api";
@@ -19,7 +18,6 @@ import {
 } from "@/dal/build";
 import { listQuestions } from "@/dal/question";
 import {
-  getRepository as dalGetRepository,
   getRepositoryBlob,
   getRepositoryBlobs,
   getRepositoryCommit,
@@ -41,10 +39,6 @@ export function fetchResources<T extends ResourceDefinition>(
 }
 
 export class ApiProvider extends ServerProvider {
-  async getRepository(): Promise<RepositoryResource | null> {
-    return await dalGetRepository(this.owner, this.repo);
-  }
-
   async getBlob(
     path: string,
     ref?: string,

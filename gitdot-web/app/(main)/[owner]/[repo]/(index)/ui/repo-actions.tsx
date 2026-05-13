@@ -1,16 +1,27 @@
 "use client";
 
+import type { RepositoryResource } from "gitdot-api";
 import { Bell, Download, Star } from "lucide-react";
 import { useState } from "react";
+import { toast } from "@/(main)/context/toaster";
 import { cn } from "@/util";
 
-export function RepoActions() {
+export function RepoActions({
+  repository,
+}: {
+  repository: RepositoryResource;
+}) {
   const [starred, setStarred] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
-  const [cloned, setCloned] = useState(false);
 
   const starCount = 142 + (starred ? 1 : 0);
   const subscribeCount = 12 + (subscribed ? 1 : 0);
+
+  const handleClone = () => {
+    const url = `${window.location.origin}/${repository.owner}/${repository.name}`;
+    navigator.clipboard.writeText(url);
+    toast('Copied "git clone url"');
+  };
 
   return (
     <div className="flex flex-col py-2 border-b">
@@ -41,8 +52,7 @@ export function RepoActions() {
       <RepoActionButton
         icon={<Download className="size-3" />}
         label="Clone"
-        active={cloned}
-        onClick={() => setCloned((v) => !v)}
+        onClick={handleClone}
       />
     </div>
   );
@@ -60,7 +70,7 @@ function RepoActionButton({
   icon: React.ReactNode;
   label: string;
   count?: number;
-  active: boolean;
+  active?: boolean;
   primary?: boolean;
   onClick: () => void;
   className?: string;

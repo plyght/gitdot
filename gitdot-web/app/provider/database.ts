@@ -7,7 +7,6 @@ import type {
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  RepositoryResource,
   RepositorySettingsResource,
   ReviewResource,
 } from "gitdot-api";
@@ -23,10 +22,6 @@ export class DatabaseProvider extends ClientProvider {
   private metadata() {
     this.metadataPromise ??= this.db.getMetadata(this.owner, this.repo);
     return this.metadataPromise;
-  }
-
-  async getRepository(): Promise<RepositoryResource | null> {
-    return null;
   }
 
   async getPaths() {

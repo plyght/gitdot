@@ -10,4 +10,6 @@ export * from "./get-repository-commits";
 export * from "./get-repository-paths";
 export * from "./get-repository-resources";
 export * from "./get-repository-settings";
+export * from "./star-repository";
+export * from "./unstar-repository";
 export * from "./update-repository-settings";

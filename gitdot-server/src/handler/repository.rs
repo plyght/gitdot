@@ -10,6 +10,8 @@ mod get_repository_commits;
 mod get_repository_paths;
 mod get_repository_resources;
 mod get_repository_settings;
+mod star_repository;
+mod unstar_repository;
 mod update_repository_settings;
 
 use axum::{
@@ -31,6 +33,8 @@ use get_repository_commits::get_repository_commits;
 use get_repository_paths::get_repository_paths;
 use get_repository_resources::get_repository_resources;
 use get_repository_settings::get_repository_settings;
+use star_repository::star_repository;
+use unstar_repository::unstar_repository;
 use update_repository_settings::update_repository_settings;
 
 pub fn create_repository_router() -> Router<AppState> {
@@ -74,4 +78,6 @@ pub fn create_repository_router() -> Router<AppState> {
             "/repository/{owner}/{repo}/resources",
             post(get_repository_resources),
         )
+        .route("/repository/{owner}/{repo}/star", post(star_repository))
+        .route("/repository/{owner}/{repo}/unstar", post(unstar_repository))
 }

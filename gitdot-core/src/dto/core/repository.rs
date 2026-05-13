@@ -8,6 +8,8 @@ mod get_repository_commit;
 mod get_repository_file;
 mod get_repository_paths;
 mod get_repository_settings;
+mod star_repository;
+mod unstar_repository;
 mod update_repository_settings;
 
 use chrono::{DateTime, Utc};
@@ -29,6 +31,8 @@ pub use get_repository_paths::{
     GetRepositoryPathsRequest, PathType, RepositoryPath, RepositoryPathsResponse,
 };
 pub use get_repository_settings::{GetRepositorySettingsRequest, RepositorySettingsResponse};
+pub use star_repository::StarRepositoryRequest;
+pub use unstar_repository::UnstarRepositoryRequest;
 pub use update_repository_settings::UpdateRepositorySettingsRequest;
 
 #[derive(Debug, Clone)]

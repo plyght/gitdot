@@ -104,3 +104,11 @@ impl Into<String> for RepositoryVisibility {
 pub struct RepositorySettings {
     pub commit_filters: Option<Vec<CommitFilter>>,
 }
+
+#[derive(Debug, Clone, FromRow)]
+pub struct RepositoryStar {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub repository_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
