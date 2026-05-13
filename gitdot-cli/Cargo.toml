@@ -1,12 +1,13 @@
 [package]
 name = "gitdot-cli"
 version = "0.1.0"
-edition = "2024"
 description = "Command-line interface for gitdot"
-license = "Apache-2.0"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
 readme = "README.md"
-repository = "https://gitdot.io/bkdevs/gitdot"
-homepage = "https://gitdot.io"
 documentation = "https://docs.rs/gitdot-cli"
 keywords = ["gitdot", "cli", "git"]
 categories = ["command-line-utilities", "development-tools"]

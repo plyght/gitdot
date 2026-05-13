@@ -16,6 +16,13 @@ members = [
   "s2-server",
 ]
 
+[workspace.package]
+license = "Apache-2.0"
+authors = ["Mikkel Kim <mikkel@gitdot.io>", "Paul Bae <paul@gitdot.io>"]
+repository = "https://gitdot.io/bkdevs/gitdot"
+homepage = "https://gitdot.io"
+edition = "2024"
+
 [workspace.dependencies]
 anyhow = "1.0.100"
 # shared deps (merged versions)
