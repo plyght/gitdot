@@ -12,7 +12,10 @@ use gitdot_core::{
         DeviceRepositoryImpl, SessionRepositoryImpl, SlackRepositoryImpl, TokenRepositoryImpl,
         UserRepositoryImpl,
     },
-    service::{AuthenticationService, AuthenticationServiceImpl},
+    service::{
+        DeviceService, DeviceServiceImpl, SessionService, SessionServiceImpl, SlackService,
+        SlackServiceImpl,
+    },
 };
 
 use super::Settings;
@@ -20,7 +23,9 @@ use super::Settings;
 #[derive(FromRef, Clone)]
 pub struct AppState {
     pub settings: Arc<Settings>,
-    pub authentication_service: Arc<dyn AuthenticationService>,
+    pub session_service: Arc<dyn SessionService>,
+    pub device_service: Arc<dyn DeviceService>,
+    pub slack_service: Arc<dyn SlackService>,
 }
 
 impl AppState {
@@ -53,23 +58,28 @@ impl AppState {
         )
         .await;
 
-        let authentication_service = Arc::new(AuthenticationServiceImpl::new(
-            device_repo,
+        let session_service = Arc::new(SessionServiceImpl::new(
             session_repo,
-            slack_repo,
-            token_repo,
-            user_repo,
+            user_repo.clone(),
             email_client,
             github_client,
-            slack_bot_client,
-            token_client,
+            token_client.clone(),
             image_client,
             r2_client,
         ));
+        let device_service = Arc::new(DeviceServiceImpl::new(
+            device_repo,
+            token_repo,
+            user_repo,
+            token_client,
+        ));
+        let slack_service = Arc::new(SlackServiceImpl::new(slack_repo, slack_bot_client));
 
         Ok(Self {
             settings,
-            authentication_service,
+            session_service,
+            device_service,
+            slack_service,
         })
     }
 }

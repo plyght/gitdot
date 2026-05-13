@@ -7,25 +7,23 @@ use sqlx::PgPool;
 use gitdot_core::{
     client::{
         DifftClient, Git2Client, GitHttpClientImpl, ImageClientImpl, KafkaClientImpl,
-        OctocrabClient, R2ClientImpl, ResendClient, S2ClientImpl, SlackBotClientImpl,
-        TokenClientImpl,
+        OctocrabClient, R2ClientImpl, S2ClientImpl, SlackBotClientImpl, TokenClientImpl,
     },
     repository::{
-        BuildRepositoryImpl, CommitRepositoryImpl, DeviceRepositoryImpl, GitHubRepositoryImpl,
-        MigrationRepositoryImpl, OrganizationRepositoryImpl, QuestionRepositoryImpl,
-        RepositoryRepositoryImpl, ReviewRepositoryImpl, RunnerRepositoryImpl,
-        SessionRepositoryImpl, SlackRepositoryImpl, SlackWebhookRepositoryImpl, TaskRepositoryImpl,
+        BuildRepositoryImpl, CommitRepositoryImpl, GitHubRepositoryImpl, MigrationRepositoryImpl,
+        OrganizationRepositoryImpl, QuestionRepositoryImpl, RepositoryRepositoryImpl,
+        ReviewRepositoryImpl, RunnerRepositoryImpl, SlackWebhookRepositoryImpl, TaskRepositoryImpl,
         TokenRepositoryImpl, UserRepositoryImpl, WebhookRepositoryImpl,
     },
     service::{
-        AuthenticationService, AuthenticationServiceImpl, AuthorizationService,
-        AuthorizationServiceImpl, BuildService, BuildServiceImpl, CommitService, CommitServiceImpl,
-        EventService, EventServiceImpl, GitHttpService, GitHttpServiceImpl, GithubWebhookService,
-        GithubWebhookServiceImpl, MigrationService, MigrationServiceImpl, OrganizationService,
-        OrganizationServiceImpl, QuestionService, QuestionServiceImpl, RepositoryService,
-        RepositoryServiceImpl, ReviewService, ReviewServiceImpl, RunnerService, RunnerServiceImpl,
-        SlackWebhookService, SlackWebhookServiceImpl, TaskService, TaskServiceImpl, UserService,
-        UserServiceImpl, WebhookService, WebhookServiceImpl,
+        AuthorizationService, AuthorizationServiceImpl, BuildService, BuildServiceImpl,
+        CommitService, CommitServiceImpl, EventService, EventServiceImpl, GitHttpService,
+        GitHttpServiceImpl, GithubWebhookService, GithubWebhookServiceImpl, MigrationService,
+        MigrationServiceImpl, OrganizationService, OrganizationServiceImpl, QuestionService,
+        QuestionServiceImpl, RepositoryService, RepositoryServiceImpl, ReviewService,
+        ReviewServiceImpl, RunnerService, RunnerServiceImpl, SlackWebhookService,
+        SlackWebhookServiceImpl, TaskService, TaskServiceImpl, TokenService, TokenServiceImpl,
+        UserService, UserServiceImpl, WebhookService, WebhookServiceImpl,
     },
 };
 
@@ -36,7 +34,7 @@ pub struct AppState {
     pub settings: Arc<Settings>,
 
     // auth + authz
-    pub authentication_service: Arc<dyn AuthenticationService>,
+    pub token_service: Arc<dyn TokenService>,
     pub authorization_service: Arc<dyn AuthorizationService>,
 
     // core services
@@ -67,7 +65,6 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new(settings: Arc<Settings>, pool: PgPool) -> anyhow::Result<Self> {
-        let device_repo = DeviceRepositoryImpl::new(pool.clone());
         let token_repo = TokenRepositoryImpl::new(pool.clone());
         let user_repo = UserRepositoryImpl::new(pool.clone());
         let org_repo = OrganizationRepositoryImpl::new(pool.clone());
@@ -81,8 +78,6 @@ impl AppState {
         let build_repo = BuildRepositoryImpl::new(pool.clone());
         let runner_repo = RunnerRepositoryImpl::new(pool.clone());
         let task_repo = TaskRepositoryImpl::new(pool.clone());
-        let session_repo = SessionRepositoryImpl::new(pool.clone());
-        let slack_repo = SlackRepositoryImpl::new(pool.clone());
         let slack_webhook_repo = SlackWebhookRepositoryImpl::new(pool.clone());
 
         let git_client = Git2Client::new(settings.git_project_root.clone());
@@ -104,7 +99,6 @@ impl AppState {
         );
         let kafka_client =
             KafkaClientImpl::new(&settings.kafka_bootstrap_servers, settings.kafka_auth).await?;
-        let email_client = ResendClient::new(&settings.resend_api_key);
         let image_client = ImageClientImpl::new();
         let r2_client = R2ClientImpl::new(
             settings.cloudflare_account_id.clone(),
@@ -121,18 +115,11 @@ impl AppState {
 
         Ok(Self {
             settings,
-            authentication_service: Arc::new(AuthenticationServiceImpl::new(
-                device_repo.clone(),
-                session_repo.clone(),
-                slack_repo.clone(),
+            token_service: Arc::new(TokenServiceImpl::new(
                 token_repo.clone(),
-                user_repo.clone(),
-                email_client.clone(),
                 github_client.clone(),
                 slack_bot_client.clone(),
                 token_client.clone(),
-                image_client.clone(),
-                r2_client.clone(),
             )),
             authorization_service: Arc::new(AuthorizationServiceImpl::new(
                 org_repo.clone(),

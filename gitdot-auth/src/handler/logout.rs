@@ -13,7 +13,7 @@ pub async fn logout(
         refresh_token: body.refresh_token,
     };
     state
-        .authentication_service
+        .session_service
         .logout(request)
         .await
         .map_err(AppError::from)

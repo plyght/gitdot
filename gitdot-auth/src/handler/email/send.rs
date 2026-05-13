@@ -11,7 +11,7 @@ pub async fn send_auth_email(
 ) -> Result<AppResponse<()>, AppError> {
     let request = SendAuthEmailRequest::new(&body.email)?;
     state
-        .authentication_service
+        .session_service
         .send_auth_email(request)
         .await
         .map_err(AppError::from)

@@ -38,7 +38,7 @@ where
             .map_err(|_| AuthenticationError::Unauthorized)?;
 
         app_state
-            .authentication_service
+            .token_service
             .verify_slack_bot_signature(VerifySlackBotSignatureRequest::new(
                 timestamp, body_bytes, signature,
             ))?;

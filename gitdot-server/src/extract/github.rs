@@ -60,9 +60,7 @@ where
         let signature = header_value(&parts, GITHUB_SIGNATURE_HEADER)?;
         let body_bytes = read_body(body).await?;
         let request = VerifyGithubSignatureRequest::new(body_bytes.clone(), signature);
-        app_state
-            .authentication_service
-            .verify_github_signature(request)?;
+        app_state.token_service.verify_github_signature(request)?;
 
         let event = GithubEvent::from_str(&event_str)
             .map_err(|reason| WebhookError::Input(InputError::new(GITHUB_EVENT_HEADER, reason)))?;

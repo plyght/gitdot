@@ -16,7 +16,7 @@ pub async fn link_slack_account(
 ) -> Result<AppResponse<SlackAccountResource>, AppError> {
     let request = LinkSlackAccountRequest::new(principal.id, body.state);
     state
-        .authentication_service
+        .slack_service
         .link_slack_account(request)
         .await
         .map_err(AppError::from)

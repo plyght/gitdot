@@ -17,7 +17,7 @@ pub async fn refresh_session(
 ) -> Result<AppResponse<AuthTokensResource>, AppError> {
     let request = RefreshSessionRequest::new(body.refresh_token, user_agent, ip_address.as_deref());
     state
-        .authentication_service
+        .session_service
         .refresh_session(request)
         .await
         .map_err(AppError::from)

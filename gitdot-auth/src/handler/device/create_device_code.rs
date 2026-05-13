@@ -17,7 +17,7 @@ pub async fn create_device_code(
         verification_url: state.settings.gitdot_oauth_device_verification_url.clone(),
     };
     state
-        .authentication_service
+        .device_service
         .request_device_code(request)
         .await
         .map_err(AppError::from)

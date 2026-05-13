@@ -46,7 +46,7 @@ pub async fn issue_task_token(
         .await?;
 
     let jwt = state
-        .authentication_service
+        .token_service
         .issue_task_token(IssueTaskJwtRequest {
             task_id,
             duration: std::time::Duration::from_secs(60),

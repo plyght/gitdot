@@ -5,7 +5,7 @@ mod core;
 mod migration;
 mod webhook;
 
-pub use authentication::{AuthenticationService, AuthenticationServiceImpl};
+pub use authentication::*;
 pub use authorization::{AuthorizationService, AuthorizationServiceImpl};
 pub use ci::*;
 pub use core::*;

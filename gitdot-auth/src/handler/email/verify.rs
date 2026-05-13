@@ -17,7 +17,7 @@ pub async fn verify_auth_code(
 ) -> Result<AppResponse<AuthTokensResource>, AppError> {
     let request = VerifyAuthCodeRequest::new(body.code, user_agent, ip_address.as_deref());
     state
-        .authentication_service
+        .session_service
         .verify_auth_code(request)
         .await
         .map_err(AppError::from)
