@@ -1,0 +1,57 @@
+use std::time::{Duration, Instant};
+
+use anyhow::bail;
+use clap::Args;
+
+use crate::{client::GitdotClient, config::UserConfig, store::GitCredentialStore};
+
+#[derive(Args, Debug)]
+pub struct LoginArgs;
+
+impl LoginArgs {
+    pub async fn execute(&self, mut config: UserConfig) -> anyhow::Result<()> {
+        let api_client = GitdotClient::from_user_config(&config);
+
+        let device_code_response = api_client.create_device_code().await?;
+
+        println!("Open the following URL in your browser:");
+        println!("{}", device_code_response.verification_url);
+        println!("Enter the code: {}", device_code_response.user_code);
+
+        let interval = Duration::from_secs(device_code_response.interval);
+        let expires_in = Duration::from_secs(device_code_response.expires_in);
+        let started_at = Instant::now();
+
+        loop {
+            tokio::time::sleep(interval).await;
+
+            if started_at.elapsed() >= expires_in {
+                bail!("Device code expired. Please try again.");
+            }
+
+            match api_client
+                .poll_token(&device_code_response.device_code)
+                .await
+            {
+                Ok(response) => {
+                    config.user_name = response.user_name.clone();
+                    config.user_email = response.user_email;
+                    config.save().await?;
+
+                    GitCredentialStore::store(
+                        api_client.get_web_url(),
+                        &response.user_name,
+                        &response.access_token,
+                    )?;
+
+                    println!("Successfully logged in!");
+
+                    return Ok(());
+                }
+                Err(_) => {
+                    continue;
+                }
+            }
+        }
+    }
+}

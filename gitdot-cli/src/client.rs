@@ -59,7 +59,6 @@ impl GitdotClient {
         self
     }
 
-    #[cfg(feature = "runner")]
     pub fn from_runner_config(config: &crate::config::RunnerConfig) -> Self {
         let mut client = Self::new("gitdot-runner")
             .with_server_url(&config.gitdot_server_url)
@@ -70,7 +69,6 @@ impl GitdotClient {
         client
     }
 
-    #[cfg(feature = "main")]
     pub fn from_user_config(config: &crate::config::UserConfig) -> Self {
         Self::new("gitdot-cli")
             .with_server_url(&config.gitdot_server_url)

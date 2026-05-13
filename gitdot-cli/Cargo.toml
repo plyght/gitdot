@@ -32,8 +32,3 @@ tombi-schema-store = { git = "https://github.com/tombi-toml/tombi", rev = "1517a
 toml = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true }
-
-[features]
-default = ["main", "runner"]
-main = []
-runner = []

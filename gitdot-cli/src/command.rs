@@ -1,43 +1,22 @@
-#[cfg(feature = "main")]
-mod auth;
-#[cfg(feature = "main")]
-mod ci;
-#[cfg(feature = "main")]
-mod review;
-#[cfg(feature = "runner")]
-mod runner;
-#[cfg(feature = "main")]
-mod save;
+mod login;
+mod status;
 
 use clap::Parser;
 
-#[cfg(feature = "main")]
-use {auth::AuthArgs, ci::CiArgs, review::ReviewArgs, save::SaveArgs};
-
-#[cfg(feature = "runner")]
-use runner::RunnerArgs;
+pub use login::LoginArgs;
+pub use status::StatusArgs;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub enum Args {
-    #[cfg(feature = "main")]
-    /// Stage all changes and commit
-    Save(SaveArgs),
+    /// Authenticate with gitdot OAuth and store credentials locally
+    Login(LoginArgs),
 
-    #[cfg(feature = "main")]
-    /// Manage authentication credentials
-    Auth(AuthArgs),
-
-    /// Create and manage code reviews
-    #[cfg(feature = "main")]
-    #[command(alias = "r")]
-    Review(ReviewArgs),
-
-    #[cfg(feature = "main")]
-    /// Lint, format, and test CI configuration
-    Ci(CiArgs),
-
-    #[cfg(feature = "runner")]
-    /// Install, configure, and manage the gitdot runner
-    Runner(RunnerArgs),
+    /// Display the current authentication state and logged-in user
+    Status(StatusArgs),
+    // TODO: re-enable as these features ship.
+    // Save(SaveArgs),
+    // Review(ReviewArgs),
+    // Ci(CiArgs),
+    // Runner(RunnerArgs),
 }
