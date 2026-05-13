@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::bail;
 use clap::Args;
+use owo_colors::OwoColorize;
 
 use crate::{
     client::{GitCredentialClient, GitdotClient},
@@ -17,8 +18,14 @@ impl LoginArgs {
         let device_code_response = api_client.create_device_code().await?;
 
         println!("Open the following URL in your browser:");
-        println!("{}", device_code_response.verification_url);
-        println!("Enter the code: {}", device_code_response.user_code);
+        println!(
+            "{}",
+            device_code_response.verification_url.cyan().underline()
+        );
+        println!(
+            "Enter the code: {}",
+            device_code_response.user_code.yellow().bold()
+        );
 
         let interval = Duration::from_secs(device_code_response.interval);
         let expires_in = Duration::from_secs(device_code_response.expires_in);
@@ -28,7 +35,7 @@ impl LoginArgs {
             tokio::time::sleep(interval).await;
 
             if started_at.elapsed() >= expires_in {
-                bail!("Device code expired. Please try again.");
+                bail!("{}", "Device code expired. Please try again.".red());
             }
 
             match api_client
@@ -46,7 +53,11 @@ impl LoginArgs {
                         &response.access_token,
                     )?;
 
-                    println!("Successfully logged in!");
+                    println!(
+                        "{} {}!",
+                        "Successfully logged in as".green().bold(),
+                        response.user_name.cyan().bold()
+                    );
 
                     return Ok(());
                 }

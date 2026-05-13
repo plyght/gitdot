@@ -1,4 +1,5 @@
 use clap::Args;
+use owo_colors::OwoColorize;
 
 use crate::config::UserConfig;
 
@@ -8,9 +9,13 @@ pub struct StatusArgs;
 impl StatusArgs {
     pub async fn execute(&self, config: UserConfig) -> anyhow::Result<()> {
         if config.user_name.is_empty() {
-            println!("Not logged in");
+            println!("{}", "Not logged in".yellow());
         } else {
-            println!("Logged in as {}", config.user_name);
+            println!(
+                "{} {}",
+                "Logged in as".green(),
+                config.user_name.cyan().bold()
+            );
         }
         Ok(())
     }
