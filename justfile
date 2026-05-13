@@ -8,6 +8,7 @@ alias t:= test-all
 
 DB_CONTAINER := "gitdot-db"
 KAFKA_CONTAINER := "gitdot-kafka"
+REDIS_CONTAINER := "gitdot-redis"
 
 
 # ── Install ───────────────────────────────────────────────────────────────────
@@ -41,6 +42,8 @@ install:
     just migrate
     echo "Starting local Kafka..."
     just kafka
+    echo "Starting local Redis..."
+    just redis
     echo "Install complete!"
 
 # ── Database ─────────────────────────────────────────────────────────────────
@@ -118,6 +121,40 @@ kafka:
 kafka-stop:
     docker stop {{KAFKA_CONTAINER}}
 
+# ── Redis ────────────────────────────────────────────────────────────────────
+
+# Start local Redis in Docker (idempotent)
+redis:
+    #!/usr/bin/env bash
+    set -e
+    if ! docker info &>/dev/null; then
+        echo "Error: Docker is not running."
+        exit 1
+    fi
+    if docker ps -q -f name={{REDIS_CONTAINER}} | grep -q .; then
+        echo "Redis already running."
+    elif docker ps -aq -f name={{REDIS_CONTAINER}} | grep -q .; then
+        echo "Starting existing container '{{REDIS_CONTAINER}}'..."
+        docker start {{REDIS_CONTAINER}}
+        sleep 1
+    else
+        echo "Creating Redis container '{{REDIS_CONTAINER}}'..."
+        docker run -d \
+            --name {{REDIS_CONTAINER}} \
+            -p 6379:6379 \
+            redis:7-alpine
+        echo "Waiting for Redis to be ready..."
+        sleep 1
+    fi
+
+# Stop local Redis container
+redis-stop:
+    docker stop {{REDIS_CONTAINER}}
+
+# Tail Redis logs
+redis-logs:
+    docker logs -f {{REDIS_CONTAINER}}
+
 # ── Dev (run services) ──────────────────────────────────────────────────────
 
 # Start frontend, backend, and s2-server in a tmux session
@@ -128,6 +165,9 @@ dev:
 
     echo "Starting local Postgres..."
     just db
+
+    echo "Starting local Redis..."
+    just redis
 
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
         echo "Killing existing tmux session '$SESSION_NAME'..."
