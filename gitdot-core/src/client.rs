@@ -6,6 +6,7 @@ mod github;
 mod image;
 mod kafka;
 mod r2;
+mod redis;
 mod s2;
 mod secret;
 mod slack_bot;
@@ -19,6 +20,7 @@ pub use github::{GitHubClient, OctocrabClient};
 pub use image::{ImageClient, ImageClientImpl};
 pub use kafka::{GcpKafkaContext, KafkaAuthMode, KafkaClient, KafkaClientImpl};
 pub use r2::{R2Client, R2ClientImpl};
+pub use redis::{RedisClient, RedisClientImpl};
 pub use s2::{S2Client, S2ClientImpl};
 pub use secret::{GoogleSecretClient, SecretClient};
 pub use slack_bot::{

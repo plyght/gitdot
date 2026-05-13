@@ -89,6 +89,11 @@ rdkafka = { version = "0.36", default-features = false, features = [
   "libz",
   "tokio"
 ] }
+redis = { version = "0.27", default-features = false, features = [
+  "tokio-comp",
+  "tokio-rustls-comp",
+  "connection-manager"
+] }
 reqwest = { version = "0.13.1", features = ["json", "query"] }
 resvg = { version = "0.44", default-features = false }
 rkyv = "0.8"
