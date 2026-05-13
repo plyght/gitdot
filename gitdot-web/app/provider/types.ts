@@ -5,6 +5,7 @@ import type {
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
+  RepositoryResource,
   RepositorySettingsResource,
   ReviewResource,
 } from "gitdot-api";
@@ -42,6 +43,7 @@ export abstract class RepoProvider {
     this.repo = repo;
   }
 
+  abstract getRepository(): Promise<RepositoryResource | null>;
   abstract getPaths(): Promise<RepositoryPathsResource | null>;
   abstract getBlob(
     path: string,

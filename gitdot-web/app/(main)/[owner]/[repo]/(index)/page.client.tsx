@@ -27,27 +27,28 @@ export function PageClient({
 }) {
   const resolvedPromises = useResolvePromises(owner, repo, requests, promises);
   return (
-    <Suspense fallback={<Loading />}>
-      <PageContent promises={resolvedPromises} />
-    </Suspense>
+    <div className="flex h-full w-full overflow-hidden">
+      <div className="flex-1 min-w-0 overflow-y-auto scrollbar-none">
+        <Suspense fallback={<Loading />}>
+          <Readme promise={resolvedPromises.readme} />
+        </Suspense>
+      </div>
+      <Suspense fallback={null}>
+        <RepoPanel repositoryPromise={resolvedPromises.repository} />
+      </Suspense>
+    </div>
   );
 }
 
-function PageContent({ promises }: { promises: ResourcePromises }) {
-  const readme = use(promises.readme);
-
+function Readme({ promise }: { promise: ResourcePromises["readme"] }) {
+  const readme = use(promise);
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      <div className="flex-1 min-w-0 overflow-y-auto scrollbar-none">
-        <div className="p-4 w-full">
-          {readme && readme.type === "file" ? (
-            <MarkdownBody content={readme.content} />
-          ) : (
-            <div className="p-2 text-sm">README.md not found</div>
-          )}
-        </div>
-      </div>
-      <RepoPanel />
+    <div className="p-4 w-full">
+      {readme && readme.type === "file" ? (
+        <MarkdownBody content={readme.content} />
+      ) : (
+        <div className="p-2 text-sm">README.md not found</div>
+      )}
     </div>
   );
 }

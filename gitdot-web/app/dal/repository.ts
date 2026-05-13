@@ -128,6 +128,16 @@ export async function getRepositoryCommitDiff(
   return await handleResponse(response, RepositoryCommitDiffResource);
 }
 
+export async function getRepository(
+  owner: string,
+  repo: string,
+): Promise<RepositoryResource | null> {
+  const response = await authFetch(
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}`,
+  );
+  return await handleResponse(response, RepositoryResource);
+}
+
 export async function getRepositorySettings(
   owner: string,
   repo: string,

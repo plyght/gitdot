@@ -1,17 +1,15 @@
 "use client";
 
-import { Info } from "lucide-react";
-import { useParams } from "next/navigation";
-import { useUserContext } from "@/(main)/context/user";
+import type { RepositoryResource } from "gitdot-api";
+import { use } from "react";
 import { formatDate } from "@/util/date";
 
-export function RepoInfo() {
-  const { owner, repo } = useParams<{ owner: string; repo: string }>();
-  const { repositories } = useUserContext();
-  const repository = repositories?.find(
-    (r) => r.owner === owner && r.name === repo,
-  );
-
+export function RepoInfo({
+  repositoryPromise,
+}: {
+  repositoryPromise: Promise<RepositoryResource | null>;
+}) {
+  const repository = use(repositoryPromise);
   const rows: { label: string; value: string }[] = [
     { label: "visibility", value: repository?.visibility ?? "public" },
     {

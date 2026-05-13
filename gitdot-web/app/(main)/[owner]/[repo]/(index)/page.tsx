@@ -1,9 +1,10 @@
-import type { RepositoryBlobResource } from "gitdot-api";
+import type { RepositoryBlobResource, RepositoryResource } from "gitdot-api";
 import { fetchResources } from "@/provider/server";
 import { PageClient } from "./page.client";
 
 export type Resources = {
   readme: RepositoryBlobResource | null;
+  repository: RepositoryResource | null;
 };
 
 export default async function Page({
@@ -14,6 +15,7 @@ export default async function Page({
   const { owner, repo } = await params;
   const { requests, promises } = fetchResources(owner, repo, {
     readme: (p) => p.getBlob("README.md"),
+    repository: (p) => p.getRepository(),
   });
 
   return (

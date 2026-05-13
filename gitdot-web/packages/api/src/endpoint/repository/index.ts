@@ -1,5 +1,6 @@
 export * from "./create-repository";
 export * from "./delete-repository";
+export * from "./get-repository";
 export * from "./get-repository-blob";
 export * from "./get-repository-blob-diffs";
 export * from "./get-repository-blobs";
