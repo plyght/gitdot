@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use octocrab::models::Repository;
 
 #[derive(Debug, Clone)]
@@ -8,6 +9,7 @@ pub struct GitHubRepositoryResponse {
     pub description: Option<String>,
     pub private: bool,
     pub default_branch: String,
+    pub pushed_at: Option<DateTime<Utc>>,
 }
 
 impl From<Repository> for GitHubRepositoryResponse {
@@ -19,6 +21,7 @@ impl From<Repository> for GitHubRepositoryResponse {
             description: r.description,
             private: r.private.unwrap_or(false),
             default_branch: r.default_branch.unwrap_or_else(|| "main".to_string()),
+            pushed_at: r.pushed_at,
         }
     }
 }

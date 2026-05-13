@@ -4,14 +4,13 @@ import Image from "next/image";
 import { useUserContext } from "@/(main)/context/user";
 import { githubAppInstallUrl } from "@/util";
 
-export function SettingsIntegrations() {
+export function SettingsInstallations() {
   const { installations } = useUserContext();
 
   return (
     <div className="p-3">
       <div className="flex items-center gap-2">
-        <Image src="/github-logo.svg" alt="GitHub" width={14} height={14} />
-        <p className="text-sm font-medium">GitHub</p>
+        <p className="text-sm font-medium">Installations</p>
       </div>
       <p className="text-sm text-muted-foreground">
         Connect a GitHub account or organization to import repositories — gitdot

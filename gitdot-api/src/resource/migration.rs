@@ -20,6 +20,7 @@ pub struct GitHubRepositoryResource {
     pub description: Option<String>,
     pub private: bool,
     pub default_branch: String,
+    pub pushed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

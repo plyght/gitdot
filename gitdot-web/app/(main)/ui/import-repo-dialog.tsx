@@ -47,22 +47,20 @@ export function ImportRepoDialog() {
   const { user, memberships, installations } = useUserContext();
 
   const [open, setOpen] = useState(false);
-  const [selectedInstallationId, setSelectedInstallationId] = useState<
-    number | null
-  >(null);
+  const [githubAccountId, setGithubAccountId] = useState<number | null>(null);
+  const [gitdotAccountName, setGitdotAccount] = useState("");
   const [repos, setRepos] = useState<GitHubRepositoryResource[] | null>(null);
-  const [destination, setDestination] = useState("");
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
   const [importType, setImportType] = useState<ImportType>("read-only");
   const [sortBy, setSortBy] = useState<RepoSort>("recent");
 
   const selectedMembership = memberships?.find(
-    (m) => m.org_name === destination,
+    (m) => m.org_name === gitdotAccountName,
   );
 
-  const selectedInstallation =
-    selectedInstallationId !== null
-      ? installations?.find((i) => i.installation_id === selectedInstallationId)
+  const githubAccount =
+    githubAccountId !== null
+      ? installations?.find((i) => i.installation_id === githubAccountId)
       : undefined;
 
   useEffect(() => {
@@ -73,25 +71,26 @@ export function ImportRepoDialog() {
   }, [open]);
 
   useEffect(() => {
-    const handle = (e: Event) => {
-      if (!user) return;
-      const detail = (e as CustomEvent<{ owner?: string }>).detail;
-      setDestination(detail?.owner ?? user.name);
-      setOpen(true);
-    };
+    const handle = () => setOpen(true);
     window.addEventListener("openImportRepo", handle);
     return () => window.removeEventListener("openImportRepo", handle);
-  }, [user]);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    if (gitdotAccountName) return;
+    setGitdotAccount(user.name);
+  }, [user, gitdotAccountName]);
 
   useEffect(() => {
     if (!installations || installations.length === 0) return;
-    if (selectedInstallationId !== null) return;
-    setSelectedInstallationId(installations[0].installation_id);
-  }, [installations, selectedInstallationId]);
+    if (githubAccountId !== null) return;
+    setGithubAccountId(installations[0].installation_id);
+  }, [installations, githubAccountId]);
 
   useEffect(() => {
-    if (selectedInstallationId === null) return;
-    const id = selectedInstallationId;
+    if (githubAccountId === null) return;
+    const id = githubAccountId;
     setRepos(null);
     let cancelled = false;
     listInstallationRepositoriesAction(id).then((result) => {
@@ -101,7 +100,7 @@ export function ImportRepoDialog() {
     return () => {
       cancelled = true;
     };
-  }, [selectedInstallationId]);
+  }, [githubAccountId]);
 
   const sortedRepos = useMemo(() => {
     if (!repos) return repos;
@@ -195,8 +194,8 @@ export function ImportRepoDialog() {
                     />
                     {installations === undefined
                       ? "loading..."
-                      : selectedInstallation
-                        ? `github.com/${selectedInstallation.github_login}`
+                      : githubAccount
+                        ? `github.com/${githubAccount.github_login}`
                         : "select"}
                     <ChevronDown className="size-3" />
                   </DropdownMenuTrigger>
@@ -206,9 +205,7 @@ export function ImportRepoDialog() {
                         key={installation.id}
                         className="text-xs"
                         onClick={() =>
-                          setSelectedInstallationId(
-                            installation.installation_id,
-                          )
+                          setGithubAccountId(installation.installation_id)
                         }
                       >
                         <Image
@@ -242,14 +239,16 @@ export function ImportRepoDialog() {
                   ) : (
                     <UserImage userId={user?.id} px={14} />
                   )}
-                  {destination ? `gitdot.io/${destination}` : "select"}
+                  {gitdotAccountName
+                    ? `gitdot.io/${gitdotAccountName}`
+                    : "select"}
                   <ChevronDown className="size-3" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-32">
                   {user && (
                     <DropdownMenuItem
                       className="text-xs"
-                      onClick={() => setDestination(user.name)}
+                      onClick={() => setGitdotAccount(user.name)}
                     >
                       <UserImage userId={user.id} px={14} />
                       gitdot.io/{user.name}
@@ -259,7 +258,7 @@ export function ImportRepoDialog() {
                     <DropdownMenuItem
                       key={m.organization_id}
                       className="text-xs"
-                      onClick={() => setDestination(m.org_name)}
+                      onClick={() => setGitdotAccount(m.org_name)}
                     >
                       <OrgImage orgId={m.organization_id} px={14} />
                       gitdot.io/{m.org_name}
@@ -313,9 +312,9 @@ export function ImportRepoDialog() {
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="truncate">{repo.full_name}</span>
-                      {checked && destination && (
+                      {checked && gitdotAccountName && (
                         <span className="text-muted-foreground truncate">
-                          → {destination}/{repo.name}
+                          → {gitdotAccountName}/{repo.name}
                         </span>
                       )}
                     </div>

@@ -19,6 +19,7 @@ export const GitHubRepositoryResource = z.object({
   description: z.string().nullable(),
   private: z.boolean(),
   default_branch: z.string(),
+  pushed_at: z.iso.datetime().nullable(),
 });
 export type GitHubRepositoryResource = z.infer<typeof GitHubRepositoryResource>;
 

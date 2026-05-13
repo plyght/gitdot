@@ -38,6 +38,7 @@ impl IntoApi for GitHubRepositoryResponse {
             description: self.description,
             private: self.private,
             default_branch: self.default_branch,
+            pushed_at: self.pushed_at,
         }
     }
 }

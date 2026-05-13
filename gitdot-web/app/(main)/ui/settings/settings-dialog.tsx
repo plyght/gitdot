@@ -6,7 +6,7 @@ import { useShortcuts } from "@/(main)/context/shortcuts";
 import { useUserContext } from "@/(main)/context/user";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import { SettingsAccount } from "./settings-account";
-import { SettingsIntegrations } from "./settings-integrations";
+import { SettingsInstallations } from "./settings-installations";
 import { SettingsProfile } from "./settings-profile";
 import { SettingsSidebar, type SettingsTab } from "./settings-sidebar";
 
@@ -52,7 +52,7 @@ function SettingsDialogInner({ user }: { user: UserResource }) {
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {tab === "profile" && <SettingsProfile user={user} />}
             {tab === "account" && <SettingsAccount setSettingsOpen={setOpen} />}
-            {tab === "integrations" && <SettingsIntegrations />}
+            {tab === "installations" && <SettingsInstallations />}
           </div>
         </div>
       </DialogContent>
