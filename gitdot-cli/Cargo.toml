@@ -2,7 +2,15 @@
 name = "gitdot-cli"
 version = "0.1.0"
 edition = "2024"
-description = ""
+description = "Command-line interface for gitdot"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://gitdot.io/bkdevs/gitdot"
+homepage = "https://gitdot.io"
+documentation = "https://docs.rs/gitdot-cli"
+keywords = ["gitdot", "cli", "git"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = [".env", ".env.example", "CLAUDE.md"]
 
 [[bin]]
 name = "dot"
@@ -27,11 +35,6 @@ s2-sdk = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
-tombi-config = { git = "https://github.com/tombi-toml/tombi", rev = "1517a938d105bfffd7515011b0844df5305121ea" }
-tombi-diagnostic = { git = "https://github.com/tombi-toml/tombi", rev = "1517a938d105bfffd7515011b0844df5305121ea" }
-tombi-formatter = { git = "https://github.com/tombi-toml/tombi", rev = "1517a938d105bfffd7515011b0844df5305121ea" }
-tombi-linter = { git = "https://github.com/tombi-toml/tombi", rev = "1517a938d105bfffd7515011b0844df5305121ea" }
-tombi-schema-store = { git = "https://github.com/tombi-toml/tombi", rev = "1517a938d105bfffd7515011b0844df5305121ea" }
 toml = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true }
