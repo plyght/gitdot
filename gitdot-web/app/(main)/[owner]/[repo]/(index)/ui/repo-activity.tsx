@@ -1,119 +1,88 @@
+"use client";
+
+import type {
+  GetRepositoryActivityResponse,
+  RepositoryActivityEventResource,
+} from "gitdot-api";
 import { Star } from "lucide-react";
+import { Suspense, use } from "react";
 import Link from "@/ui/link";
 import { timeAgo } from "@/util";
 
-type StarActivity = {
-  id: string;
-  userName: string;
-  date: Date;
-};
-
-const MIN = 60 * 1000;
-const HR = 60 * MIN;
-const DAY = 24 * HR;
-
-const PLACEHOLDER_ACTIVITY: StarActivity[] = [
-  {
-    id: "1",
-    userName: "alice-chen",
-    date: new Date(Date.now() - 12 * MIN),
-  },
-  {
-    id: "3",
-    userName: "marcus-aurelius",
-    date: new Date(Date.now() - 2 * HR),
-  },
-  {
-    id: "6",
-    userName: "yuki-tanaka",
-    date: new Date(Date.now() - 8 * HR),
-  },
-  {
-    id: "7",
-    userName: "priya-patel",
-    date: new Date(Date.now() - 14 * HR),
-  },
-  {
-    id: "10",
-    userName: "sofia-rossi",
-    date: new Date(Date.now() - DAY - 6 * HR),
-  },
-  {
-    id: "13",
-    userName: "amara-okafor",
-    date: new Date(Date.now() - 3 * DAY),
-  },
-  {
-    id: "15",
-    userName: "noah-fischer",
-    date: new Date(Date.now() - 4 * DAY),
-  },
-  {
-    id: "17",
-    userName: "hana-suzuki",
-    date: new Date(Date.now() - 6 * DAY),
-  },
-  {
-    id: "18",
-    userName: "leo-bauer",
-    date: new Date(Date.now() - 6 * DAY - 5 * HR),
-  },
-  {
-    id: "20",
-    userName: "isabela-cruz",
-    date: new Date(Date.now() - 9 * DAY),
-  },
-  {
-    id: "22",
-    userName: "theo-wagner",
-    date: new Date(Date.now() - 13 * DAY),
-  },
-  {
-    id: "24",
-    userName: "fatima-nasser",
-    date: new Date(Date.now() - 18 * DAY),
-  },
-];
-
-export function RepoActivity() {
+export function RepoActivity({
+  activityPromise,
+}: {
+  activityPromise: Promise<GetRepositoryActivityResponse | null>;
+}) {
   return (
     <div className="flex-1 min-h-0 flex flex-col p-2">
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mb-2">
         Activity
       </span>
-      <div className="flex flex-col gap-2 overflow-y-auto scrollbar-none">
-        {PLACEHOLDER_ACTIVITY.map((item) => (
-          <ActivityRow key={item.id} item={item} />
-        ))}
-        {PLACEHOLDER_ACTIVITY.length === 0 && (
-          <span className="font-mono text-xs text-muted-foreground">
-            no activity
+      <Suspense
+        fallback={
+          <span className="text-xs text-muted-foreground font-mono">
+            loading...
           </span>
-        )}
-      </div>
+        }
+      >
+        <ActivityList promise={activityPromise} />
+      </Suspense>
     </div>
   );
 }
 
-function ActivityRow({ item }: { item: StarActivity }) {
-  return (
-    <div className="flex items-center gap-1.5 min-w-0 text-xs">
-      <div className="flex items-center gap-1 truncate min-w-0 flex-1">
-        <Link
-          href={`/${item.userName}`}
-          className="font-medium hover:underline truncate"
-        >
-          {item.userName}
-        </Link>
-        <span className="text-muted-foreground">starred</span>
-        <Star
-          className="size-2.5 shrink-0 text-muted-foreground"
-          fill="currentColor"
-        />
-      </div>
-      <span className="shrink-0 font-mono text-muted-foreground">
-        {timeAgo(item.date)}
+function ActivityList({
+  promise,
+}: {
+  promise: Promise<GetRepositoryActivityResponse | null>;
+}) {
+  const events = use(promise) ?? [];
+
+  if (events.length === 0) {
+    return (
+      <span className="text-xs text-muted-foreground font-mono">
+        no activity yet
       </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 overflow-y-auto scrollbar-none">
+      {events.map((event, i) => (
+        <ActivityRow key={activityKey(event, i)} event={event} />
+      ))}
     </div>
   );
+}
+
+function activityKey(event: RepositoryActivityEventResource, i: number) {
+  if (event.type === "starred") return `starred:${event.user.id}:${event.at}`;
+  return `${i}`;
+}
+
+function ActivityRow({ event }: { event: RepositoryActivityEventResource }) {
+  if (event.type === "starred") {
+    return (
+      <div className="flex items-center gap-1.5 min-w-0 text-xs">
+        <div className="flex items-center gap-1 truncate min-w-0 flex-1">
+          <Link
+            href={`/${event.user.name}`}
+            className="font-medium hover:underline truncate"
+          >
+            {event.user.name}
+          </Link>
+          <span className="text-muted-foreground">starred</span>
+          <Star
+            className="size-2.5 shrink-0 text-muted-foreground"
+            fill="currentColor"
+          />
+        </div>
+        <span className="shrink-0 font-mono text-muted-foreground">
+          {timeAgo(new Date(event.at))}
+        </span>
+      </div>
+    );
+  }
+  return null;
 }

@@ -1,5 +1,5 @@
 import type { RepositoryBlobResource } from "gitdot-api";
-import { getRepository } from "@/dal/repository";
+import { getRepository, getRepositoryActivity } from "@/dal/repository";
 import { fetchResources } from "@/provider/server";
 import { PageClient } from "./page.client";
 import { RepoPanel } from "./ui/repo-panel";
@@ -21,6 +21,8 @@ export default async function Page({
     readme: (p) => p.getBlob("README.md"),
   });
 
+  const activityPromise = getRepositoryActivity(owner, repo);
+
   return (
     <div className="flex h-full w-full overflow-hidden">
       <PageClient
@@ -29,7 +31,7 @@ export default async function Page({
         requests={requests}
         promises={promises}
       />
-      <RepoPanel repository={repository} />
+      <RepoPanel repository={repository} activityPromise={activityPromise} />
     </div>
   );
 }

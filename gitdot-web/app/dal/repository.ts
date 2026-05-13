@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   type CreateRepositoryRequest,
+  GetRepositoryActivityResponse,
   type GetRepositoryBlobDiffsRequest,
   type GetRepositoryBlobRequest,
   type GetRepositoryBlobsRequest,
@@ -137,6 +138,16 @@ export async function getRepository(
     `${GITDOT_SERVER_URL}/repository/${owner}/${repo}`,
   );
   return await handleResponse(response, RepositoryResource);
+}
+
+export async function getRepositoryActivity(
+  owner: string,
+  repo: string,
+): Promise<GetRepositoryActivityResponse | null> {
+  const response = await authFetch(
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/activity`,
+  );
+  return await handleResponse(response, GetRepositoryActivityResponse);
 }
 
 export async function getRepositorySettings(
