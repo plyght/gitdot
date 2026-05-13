@@ -7,7 +7,9 @@ use figment::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{default_gitdot_auth_server_url, default_gitdot_server_url, default_gitdot_web_url};
+use super::{
+    default_gitdot_api_server_url, default_gitdot_auth_server_url, default_gitdot_web_url,
+};
 
 const CONFIG_DIR_NAME: &str = "gitdot";
 const CONFIG_FILE_NAME: &str = "config.toml";
@@ -15,7 +17,7 @@ const CONFIG_FILE_NAME: &str = "config.toml";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserConfig {
     pub gitdot_web_url: String,
-    pub gitdot_server_url: String,
+    pub gitdot_api_server_url: String,
     pub gitdot_auth_server_url: String,
     pub user_name: String,
     pub user_email: String,
@@ -25,7 +27,7 @@ impl Default for UserConfig {
     fn default() -> Self {
         Self {
             gitdot_web_url: default_gitdot_web_url(),
-            gitdot_server_url: default_gitdot_server_url(),
+            gitdot_api_server_url: default_gitdot_api_server_url(),
             gitdot_auth_server_url: default_gitdot_auth_server_url(),
             user_name: String::new(),
             user_email: String::new(),

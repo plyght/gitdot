@@ -71,7 +71,7 @@ impl GitdotClient {
 
     pub fn from_user_config(config: &crate::config::UserConfig) -> Self {
         Self::new("gitdot-cli")
-            .with_server_url(&config.gitdot_server_url)
+            .with_server_url(&config.gitdot_api_server_url)
             .with_web_url(&config.gitdot_web_url)
             .with_auth_server_url(&config.gitdot_auth_server_url)
     }

@@ -2,7 +2,8 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    default_gitdot_server_url, default_gitdot_web_url, default_num_executors, default_s2_server_url,
+    default_gitdot_api_server_url, default_gitdot_web_url, default_num_executors,
+    default_s2_server_url,
 };
 
 pub const SYSTEM_USER: &str = "gitdot";
@@ -13,7 +14,7 @@ pub const RUNNER_CONFIG_PATH: &str = "/etc/gitdot/runner.toml";
 pub struct RunnerConfig {
     #[serde(default = "default_gitdot_web_url")]
     pub gitdot_web_url: String,
-    #[serde(default = "default_gitdot_server_url")]
+    #[serde(default = "default_gitdot_api_server_url")]
     pub gitdot_server_url: String,
     #[serde(default = "default_s2_server_url")]
     pub s2_server_url: String,
@@ -27,7 +28,7 @@ pub struct RunnerConfig {
 impl Default for RunnerConfig {
     fn default() -> Self {
         Self {
-            gitdot_server_url: default_gitdot_server_url(),
+            gitdot_server_url: default_gitdot_api_server_url(),
             gitdot_web_url: default_gitdot_web_url(),
             s2_server_url: default_s2_server_url(),
             runner_token: None,

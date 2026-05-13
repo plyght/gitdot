@@ -4,12 +4,12 @@ mod user;
 pub use runner::RunnerConfig;
 pub use user::UserConfig;
 
-fn default_gitdot_server_url() -> String {
-    "https://api.gitdot.io".to_string()
-}
-
 fn default_gitdot_web_url() -> String {
     "https://www.gitdot.io".to_string()
+}
+
+fn default_gitdot_api_server_url() -> String {
+    "https://api.gitdot.io".to_string()
 }
 
 fn default_gitdot_auth_server_url() -> String {
