@@ -1,6 +1,6 @@
 use clap::Args;
 
-use crate::git::GitWrapper;
+use crate::client::GitClient;
 
 #[derive(Args, Debug)]
 pub struct SaveArgs {
@@ -10,7 +10,7 @@ pub struct SaveArgs {
 
 impl SaveArgs {
     pub async fn execute(&self) -> anyhow::Result<()> {
-        let git = GitWrapper::new();
+        let git = GitClient::new();
         git.add_all().await?;
         let Some(ref message) = self.message else {
             return git.commit_amend_no_edit().await;

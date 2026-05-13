@@ -3,8 +3,8 @@ mod status;
 
 use clap::Parser;
 
-pub use login::LoginArgs;
-pub use status::StatusArgs;
+use login::LoginArgs;
+use status::StatusArgs;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

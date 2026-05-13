@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use anyhow::{Context, bail};
 use tokio::fs;
 
-use crate::git::GitWrapper;
+use crate::client::GitClient;
 
 const REVIEW_BRANCH_FILE: &str = "gdot-review-branch";
 
-pub async fn get_remote_owner_repo(git: &GitWrapper) -> anyhow::Result<(String, String)> {
+pub async fn get_remote_owner_repo(git: &GitClient) -> anyhow::Result<(String, String)> {
     let url = git.remote_url("origin").await?;
 
     let path = if let Some(rest) = url.strip_prefix("git@") {
@@ -29,13 +29,13 @@ pub async fn get_remote_owner_repo(git: &GitWrapper) -> anyhow::Result<(String, 
     Ok((owner.to_string(), repo.to_string()))
 }
 
-pub async fn save_review_branch(git: &GitWrapper, branch: &str) -> anyhow::Result<()> {
+pub async fn save_review_branch(git: &GitClient, branch: &str) -> anyhow::Result<()> {
     let path = get_review_branch_path(git).await?;
     fs::write(&path, branch).await?;
     Ok(())
 }
 
-pub async fn load_review_branch(git: &GitWrapper) -> anyhow::Result<Option<String>> {
+pub async fn load_review_branch(git: &GitClient) -> anyhow::Result<Option<String>> {
     let path = get_review_branch_path(git).await?;
     match fs::read_to_string(&path).await {
         Ok(branch) => Ok(Some(branch.trim().to_string())),
@@ -44,14 +44,14 @@ pub async fn load_review_branch(git: &GitWrapper) -> anyhow::Result<Option<Strin
     }
 }
 
-pub async fn clear_review_branch(git: &GitWrapper) -> anyhow::Result<()> {
+pub async fn clear_review_branch(git: &GitClient) -> anyhow::Result<()> {
     let path = get_review_branch_path(git).await?;
     let _ = fs::remove_file(&path).await;
     Ok(())
 }
 
 pub async fn push_for_review(
-    git: &GitWrapper,
+    git: &GitClient,
     branch: &str,
     review_number: Option<i32>,
 ) -> anyhow::Result<Option<i32>> {
@@ -71,6 +71,6 @@ pub async fn push_for_review(
     Ok(result)
 }
 
-async fn get_review_branch_path(git: &GitWrapper) -> anyhow::Result<PathBuf> {
+async fn get_review_branch_path(git: &GitClient) -> anyhow::Result<PathBuf> {
     Ok(git.git_dir().await?.join(REVIEW_BRANCH_FILE))
 }

@@ -60,9 +60,9 @@ impl RunnerConfig {
         std::fs::write(&tmp, &contents).context("Failed to write runner config to temp file")?;
         let tmp_str = tmp.to_str().context("Temp path is not valid UTF-8")?;
 
-        crate::util::run_command("sudo", &["mkdir", "-p", "/etc/gitdot"])
+        crate::util::command::run_command("sudo", &["mkdir", "-p", "/etc/gitdot"])
             .context("Failed to create /etc/gitdot directory")?;
-        crate::util::run_command("sudo", &["cp", tmp_str, RUNNER_CONFIG_PATH])
+        crate::util::command::run_command("sudo", &["cp", tmp_str, RUNNER_CONFIG_PATH])
             .context("Failed to install runner config to /etc/gitdot/runner.toml")?;
 
         Ok(())

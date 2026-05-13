@@ -1,10 +1,10 @@
 use crate::{
     config::UserConfig,
-    git::GitWrapper,
+    client::GitClient,
     util::review::{clear_review_branch, load_review_branch},
 };
 
-pub async fn amend_review(_config: UserConfig, git: &GitWrapper) -> anyhow::Result<()> {
+pub async fn amend_review(_config: UserConfig, git: &GitClient) -> anyhow::Result<()> {
     let original_hash = git.rev_parse("HEAD").await?;
 
     git.add_all().await?;

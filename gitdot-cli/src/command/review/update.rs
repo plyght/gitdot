@@ -7,11 +7,11 @@ use gitdot_api::endpoint::list_user_reviews::ListUserReviewsRequest;
 use crate::{
     client::GitdotClient,
     config::UserConfig,
-    git::GitWrapper,
+    client::GitClient,
     util::review::{get_remote_owner_repo, push_for_review},
 };
 
-pub async fn update_review(config: UserConfig, git: &GitWrapper) -> anyhow::Result<()> {
+pub async fn update_review(config: UserConfig, git: &GitClient) -> anyhow::Result<()> {
     // TODO: init client with token from store
     let client = GitdotClient::from_user_config(&config);
     let (owner, repo) = get_remote_owner_repo(git).await?;

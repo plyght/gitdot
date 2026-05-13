@@ -2,9 +2,9 @@ use std::io::{self, Write};
 
 use anyhow::{Context, bail};
 
-use crate::{config::UserConfig, git::GitWrapper, util::review::save_review_branch};
+use crate::{config::UserConfig, client::GitClient, util::review::save_review_branch};
 
-pub async fn checkout_review(_config: UserConfig, git: &GitWrapper) -> anyhow::Result<()> {
+pub async fn checkout_review(_config: UserConfig, git: &GitClient) -> anyhow::Result<()> {
     let branch = git.current_branch().await?;
     if branch.is_empty() {
         bail!("Not currently on a branch");

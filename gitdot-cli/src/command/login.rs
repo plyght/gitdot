@@ -3,7 +3,10 @@ use std::time::{Duration, Instant};
 use anyhow::bail;
 use clap::Args;
 
-use crate::{client::GitdotClient, config::UserConfig, store::GitCredentialStore};
+use crate::{
+    client::{GitCredentialClient, GitdotClient},
+    config::UserConfig,
+};
 
 #[derive(Args, Debug)]
 pub struct LoginArgs;
@@ -38,7 +41,7 @@ impl LoginArgs {
                     config.user_email = response.user_email;
                     config.save()?;
 
-                    GitCredentialStore::store(
+                    GitCredentialClient::store(
                         api_client.get_web_url(),
                         &response.user_name,
                         &response.access_token,

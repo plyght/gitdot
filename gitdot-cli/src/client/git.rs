@@ -3,9 +3,9 @@ use std::{path::PathBuf, process::Stdio};
 use anyhow::{Context, bail};
 use tokio::process::Command;
 
-pub struct GitWrapper;
+pub struct GitClient;
 
-impl GitWrapper {
+impl GitClient {
     pub fn new() -> Self {
         Self
     }

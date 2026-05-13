@@ -5,9 +5,9 @@ use std::{
 
 use url::Url;
 
-pub struct GitCredentialStore;
+pub struct GitCredentialClient;
 
-impl GitCredentialStore {
+impl GitCredentialClient {
     /// Store credentials using git's credential helper system.
     /// This works with whatever credential helper the user has configured
     /// (e.g., osxkeychain, manager-core, cache, store).

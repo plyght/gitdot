@@ -10,7 +10,6 @@ pub async fn setup() -> anyhow::Result<()> {
 
 pub async fn run(args: &Args) -> anyhow::Result<()> {
     let config = UserConfig::load()?;
-    println!("{:?}", config);
     match args {
         Args::Login(login_args) => login_args.execute(config).await,
         Args::Status(status_args) => status_args.execute(config).await,

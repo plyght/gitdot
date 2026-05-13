@@ -1,14 +1,14 @@
 use crate::{
     client::GitdotClient,
     config::UserConfig,
-    git::GitWrapper,
-    store::GitCredentialStore,
+    client::GitClient,
+    client::GitCredentialClient,
     util::review::{get_remote_owner_repo, push_for_review},
 };
 
 pub async fn create_review(
     config: UserConfig,
-    git: &GitWrapper,
+    git: &GitClient,
     message: Option<String>,
 ) -> anyhow::Result<()> {
     let default_branch = git.default_branch().await?;
@@ -21,7 +21,7 @@ pub async fn create_review(
 
             if let Some(msg) = message {
                 let (title, description) = parse_message(&msg);
-                let token = GitCredentialStore::get(&config.gitdot_server_url, &config.user_name)?;
+                let token = GitCredentialClient::get(&config.gitdot_server_url, &config.user_name)?;
                 let client = GitdotClient::from_user_config(&config).with_token(token);
                 client
                     .update_review(

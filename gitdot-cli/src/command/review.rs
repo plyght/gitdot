@@ -5,7 +5,7 @@ mod update;
 
 use clap::{Args, Subcommand};
 
-use crate::{config::UserConfig, git::GitWrapper};
+use crate::{config::UserConfig, client::GitClient};
 
 #[derive(Args, Debug)]
 pub struct ReviewArgs {
@@ -34,7 +34,7 @@ pub enum ReviewCommand {
 
 impl ReviewCommand {
     pub async fn execute(&self, config: UserConfig) -> anyhow::Result<()> {
-        let git = GitWrapper::new();
+        let git = GitClient::new();
         match self {
             ReviewCommand::New { message } => {
                 create::create_review(config, &git, message.clone()).await
