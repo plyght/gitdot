@@ -1,6 +1,6 @@
 [package]
 name = "gitdot-api"
-version = "0.1.0"
+version = "0.1.1"
 description = "Shared API contract types and endpoint definitions for gitdot."
 authors.workspace = true
 edition.workspace = true
