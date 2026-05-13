@@ -1,10 +1,11 @@
 use async_trait::async_trait;
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     client::{
         EmailClient, GitHubClient, ImageClient, ImageClientImpl, OctocrabClient, R2Client,
-        R2ClientImpl, ResendClient, TokenClient, TokenClientImpl,
+        R2ClientImpl, RedisClient, RedisClientImpl, ResendClient, TokenClient, TokenClientImpl,
     },
     dto::{
         AuthTokensResponse, ExchangeGitHubCodeRequest, LogoutRequest, OAuthRedirectResponse,
@@ -19,6 +20,15 @@ use crate::{
     },
 };
 
+// standard 10 minutes for refresh token grace period
+const GRACE_WINDOW: std::time::Duration = std::time::Duration::from_secs(10 * 60);
+
+#[derive(Debug, Serialize, Deserialize)]
+struct GraceEntry {
+    refresh_token: String,
+    expires_at: DateTime<Utc>,
+}
+
 #[async_trait]
 pub trait SessionService: Send + Sync + 'static {
     async fn send_auth_email(
@@ -31,6 +41,29 @@ pub trait SessionService: Send + Sync + 'static {
         request: VerifyAuthCodeRequest,
     ) -> Result<AuthTokensResponse, AuthenticationError>;
 
+    /// Rotates a refresh token and returns a new access/refresh pair.
+    ///
+    /// The previous refresh token enters a 10-minute grace window after a
+    /// successful rotation: replays inside the window return the same
+    /// replacement tokens issued by the winning rotation (idempotent),
+    /// instead of being treated as theft. This absorbs the common case
+    /// where parallel browser requests, prefetches, or multi-tab sessions
+    /// race the same expired cookie.
+    ///
+    /// Concurrent rotations of the same token are serialized via a
+    /// `SET NX EX` claim in Redis. The first caller does the DB writes;
+    /// every other concurrent caller reads the cached replacement and
+    /// returns it. The grace entry expires automatically after 10 minutes.
+    ///
+    /// Reuse detection is preserved: a replay outside the grace window
+    /// (or one with no cache entry — e.g., a token revoked by an explicit
+    /// `logout`) revokes the entire session family and returns
+    /// [`AuthenticationError::TokenRevoked`].
+    ///
+    /// # Errors
+    /// - [`AuthenticationError::NotFound`] — token never existed
+    /// - [`AuthenticationError::TokenExpired`] — past the session's `expires_at`
+    /// - [`AuthenticationError::TokenRevoked`] — reuse detected; family revoked
     async fn refresh_session(
         &self,
         request: RefreshSessionRequest,
@@ -47,7 +80,7 @@ pub trait SessionService: Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct SessionServiceImpl<SR, UR, EC, GH, TC, IC, RC>
+pub struct SessionServiceImpl<SR, UR, EC, GH, TC, IC, RC, RD>
 where
     SR: SessionRepository,
     UR: UserRepository,
@@ -56,6 +89,7 @@ where
     TC: TokenClient,
     IC: ImageClient,
     RC: R2Client,
+    RD: RedisClient,
 {
     session_repo: SR,
     user_repo: UR,
@@ -64,6 +98,7 @@ where
     token_client: TC,
     image_client: IC,
     r2_client: RC,
+    redis_client: RD,
 }
 
 impl
@@ -75,6 +110,7 @@ impl
         TokenClientImpl,
         ImageClientImpl,
         R2ClientImpl,
+        RedisClientImpl,
     >
 {
     pub fn new(
@@ -85,6 +121,7 @@ impl
         token_client: TokenClientImpl,
         image_client: ImageClientImpl,
         r2_client: R2ClientImpl,
+        redis_client: RedisClientImpl,
     ) -> Self {
         Self {
             session_repo,
@@ -94,13 +131,12 @@ impl
             token_client,
             image_client,
             r2_client,
+            redis_client,
         }
     }
 }
 
-#[crate::instrument_all]
-#[async_trait]
-impl<SR, UR, EC, GH, TC, IC, RC> SessionService for SessionServiceImpl<SR, UR, EC, GH, TC, IC, RC>
+impl<SR, UR, EC, GH, TC, IC, RC, RD> SessionServiceImpl<SR, UR, EC, GH, TC, IC, RC, RD>
 where
     SR: SessionRepository,
     UR: UserRepository,
@@ -109,6 +145,26 @@ where
     TC: TokenClient,
     IC: ImageClient,
     RC: R2Client,
+    RD: RedisClient,
+{
+    fn get_grace_key(&self, old_hash: &str) -> String {
+        format!("refresh_grace:{old_hash}")
+    }
+}
+
+#[crate::instrument_all]
+#[async_trait]
+impl<SR, UR, EC, GH, TC, IC, RC, RD> SessionService
+    for SessionServiceImpl<SR, UR, EC, GH, TC, IC, RC, RD>
+where
+    SR: SessionRepository,
+    UR: UserRepository,
+    EC: EmailClient,
+    GH: GitHubClient,
+    TC: TokenClient,
+    IC: ImageClient,
+    RC: R2Client,
+    RD: RedisClient,
 {
     async fn send_auth_email(
         &self,
@@ -211,17 +267,9 @@ where
             .await?
             .or_not_found("session", &token_hash)?;
 
-        if session.revoked_at.is_some() {
-            self.session_repo
-                .revoke_sessions_by_family(session.refresh_token_family)
-                .await?;
-            return Err(AuthenticationError::TokenRevoked("session".into()));
-        }
         if session.expires_at < Utc::now() {
             return Err(AuthenticationError::TokenExpired("session".into()));
         }
-
-        self.session_repo.revoke_session(session.id).await?;
 
         let user = self
             .user_repo
@@ -229,10 +277,67 @@ where
             .await?
             .or_not_found("user", session.user_id)?;
         let access_token = self.token_client.generate_gitdot_jwt(user.id, &user.name)?;
+        let access_token_expires_in = self.token_client.get_access_token_expiry_in_seconds();
+        let cache_key = self.get_grace_key(&token_hash);
 
+        // Replay path: this token was already rotated. Only honor it inside the grace window.
+        if session.revoked_at.is_some() {
+            if let Some(grace) = self.redis_client.get::<GraceEntry>(&cache_key).await? {
+                let remaining = (grace.expires_at - Utc::now()).num_seconds().max(0) as u64;
+                return Ok(AuthTokensResponse {
+                    access_token,
+                    refresh_token: grace.refresh_token,
+                    access_token_expires_in,
+                    refresh_token_expires_in: remaining,
+                    is_new: false,
+                });
+            }
+
+            // outside grace, or replacement disappeared → real reuse
+            self.session_repo
+                .revoke_sessions_by_family(session.refresh_token_family)
+                .await?;
+            return Err(AuthenticationError::TokenRevoked("session".into()));
+        }
+
+        // Happy path: try to claim the rotation for this old token via SET NX.
         let (refresh_token, refresh_token_hash) = self.token_client.generate_high_entropic_code();
         let refresh_expiry_secs = self.token_client.get_refresh_token_expiry_in_seconds();
         let refresh_expiry = Utc::now() + Duration::seconds(refresh_expiry_secs as i64);
+        let entry = GraceEntry {
+            refresh_token: refresh_token.clone(),
+            expires_at: refresh_expiry,
+        };
+        let claimed = self
+            .redis_client
+            .set_nx_with_ttl(&cache_key, &entry, GRACE_WINDOW)
+            .await?;
+
+        if !claimed {
+            // Another worker won the rotation. Read its value and replay.
+            match self.redis_client.get::<GraceEntry>(&cache_key).await? {
+                Some(existing) => {
+                    let remaining = (existing.expires_at - Utc::now()).num_seconds().max(0) as u64;
+                    return Ok(AuthTokensResponse {
+                        access_token,
+                        refresh_token: existing.refresh_token,
+                        access_token_expires_in,
+                        refresh_token_expires_in: remaining,
+                        is_new: false,
+                    });
+                }
+                None => {
+                    // Cache vanished between NX-miss and GET — treat as reuse.
+                    self.session_repo
+                        .revoke_sessions_by_family(session.refresh_token_family)
+                        .await?;
+                    return Err(AuthenticationError::TokenRevoked("session".into()));
+                }
+            }
+        }
+
+        // We won the claim — persist the rotation.
+        self.session_repo.revoke_session(session.id).await?;
         self.session_repo
             .create_session(
                 session.user_id,
@@ -247,7 +352,7 @@ where
         Ok(AuthTokensResponse {
             access_token,
             refresh_token,
-            access_token_expires_in: self.token_client.get_access_token_expiry_in_seconds(),
+            access_token_expires_in,
             refresh_token_expires_in: refresh_expiry_secs,
             is_new: false,
         })

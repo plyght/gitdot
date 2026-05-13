@@ -5,8 +5,8 @@ use sqlx::PgPool;
 
 use gitdot_core::{
     client::{
-        ImageClientImpl, OctocrabClient, R2ClientImpl, ResendClient, SlackBotClientImpl,
-        TokenClientImpl,
+        ImageClientImpl, OctocrabClient, R2ClientImpl, RedisClient, RedisClientImpl, ResendClient,
+        SlackBotClientImpl, TokenClientImpl,
     },
     repository::{
         DeviceRepositoryImpl, SessionRepositoryImpl, SlackRepositoryImpl, TokenRepositoryImpl,
@@ -57,6 +57,11 @@ impl AppState {
             settings.cloudflare_r2_secret_access_key.clone(),
         )
         .await;
+        let redis_client = {
+            let client = RedisClientImpl::new(&settings.redis_url).await?;
+            client.ping().await?;
+            client
+        };
 
         let session_service = Arc::new(SessionServiceImpl::new(
             session_repo,
@@ -66,6 +71,7 @@ impl AppState {
             token_client.clone(),
             image_client,
             r2_client,
+            redis_client,
         ));
         let device_service = Arc::new(DeviceServiceImpl::new(
             device_repo,

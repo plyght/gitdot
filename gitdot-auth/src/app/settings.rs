@@ -22,6 +22,10 @@ pub struct Settings {
     #[serde(default = "default_device_url")]
     pub gitdot_oauth_device_verification_url: String,
 
+    // redis
+    #[serde(default = "default_redis_url")]
+    pub redis_url: String,
+
     // github
     pub github_app_id: u64,
     pub github_app_private_key: String,
@@ -62,4 +66,8 @@ fn default_slack_bot_url() -> String {
 
 fn default_device_url() -> String {
     "http://localhost:3000/oauth/device".into()
+}
+
+fn default_redis_url() -> String {
+    "redis://localhost:6379".into()
 }

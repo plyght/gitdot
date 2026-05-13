@@ -1,7 +1,8 @@
 use thiserror::Error;
 
 use crate::error::{
-    DatabaseError, EmailError, GitHubError, InputError, NotFoundError, SlackBotError, TokenError,
+    DatabaseError, EmailError, GitHubError, InputError, NotFoundError, RedisError, SlackBotError,
+    TokenError,
 };
 
 #[derive(Debug, Error)]
@@ -38,6 +39,9 @@ pub enum AuthenticationError {
 
     #[error(transparent)]
     TokenError(#[from] TokenError),
+
+    #[error(transparent)]
+    CacheError(#[from] RedisError),
 
     #[error(transparent)]
     DatabaseError(#[from] DatabaseError),

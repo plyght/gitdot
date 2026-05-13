@@ -36,6 +36,7 @@ impl IntoResponse for AppError {
                     | AuthenticationError::GitHubError(_)
                     | AuthenticationError::SlackBotError(_)
                     | AuthenticationError::EmailError(_)
+                    | AuthenticationError::CacheError(_)
                     | AuthenticationError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 let body = ErrorMessage {

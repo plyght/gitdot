@@ -17,6 +17,15 @@ pub trait RedisClient: Send + Sync + Clone + 'static {
         ttl: Duration,
     ) -> Result<(), RedisError>;
 
+    /// Atomic claim + cache. Returns `true` if the key was set, `false` if it
+    /// already existed.
+    async fn set_nx_with_ttl<T: Serialize + Send + Sync>(
+        &self,
+        key: &str,
+        value: &T,
+        ttl: Duration,
+    ) -> Result<bool, RedisError>;
+
     async fn delete(&self, key: &str) -> Result<(), RedisError>;
 
     async fn ping(&self) -> Result<(), RedisError>;
@@ -54,6 +63,25 @@ impl RedisClient for RedisClientImpl {
         let raw = serde_json::to_string(value)?;
         let _: () = conn.set_ex(key, raw, ttl.as_secs()).await?;
         Ok(())
+    }
+
+    async fn set_nx_with_ttl<T: Serialize + Send + Sync>(
+        &self,
+        key: &str,
+        value: &T,
+        ttl: Duration,
+    ) -> Result<bool, RedisError> {
+        let mut conn = self.conn.clone();
+        let raw = serde_json::to_string(value)?;
+        let result: Option<String> = redis::cmd("SET")
+            .arg(key)
+            .arg(raw)
+            .arg("NX")
+            .arg("EX")
+            .arg(ttl.as_secs())
+            .query_async(&mut conn)
+            .await?;
+        Ok(result.is_some())
     }
 
     async fn delete(&self, key: &str) -> Result<(), RedisError> {
