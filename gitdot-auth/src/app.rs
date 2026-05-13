@@ -63,8 +63,8 @@ impl GitdotAuthServer {
 
 fn create_router(state: AppState) -> Router {
     let governor_config = GovernorConfigBuilder::default()
-        .per_second(2)
-        .burst_size(10)
+        .per_second(20)
+        .burst_size(100)
         .finish()
         .expect("Failed to build governor config");
 

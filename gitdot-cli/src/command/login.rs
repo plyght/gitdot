@@ -14,7 +14,6 @@ pub struct LoginArgs;
 impl LoginArgs {
     pub async fn execute(&self, mut config: UserConfig) -> anyhow::Result<()> {
         let api_client = GitdotClient::from_user_config(&config);
-
         let device_code_response = api_client.create_device_code().await?;
 
         println!("Open the following URL in your browser:");
