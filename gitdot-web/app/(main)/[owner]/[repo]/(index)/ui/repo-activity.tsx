@@ -1,4 +1,4 @@
-import { Activity, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import Link from "@/ui/link";
 import { timeAgo } from "@/util";
 
@@ -78,8 +78,7 @@ const PLACEHOLDER_ACTIVITY: StarActivity[] = [
 export function RepoActivity() {
   return (
     <div className="flex-1 min-h-0 flex flex-col p-2">
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mb-3">
-        <Activity className="size-3.5" />
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mb-2">
         Activity
       </span>
       <div className="flex flex-col gap-2 overflow-y-auto scrollbar-none">
@@ -98,20 +97,23 @@ export function RepoActivity() {
 
 function ActivityRow({ item }: { item: StarActivity }) {
   return (
-    <div className="flex flex-col min-w-0 text-xs">
-      <div className="truncate">
+    <div className="flex items-center gap-1.5 min-w-0 text-xs">
+      <div className="flex items-center gap-1 truncate min-w-0 flex-1">
         <Link
           href={`/${item.userName}`}
-          className="font-medium hover:underline"
+          className="font-medium hover:underline truncate"
         >
           {item.userName}
         </Link>
-        <span className="text-muted-foreground"> starred</span>
+        <span className="text-muted-foreground">starred</span>
+        <Star
+          className="size-2.5 shrink-0 text-muted-foreground"
+          fill="currentColor"
+        />
       </div>
-      <div className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
-        <Star className="size-3 shrink-0" />
-        <span>{timeAgo(item.date)}</span>
-      </div>
+      <span className="shrink-0 font-mono text-muted-foreground">
+        {timeAgo(item.date)}
+      </span>
     </div>
   );
 }

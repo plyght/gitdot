@@ -24,11 +24,10 @@ export function RepoInfo() {
 
   return (
     <div className="flex flex-col p-2 border-b">
-      <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mb-1.5">
-        <Info className="size-3.5" />
-        Info
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mb-1">
+        About
       </span>
-      <p className="text-xs text-foreground mb-4">
+      <p className="text-xs text-foreground mb-2">
         {repository?.description ??
           "This repository does not yet have a description. Descriptions help others quickly understand what the project does and why it exists. Consider adding one in the repository settings to give visitors a concise overview before they dive into the code."}
       </p>

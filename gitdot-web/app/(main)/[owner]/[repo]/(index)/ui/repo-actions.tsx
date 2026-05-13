@@ -13,10 +13,13 @@ export function RepoActions() {
   const subscribeCount = 12 + (subscribed ? 1 : 0);
 
   return (
-    <div className="flex flex-col border-b">
+    <div className="flex flex-col py-2 border-b">
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono px-2 mb-1">
+        Actions
+      </span>
       <RepoActionButton
         icon={
-          <Star className="size-3.5" fill={starred ? "currentColor" : "none"} />
+          <Star className="size-3" fill={starred ? "currentColor" : "none"} />
         }
         label={starred ? "Starred" : "Star"}
         count={starCount}
@@ -26,7 +29,7 @@ export function RepoActions() {
       <RepoActionButton
         icon={
           <Bell
-            className="size-3.5"
+            className="size-3"
             fill={subscribed ? "currentColor" : "none"}
           />
         }
@@ -34,14 +37,12 @@ export function RepoActions() {
         count={subscribeCount}
         active={subscribed}
         onClick={() => setSubscribed((v) => !v)}
-        className="border-t"
       />
       <RepoActionButton
-        icon={<Download className="size-3.5" />}
+        icon={<Download className="size-3" />}
         label="Clone"
         active={cloned}
         onClick={() => setCloned((v) => !v)}
-        className="border-t"
       />
     </div>
   );
@@ -69,12 +70,12 @@ function RepoActionButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full h-8 flex items-center justify-start gap-1.5 px-2 text-xs font-mono cursor-default transition-colors focus:outline-none",
+        "w-full h-6 flex items-center justify-start gap-1.5 px-2 text-xs font-mono cursor-default transition-colors focus:outline-none",
         primary
           ? "bg-primary text-primary-foreground hover:bg-primary/90"
           : active
             ? "bg-accent text-foreground"
-            : "hover:bg-accent/50 text-muted-foreground",
+            : "hover:bg-accent text-foreground",
         className,
       )}
     >
