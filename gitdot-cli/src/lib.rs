@@ -4,7 +4,6 @@
 // TODO: remove it
 #![allow(dead_code)]
 
-pub mod bootstrap;
 mod cli;
 mod client;
 mod command;
@@ -13,5 +12,5 @@ mod git;
 mod store;
 mod util;
 
-pub use cli::run;
+pub use cli::{run, setup};
 pub use command::Args;

@@ -3,27 +3,22 @@ use std::path::PathBuf;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
-use super::default::{
-    default_gitdot_auth_server_url, default_gitdot_server_url, default_gitdot_web_url,
-};
+use super::{default_gitdot_auth_server_url, default_gitdot_server_url, default_gitdot_web_url};
 
 const CONFIG_DIR_NAME: &str = "gitdot";
 const CONFIG_FILE_NAME: &str = "config.toml";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserConfig {
-    #[serde(default = "default_gitdot_server_url")]
-    pub gitdot_server_url: String,
-
     #[serde(default = "default_gitdot_web_url")]
     pub gitdot_web_url: String,
-
+    #[serde(default = "default_gitdot_server_url")]
+    pub gitdot_server_url: String,
     #[serde(default = "default_gitdot_auth_server_url")]
     pub gitdot_auth_server_url: String,
 
     #[serde(default)]
     pub user_name: String,
-
     #[serde(default)]
     pub user_email: String,
 }
