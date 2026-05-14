@@ -179,6 +179,8 @@ clickhouse:
         docker run -d \
             --name {{CLICKHOUSE_CONTAINER}} \
             -e CLICKHOUSE_DB=gitdot \
+            -e CLICKHOUSE_USER=default \
+            -e CLICKHOUSE_PASSWORD=clickhouse \
             --ulimit nofile=262144:262144 \
             -p 8123:8123 \
             -p 9000:9000 \
@@ -197,7 +199,7 @@ clickhouse-logs:
 
 # Open a clickhouse-client REPL against the local container
 clickhouse-cli:
-    docker exec -it {{CLICKHOUSE_CONTAINER}} clickhouse-client --database gitdot
+    docker exec -it {{CLICKHOUSE_CONTAINER}} clickhouse-client --database gitdot --user default --password clickhouse
 
 # ── Dev (run services) ──────────────────────────────────────────────────────
 
