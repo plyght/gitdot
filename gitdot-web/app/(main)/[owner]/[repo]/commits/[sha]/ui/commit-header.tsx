@@ -1,56 +1,58 @@
-import type {
-  RepositoryCommitResource,
-  RepositoryDiffStatResource,
-} from "gitdot-api";
-import { UserSlug } from "@/(main)/[owner]/ui/user/user-slug";
+import type { RepositoryCommitResource } from "gitdot-api";
+import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
+import Link from "@/ui/link";
 import { formatDateTime } from "@/util";
-import { DiffStatBar } from "./diff-stat-bar";
 
 export function CommitHeader({
   commit,
-  stats,
+  owner,
+  repo,
 }: {
   commit: RepositoryCommitResource;
-  stats: RepositoryDiffStatResource[];
+  owner: string;
+  repo: string;
 }) {
-  const midpoint = Math.ceil(stats.length / 2);
-  const leftColumn = stats.slice(0, midpoint);
-  const rightColumn = stats.slice(midpoint);
-  const renderStatItem = (stat: RepositoryDiffStatResource) => {
-    return (
-      <li key={stat.path} className="font-mono text-sm flex items-center">
-        <button
-          type="button"
-          className="truncate flex-1 mr-2 hover:underline text-left cursor-pointer"
-          onClick={() => document.getElementById(stat.path)?.scrollIntoView()}
-        >
-          {stat.path}
-        </button>
-        <span className="text-muted-foreground w-6 text-right mr-1.5 select-none shrink-0">
-          {stat.lines_added + stat.lines_removed}
-        </span>
-        <DiffStatBar added={stat.lines_added} removed={stat.lines_removed} />
-      </li>
-    );
-  };
+  const date = new Date(commit.date);
 
   return (
-    <div className="shrink-0 border-border border-b p-2">
-      <div className="mb-4">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-          <UserSlug user={commit.author} />
-          <span>•</span>
-          <span>{formatDateTime(new Date(commit.date))}</span>
-        </div>
-        <div className="text-sm text-primary">{commit.message}</div>
+    <div className="flex flex-col">
+      <div className="flex items-end gap-1.5 text-sm text-muted-foreground">
+        <UserImage userId={commit.author.id} px={28} />
+        <span>
+          <Link
+            href={`/${commit.author.name}`}
+            className="underline hover:text-foreground transition-colors duration-200"
+            prefetch={true}
+          >
+            {commit.author.name}
+          </Link>
+          {" in "}
+          <span className="font-mono">
+            <Link
+              href={`/${owner}`}
+              className="underline decoration-transparent hover:decoration-current transition-colors duration-200"
+              prefetch={true}
+            >
+              {owner}
+            </Link>
+            /
+            <Link
+              href={`/${owner}/${repo}`}
+              className="font-medium text-foreground underline decoration-transparent hover:decoration-current transition-colors duration-200"
+              prefetch={true}
+            >
+              {repo}
+            </Link>
+          </span>
+        </span>
       </div>
-      <p className="font-mono text-xs text-muted-foreground h-4 mb-1 select-none">
-        {stats.length} files changed
-      </p>
-      <div className="flex flex-row w-full">
-        <ul className="w-1/2 pr-4">{leftColumn.map(renderStatItem)}</ul>
-        <div className="border-l border-border" />
-        <ul className="w-1/2 pl-4">{rightColumn.map(renderStatItem)}</ul>
+      <div className="text-sm text-primary whitespace-pre-wrap mt-2">
+        {commit.message}
+      </div>
+      <div className="flex items-baseline gap-1.5 text-xs text-muted-foreground mt-1">
+        <span>{formatDateTime(date)}</span>
+        <span>·</span>
+        <span className="font-mono">{commit.sha.substring(0, 7)}</span>
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ export function CommitBody({
   const entries = use(diffEntriesPromise);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-4">
       {entries.map((entry) => (
         <DiffFile key={entry.resource.path} entry={entry} />
       ))}

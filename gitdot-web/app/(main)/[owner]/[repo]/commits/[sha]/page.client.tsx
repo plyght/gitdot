@@ -8,6 +8,7 @@ import {
 } from "@/(main)/[owner]/[repo]/resources";
 import type { DiffEntry } from "@/actions";
 import { Loading } from "@/ui/loading";
+import { OverlayScroll } from "@/ui/scroll";
 import type { Resources } from "./page";
 import { CommitBody } from "./ui/commit-body";
 import { CommitHeader } from "./ui/commit-header";
@@ -16,8 +17,6 @@ import { CommitShortcuts } from "./ui/commit-shortcuts";
 type ResourceRequests = ResourceRequestsType<Resources>;
 type ResourcePromises = ResourcePromisesType<Resources>;
 
-// same TODO as file page, resolveResources is invoked repeatedly as requests and promises
-// are updated by SSR (Promises is ->) so this is called multiple times on render...
 export function PageClient({
   owner,
   repo,
@@ -34,19 +33,27 @@ export function PageClient({
   const resolvedPromises = useResolvePromises(owner, repo, requests, promises);
 
   return (
-    <Suspense fallback={<Loading />}>
-      <PageContent
-        promises={resolvedPromises}
-        diffEntriesPromise={diffEntriesPromise}
-      />
-    </Suspense>
+    <OverlayScroll>
+      <Suspense fallback={<Loading />}>
+        <PageContent
+          owner={owner}
+          repo={repo}
+          promises={resolvedPromises}
+          diffEntriesPromise={diffEntriesPromise}
+        />
+      </Suspense>
+    </OverlayScroll>
   );
 }
 
 function PageContent({
+  owner,
+  repo,
   promises,
   diffEntriesPromise,
 }: {
+  owner: string;
+  repo: string;
   promises: ResourcePromises;
   diffEntriesPromise: Promise<DiffEntry[]>;
 }) {
@@ -54,8 +61,11 @@ function PageContent({
   if (!commit) return null;
 
   return (
-    <div data-diff-top className="flex flex-col w-full">
-      <CommitHeader commit={commit} stats={commit.diffs} />
+    <div
+      data-diff-top
+      className="max-w-4xl mx-auto w-full px-4 py-6 flex flex-col gap-6"
+    >
+      <CommitHeader commit={commit} owner={owner} repo={repo} />
       <Suspense fallback={<Loading />}>
         <CommitBody diffEntriesPromise={diffEntriesPromise} />
       </Suspense>

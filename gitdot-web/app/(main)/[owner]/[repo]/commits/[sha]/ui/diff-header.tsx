@@ -1,6 +1,4 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { cn } from "@/util";
-import { DiffStatBar } from "./diff-stat-bar";
 
 export function DiffHeader({
   open,
@@ -16,27 +14,26 @@ export function DiffHeader({
   linesRemoved: number;
 }) {
   return (
-    <button
-      type="button"
+    <div
       data-diff-toggle
       id={path}
-      className={cn(
-        "flex flex-row w-full h-9 shrink-0 items-center px-2 border-b border-border text-sm font-mono sticky top-0 z-10 select-none",
-        open ? "bg-sidebar" : "bg-sidebar-primary",
-      )}
       onClick={() => setOpen(!open)}
+      className="group flex flex-row w-full h-7 shrink-0 items-center px-2 text-xs font-mono bg-sidebar hover:bg-sidebar-accent/80 border-b border-border select-none cursor-pointer transition-colors duration-200"
     >
-      <span data-diff-path className="mr-auto">
-        {path}
-      </span>
-      <div className="flex flex-row items-center">
-        <DiffStatBar added={linesAdded} removed={linesRemoved} />
-        {open ? (
-          <ChevronDown className="ml-1.5 mb-px size-3" />
-        ) : (
-          <ChevronRight className="ml-1.5 mb-px size-3" />
-        )}
+      <div className="flex flex-row items-center gap-2 mr-auto">
+        <span data-diff-path className="text-muted-foreground">
+          {path}
+        </span>
+        <span className="flex flex-row font-mono select-none gap-1">
+          <span className="text-green-600">+{linesAdded}</span>
+          <span className="text-red-600">-{linesRemoved}</span>
+        </span>
       </div>
-    </button>
+      {open ? (
+        <ChevronDown className="size-3 text-muted-foreground group-hover:text-foreground transition-colors duration-200 shrink-0" />
+      ) : (
+        <ChevronRight className="size-3 text-muted-foreground group-hover:text-foreground transition-colors duration-200 shrink-0" />
+      )}
+    </div>
   );
 }

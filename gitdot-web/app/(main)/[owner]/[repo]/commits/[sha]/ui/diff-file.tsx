@@ -9,7 +9,10 @@ export function DiffFile({ entry }: { entry: DiffEntry }) {
   const [open, setOpen] = useState(true);
 
   return (
-    <div data-diff-file>
+    <div
+      data-diff-file
+      className="rounded-sm border border-border overflow-hidden"
+    >
       <DiffHeader
         open={open}
         setOpen={setOpen}
@@ -17,9 +20,7 @@ export function DiffFile({ entry }: { entry: DiffEntry }) {
         linesAdded={entry.resource.lines_added}
         linesRemoved={entry.resource.lines_removed}
       />
-      {open && (
-        <DiffBody spans={entry.spans} className="border-b border-border" />
-      )}
+      {open && <DiffBody spans={entry.spans} />}
     </div>
   );
 }
