@@ -9,6 +9,7 @@ alias t:= test-all
 DB_CONTAINER := "gitdot-db"
 KAFKA_CONTAINER := "gitdot-kafka"
 REDIS_CONTAINER := "gitdot-redis"
+CLICKHOUSE_CONTAINER := "gitdot-clickhouse"
 
 
 # ── Install ───────────────────────────────────────────────────────────────────
@@ -44,6 +45,8 @@ install:
     just kafka
     echo "Starting local Redis..."
     just redis
+    echo "Starting local ClickHouse..."
+    just clickhouse
     echo "Install complete!"
 
 # ── Database ─────────────────────────────────────────────────────────────────
@@ -155,6 +158,47 @@ redis-stop:
 redis-logs:
     docker logs -f {{REDIS_CONTAINER}}
 
+# ── ClickHouse ───────────────────────────────────────────────────────────────
+
+# Start local ClickHouse in Docker (idempotent)
+clickhouse:
+    #!/usr/bin/env bash
+    set -e
+    if ! docker info &>/dev/null; then
+        echo "Error: Docker is not running."
+        exit 1
+    fi
+    if docker ps -q -f name={{CLICKHOUSE_CONTAINER}} | grep -q .; then
+        echo "ClickHouse already running."
+    elif docker ps -aq -f name={{CLICKHOUSE_CONTAINER}} | grep -q .; then
+        echo "Starting existing container '{{CLICKHOUSE_CONTAINER}}'..."
+        docker start {{CLICKHOUSE_CONTAINER}}
+        sleep 2
+    else
+        echo "Creating ClickHouse container '{{CLICKHOUSE_CONTAINER}}'..."
+        docker run -d \
+            --name {{CLICKHOUSE_CONTAINER}} \
+            -e CLICKHOUSE_DB=gitdot \
+            --ulimit nofile=262144:262144 \
+            -p 8123:8123 \
+            -p 9000:9000 \
+            clickhouse/clickhouse-server:25.3
+        echo "Waiting for ClickHouse to be ready..."
+        sleep 5
+    fi
+
+# Stop local ClickHouse container
+clickhouse-stop:
+    docker stop {{CLICKHOUSE_CONTAINER}}
+
+# Tail ClickHouse logs
+clickhouse-logs:
+    docker logs -f {{CLICKHOUSE_CONTAINER}}
+
+# Open a clickhouse-client REPL against the local container
+clickhouse-cli:
+    docker exec -it {{CLICKHOUSE_CONTAINER}} clickhouse-client --database gitdot
+
 # ── Dev (run services) ──────────────────────────────────────────────────────
 
 # Start frontend, backend, and s2-server in a tmux session
@@ -168,6 +212,9 @@ dev:
 
     echo "Starting local Redis..."
     just redis
+
+    echo "Starting local ClickHouse..."
+    just clickhouse
 
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
         echo "Killing existing tmux session '$SESSION_NAME'..."
