@@ -17,6 +17,7 @@ import {
   ApiError,
   createRepository,
   deleteRepository,
+  getMigration,
   getRepositoryBlob,
   getRepositoryBlobs,
   getRepositorySettings,
@@ -164,6 +165,12 @@ export async function listInstallationsAction(): Promise<
 
 export async function listMigrationsAction(): Promise<MigrationResource[]> {
   return (await listMigrations()) ?? [];
+}
+
+export async function getMigrationAction(
+  number: number,
+): Promise<MigrationResource | null> {
+  return await getMigration(number);
 }
 
 export async function listInstallationRepositoriesAction(

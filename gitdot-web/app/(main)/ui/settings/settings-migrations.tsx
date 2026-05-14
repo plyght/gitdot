@@ -62,7 +62,7 @@ export function SettingsMigrations() {
                       <MigrationStatusLabel status={migration.status} />
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <ul className="pt-1 pb-2">
+                      <ul className="pt-1 pb-3">
                         {migration.repositories.length === 0 ? (
                           <li className="pl-5 text-sm text-muted-foreground py-0.4">
                             no repositories

@@ -4,10 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "@/ui/link";
 import { Sidebar, SidebarContent } from "@/ui/sidebar";
 
-const navItems = [
-  { path: "", label: "/profile" },
-  { path: "runners", label: "/runners" },
-];
+const navItems = [{ path: "", label: "/profile" }];
 
 export function SettingsSidebar({ owner }: { owner: string }) {
   const pathname = usePathname();

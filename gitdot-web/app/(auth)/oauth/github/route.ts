@@ -27,8 +27,6 @@ export async function GET(request: NextRequest) {
       `/onboarding/github?installation_id=${installation.installation_id}`,
     );
   } else {
-    redirect(
-      `/settings/migrations/new?installation_id=${installation.installation_id}`,
-    );
+    redirect("/home");
   }
 }

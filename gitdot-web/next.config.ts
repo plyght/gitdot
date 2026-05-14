@@ -49,10 +49,6 @@ const nextConfig: NextConfig = {
         source: "/:owner/:repo/git-receive-pack",
         destination: `${serverUrl}/:owner/:repo/git-receive-pack`,
       },
-      {
-        source: "/settings",
-        destination: "/settings/profile",
-      },
     ];
   },
 };

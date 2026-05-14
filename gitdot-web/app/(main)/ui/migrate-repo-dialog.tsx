@@ -4,11 +4,13 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type { GitHubRepositoryResource, MigrationResource } from "gitdot-api";
 import { ChevronDown } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { OrgImage } from "@/(main)/[owner]/ui/org/org-image";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { useUserContext } from "@/(main)/context/user";
 import {
+  getMigrationAction,
   listInstallationRepositoriesAction,
   migrateGitHubRepositoriesAction,
 } from "@/actions";
@@ -36,14 +38,13 @@ export function MigrateRepoDialog() {
     useState<MigrationResource | null>(null);
 
   useEffect(() => {
-    const handle = () => setOpen(true);
+    const handle = () => {
+      setSubmittedMigration(null);
+      setOpen(true);
+    };
     window.addEventListener("openMigrateRepo", handle);
     return () => window.removeEventListener("openMigrateRepo", handle);
   }, []);
-
-  useEffect(() => {
-    if (!open) setSubmittedMigration(null);
-  }, [open]);
 
   const pending = submittedMigration !== null;
 
@@ -56,6 +57,9 @@ export function MigrateRepoDialog() {
         )}
         animations={true}
         showOverlay={true}
+        onPointerDownOutside={(e) => {
+          if (pending) e.preventDefault();
+        }}
       >
         <VisuallyHidden>
           <DialogTitle>Migrate repositories</DialogTitle>
@@ -415,21 +419,44 @@ function PendingMigration({
   migration: MigrationResource;
   onDismiss: () => void;
 }) {
+  const router = useRouter();
+  const [current, setCurrent] = useState(migration);
   const inProgress =
-    migration.status === "pending" || migration.status === "running";
+    current.status === "pending" || current.status === "running";
+
+  useEffect(() => {
+    if (!inProgress) return;
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      const next = await getMigrationAction(current.number);
+      if (cancelled || !next) return;
+      setCurrent(next);
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [current.number, inProgress]);
+
+  const handleOk = () => {
+    const first = current.repositories[0];
+    if (first) router.push(`/${first.destination_full_name}`);
+    onDismiss();
+  };
+
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
         <h2 className="text-sm font-medium">Migrate repositories</h2>
-        <MigrationStatus status={migration.status} />
+        <MigrationStatus status={current.status} />
       </div>
-      <div className="flex flex-col h-40 overflow-y-auto scrollbar-thin">
-        {migration.repositories.length === 0 ? (
+      <div className="flex flex-col h-24 overflow-y-auto scrollbar-thin border-b border-border">
+        {current.repositories.length === 0 ? (
           <div className="px-2 py-1.5 text-xs text-muted-foreground">
             No repositories.
           </div>
         ) : (
-          migration.repositories.map((repo) => (
+          current.repositories.map((repo) => (
             <div
               key={repo.id}
               className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs border-b border-border/50 last:border-b-0"
@@ -446,14 +473,17 @@ function PendingMigration({
           ))
         )}
       </div>
-      <div className="flex items-center justify-end h-7 border-t border-border">
+      <div className="flex items-center justify-between h-7">
+        <span className="pl-2 text-xs truncate text-muted-foreground">
+          {`Migrate ${current.repositories.length} ${current.repositories.length === 1 ? "repository" : "repositories"} from GitHub`}
+        </span>
         <button
           type="button"
-          onClick={onDismiss}
+          onClick={handleOk}
           disabled={inProgress}
           className="flex items-center px-3 h-full text-xs bg-primary text-primary-foreground border-l border-primary enabled:hover:opacity-90 disabled:opacity-60 transition-opacity disabled:cursor-not-allowed cursor-pointer"
         >
-          Dismiss
+          Ok
         </button>
       </div>
     </div>
