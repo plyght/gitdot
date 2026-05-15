@@ -7,7 +7,7 @@ mod state;
 use std::{sync::Arc, time::Duration};
 
 use anyhow::Context;
-use axum::{Router, routing::get};
+use axum::{Router, middleware::from_fn, routing::get};
 use http::StatusCode;
 use sqlx::PgPool;
 use tokio::net;
@@ -28,7 +28,7 @@ use crate::{
         create_repository_router, create_review_router, create_runner_router, create_task_router,
         create_user_router, create_webhook_router,
     },
-    layer::GitdotLayer,
+    middleware::log_request,
 };
 
 pub use error::AppError;
@@ -78,7 +78,7 @@ fn create_router(app_state: AppState) -> Router {
     let api_middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
-        .layer(GitdotLayer::api_metrics())
+        .layer(from_fn(log_request))
         .layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::list([web_origin]))

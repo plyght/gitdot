@@ -2,6 +2,6 @@ mod app;
 mod dto;
 mod extract;
 mod handler;
-mod layer;
+mod middleware;
 
 pub use app::GitdotServer;
