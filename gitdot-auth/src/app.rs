@@ -7,7 +7,7 @@ mod state;
 use std::{sync::Arc, time::Duration};
 
 use anyhow::Context;
-use axum::{Router, routing::get};
+use axum::{Router, middleware::from_fn, routing::get};
 use http::StatusCode;
 use sqlx::PgPool;
 use tokio::net;
@@ -20,7 +20,7 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use crate::handler::create_auth_router;
+use crate::{handler::create_auth_router, middleware::log_request};
 
 pub use error::AppError;
 pub use response::AppResponse;
@@ -77,6 +77,7 @@ fn create_router(state: AppState) -> Router {
     let middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
+        .layer(from_fn(log_request))
         .layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::list([web_origin]))
