@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
+import Link from "@/ui/link";
 import { formatDate } from "@/util/date";
 import { UserImage } from "../user/user-image";
 
@@ -64,25 +65,34 @@ export function OrgMembers({
       </div>
       <div className="flex flex-col gap-4">
         {sortedMembers.map((member) => (
-          <div key={member.id} className="flex items-start gap-3">
-            <UserImage userId={member.user_id} px={32} className="mt-0.5" />
-            <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-sm font-medium mb-0.5">
-                {member.user_name}
-              </span>
-              <p
-                className={
-                  member.role_description
-                    ? "text-xs text-foreground"
-                    : "text-xs text-muted-foreground"
-                }
-              >
-                {member.role_description || "no description found"}
-              </p>
-              <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                Joined {formatDate(new Date(member.created_at))}
-              </span>
-            </div>
+          <div
+            key={member.id}
+            className="grid grid-cols-[auto_1fr_auto] gap-x-3"
+          >
+            <Link
+              href={`/${member.user_name}`}
+              className="peer row-span-2 self-start"
+            >
+              <UserImage userId={member.user_id} px={32} />
+            </Link>
+            <Link
+              href={`/${member.user_name}`}
+              className="text-sm font-medium underline decoration-transparent hover:decoration-current peer-hover:decoration-current transition-colors duration-200 self-start"
+            >
+              {member.user_name}
+            </Link>
+            <span className="text-xs font-mono text-muted-foreground self-start">
+              joined {formatDate(new Date(member.created_at))}
+            </span>
+            <p
+              className={`col-start-2 col-end-4 ${
+                member.role_description
+                  ? "text-xs text-foreground"
+                  : "text-xs text-muted-foreground"
+              }`}
+            >
+              {member.role_description || "no description found"}
+            </p>
           </div>
         ))}
       </div>
