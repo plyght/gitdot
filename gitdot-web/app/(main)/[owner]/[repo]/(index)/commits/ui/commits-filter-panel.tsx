@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight, Circle, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -207,6 +207,13 @@ function PathsRow({
 }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const addPath = (p: string) => {
+    onAdd(p);
+    setQuery("");
+    inputRef.current?.blur();
+  };
 
   const suggestions = options
     .filter(
@@ -239,14 +246,14 @@ function PathsRow({
         </div>
       ))}
       <input
+        ref={inputRef}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}
-        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        onBlur={() => setFocused(false)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && suggestions.length > 0) {
-            onAdd(suggestions[0]);
-            setQuery("");
+            addPath(suggestions[0]);
           }
         }}
         placeholder="Search paths..."
@@ -260,8 +267,7 @@ function PathsRow({
               type="button"
               onMouseDown={(e) => {
                 e.preventDefault();
-                onAdd(s);
-                setQuery("");
+                addPath(s);
               }}
               className="flex items-center px-2 h-6 w-full text-left font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 border-b border-border last:border-b-0"
             >
