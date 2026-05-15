@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::resource::{
-    build::BuildResource, question::QuestionResource, review::ReviewResource,
-    settings::CommitFilterResource, user::UserResource,
+    build::BuildResource, question::QuestionResource, review::ReviewResource, user::UserResource,
 };
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -169,12 +168,6 @@ pub struct RepositoryCommitDiffResource {
     pub sha: String,
     pub parent_sha: String,
     pub files: Vec<RepositoryDiffFileResource>,
-}
-
-#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepositorySettingsResource {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub commit_filters: Option<Vec<CommitFilterResource>>,
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,5 +1,4 @@
 import type {
-  CommitFilterResource,
   RepositoryCommitResource,
   RepositoryDiffStatResource,
 } from "gitdot-api";
@@ -8,15 +7,23 @@ import { addDays, dateOnly, subtractDays } from "@/util";
 // ---------------------------------------------------------------------------
 // commit filtering utils
 // ---------------------------------------------------------------------------
+export type CommitFilter = {
+  name: string;
+  authors?: string[] | null;
+  tags?: string[] | null;
+  included_paths?: string[] | null;
+  excluded_paths?: string[] | null;
+};
+
 export function filterCommits(
-  filter: CommitFilterResource,
+  filter: CommitFilter,
   commits: RepositoryCommitResource[],
 ): RepositoryCommitResource[] {
   return commits.filter((commit) => filterCommit(filter, commit));
 }
 
 function filterCommit(
-  filter: CommitFilterResource,
+  filter: CommitFilter,
   commit: RepositoryCommitResource,
 ): boolean {
   if (filter.authors && filter.authors.length > 0) {

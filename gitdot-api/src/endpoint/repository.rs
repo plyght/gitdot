@@ -10,10 +10,8 @@ pub mod get_repository_commit_diff;
 pub mod get_repository_commits;
 pub mod get_repository_paths;
 pub mod get_repository_resources;
-pub mod get_repository_settings;
 pub mod star_repository;
 pub mod unstar_repository;
-pub mod update_repository_settings;
 
 fn default_visibility() -> String {
     "public".to_string()

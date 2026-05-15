@@ -1,11 +1,7 @@
-use std::collections::HashMap;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type};
 use uuid::Uuid;
-
-use crate::model::CommitFilter;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct User {
@@ -20,9 +16,6 @@ pub struct User {
 
     pub links: Vec<String>,
     pub display_name: Option<String>,
-
-    #[sqlx(json(nullable), default)]
-    pub settings: Option<UserSettings>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Type, Serialize, Deserialize)]
@@ -31,14 +24,4 @@ pub struct User {
 pub enum AuthProvider {
     Email,
     GitHub,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UserSettings {
-    pub repos: HashMap<String, UserRepoSettings>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserRepoSettings {
-    pub commit_filters: Option<Vec<CommitFilter>>,
 }

@@ -2,7 +2,6 @@ import type {
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  RepositorySettingsResource,
 } from "gitdot-api";
 import { getRepository } from "@/dal/repository";
 import type {
@@ -18,7 +17,6 @@ type Resources = {
   paths: RepositoryPathsResource | null;
   commits: RepositoryCommitResource[] | null;
   blobs: RepositoryBlobsResource | null;
-  settings: RepositorySettingsResource | null;
 };
 export type ResourcePromises = ResourcePromisesType<Resources>;
 export type ResourceRequests = ResourceRequestsType<Resources>;

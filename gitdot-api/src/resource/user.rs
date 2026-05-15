@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::resource::{organization::OrganizationMemberResource, settings::CommitFilterResource};
+use crate::resource::organization::OrganizationMemberResource;
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserResource {
@@ -22,14 +20,4 @@ pub struct UserResource {
 pub struct CurrentUserResource {
     pub user: UserResource,
     pub memberships: Vec<OrganizationMemberResource>,
-}
-
-#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UserSettingsResource {
-    pub repos: HashMap<String, UserRepoSettingsResource>,
-}
-
-#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UserRepoSettingsResource {
-    pub commit_filters: Option<Vec<CommitFilterResource>>,
 }

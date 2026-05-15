@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use rand::RngExt as _;
-use sqlx::{PgPool, Row as _};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
     error::DatabaseError,
-    model::{AuthProvider, Repository, User, UserSettings},
+    model::{AuthProvider, Repository, User},
 };
 
 #[async_trait]
@@ -34,14 +34,6 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DatabaseError>;
 
     async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<User>, DatabaseError>;
-
-    async fn get_settings(&self, id: Uuid) -> Result<Option<UserSettings>, DatabaseError>;
-
-    async fn update_settings(
-        &self,
-        id: Uuid,
-        settings: UserSettings,
-    ) -> Result<Option<UserSettings>, DatabaseError>;
 
     async fn verify_email(&self, id: Uuid) -> Result<(), DatabaseError>;
 
@@ -101,7 +93,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get(&self, user_name: &str) -> Result<Option<User>, DatabaseError> {
         let user = sqlx::query_as::<_, User>(
             r#"
-            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name, settings
+            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name
             FROM core.users
             WHERE name = $1
             "#,
@@ -142,7 +134,7 @@ impl UserRepository for UserRepositoryImpl {
         }
 
         builder.push(" WHERE id = ").push_bind(id).push(
-            " RETURNING id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name, settings",
+            " RETURNING id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name",
         );
 
         Ok(builder
@@ -154,7 +146,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DatabaseError> {
         let user = sqlx::query_as::<_, User>(
             r#"
-            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name, settings
+            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name
             FROM core.users
             WHERE id = $1
             "#,
@@ -169,7 +161,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DatabaseError> {
         let user = sqlx::query_as::<_, User>(
             r#"
-            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name, settings
+            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name
             FROM core.users
             WHERE email = $1
             "#,
@@ -188,7 +180,7 @@ impl UserRepository for UserRepositoryImpl {
 
         let users = sqlx::query_as::<_, User>(
             r#"
-            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name, settings
+            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name
             FROM core.users
             WHERE email = ANY($1)
             "#,
@@ -198,47 +190,6 @@ impl UserRepository for UserRepositoryImpl {
         .await?;
 
         Ok(users)
-    }
-
-    async fn get_settings(&self, id: Uuid) -> Result<Option<UserSettings>, DatabaseError> {
-        let user = sqlx::query_as::<_, User>(
-            r#"
-            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name, settings
-            FROM core.users
-            WHERE id = $1
-            "#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(user.and_then(|u| u.settings))
-    }
-
-    async fn update_settings(
-        &self,
-        id: Uuid,
-        settings: UserSettings,
-    ) -> Result<Option<UserSettings>, DatabaseError> {
-        let settings = serde_json::to_value(&settings).unwrap();
-        let row = sqlx::query(
-            r#"
-            UPDATE core.users SET settings = COALESCE(settings, '{}'::jsonb) || $2::jsonb
-            WHERE id = $1
-            RETURNING settings
-            "#,
-        )
-        .bind(id)
-        .bind(settings)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        let Some(row) = row else { return Ok(None) };
-        let json: Option<serde_json::Value> = row.try_get("settings")?;
-        Ok(Some(
-            json.and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or_default(),
-        ))
     }
 
     async fn verify_email(&self, id: Uuid) -> Result<(), DatabaseError> {

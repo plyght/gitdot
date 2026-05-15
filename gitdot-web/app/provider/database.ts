@@ -7,7 +7,6 @@ import type {
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  RepositorySettingsResource,
   ReviewResource,
 } from "gitdot-api";
 import type { Root } from "hast";
@@ -81,14 +80,6 @@ export class DatabaseProvider extends ClientProvider {
     return this.db.putMetadata(this.owner, this.repo, metadata);
   }
 
-  async getSettings() {
-    return this.db.getSettings(this.owner, this.repo);
-  }
-
-  async putSettings(settings: RepositorySettingsResource) {
-    return this.db.putSettings(this.owner, this.repo, settings);
-  }
-
   async getQuestions(): Promise<QuestionResource[] | null> {
     return this.db.getQuestions(this.owner, this.repo);
   }
@@ -137,8 +128,6 @@ export class DatabaseProvider extends ClientProvider {
     getPaths: (_args, v) => this.putPaths(v as RepositoryPathsResource),
     getCommits: (_args, v) => this.putCommits(v as RepositoryCommitResource[]),
     getBlobs: (_args, v) => this.putBlobs(v as RepositoryBlobsResource),
-    getSettings: (_args, v) =>
-      this.putSettings(v as RepositorySettingsResource),
     getQuestions: (_args, v) => this.putQuestions(v as QuestionResource[]),
     getReview: (_args, v) =>
       this.putReview((v as ReviewResource).number, v as ReviewResource),

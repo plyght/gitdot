@@ -1,13 +1,11 @@
 "use server";
 
 import type {
-  CommitFilterResource,
   GitHubInstallationResource,
   GitHubRepositoryResource,
   MigrationResource,
   RepositoryBlobsResource,
   RepositoryResource,
-  RepositorySettingsResource,
 } from "gitdot-api";
 import type { Root } from "hast";
 import { refresh } from "next/cache";
@@ -20,14 +18,12 @@ import {
   getMigration,
   getRepositoryBlob,
   getRepositoryBlobs,
-  getRepositorySettings,
   listInstallationRepositories,
   listInstallations,
   listMigrations,
   migrateGitHubRepositories,
   starRepository,
   unstarRepository,
-  updateRepositorySettings,
 } from "@/dal";
 
 export type CreateRepositoryActionResult =
@@ -86,33 +82,6 @@ export async function deleteRepositoryAction(
 
   redirect(`/${owner}`);
   return { success: true };
-}
-
-export type CreateCommitFilterActionResult =
-  | { settings: RepositorySettingsResource }
-  | { error: string };
-
-export async function createCommitFilterAction(
-  owner: string,
-  repo: string,
-  filter: CommitFilterResource,
-): Promise<CreateCommitFilterActionResult> {
-  if (!filter.name?.trim()) {
-    return { error: "Filter name is required" };
-  }
-
-  const existing = await getRepositorySettings(owner, repo);
-  const commit_filters = [...(existing?.commit_filters ?? []), filter];
-
-  const result = await updateRepositorySettings(owner, repo, {
-    commit_filters,
-  });
-  if (!result) {
-    return { error: "Failed to create commit filter" };
-  }
-
-  refresh();
-  return { settings: result };
 }
 
 export type MigrateGitHubRepositoriesPayload = {

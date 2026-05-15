@@ -3,7 +3,6 @@ import { z } from "zod";
 import { BuildResource } from "./build";
 import { QuestionResource } from "./question";
 import { ReviewResource } from "./review";
-import { CommitFilterResource } from "./settings";
 import { UserResource } from "./user";
 
 export const SyntaxHighlight = z.enum([
@@ -163,13 +162,6 @@ export const RepositoryResource = z.object({
   created_at: z.iso.datetime(),
 });
 export type RepositoryResource = z.infer<typeof RepositoryResource>;
-
-export const RepositorySettingsResource = z.object({
-  commit_filters: z.array(CommitFilterResource).optional(),
-});
-export type RepositorySettingsResource = z.infer<
-  typeof RepositorySettingsResource
->;
 
 export const RepositoryQuestionsResource = z.object({
   questions: z.array(QuestionResource),

@@ -6,9 +6,7 @@ use uuid::Uuid;
 use crate::{
     dto::UserResponse,
     error::DatabaseError,
-    model::{
-        Repository, RepositoryOwnerType, RepositorySettings, RepositoryStar, RepositoryVisibility,
-    },
+    model::{Repository, RepositoryOwnerType, RepositoryStar, RepositoryVisibility},
 };
 
 #[async_trait]
@@ -31,19 +29,6 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
     async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Repository>, DatabaseError>;
 
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError>;
-
-    async fn get_settings(
-        &self,
-        owner: &str,
-        repo: &str,
-    ) -> Result<Option<RepositorySettings>, DatabaseError>;
-
-    async fn update_settings(
-        &self,
-        owner: &str,
-        repo: &str,
-        settings: RepositorySettings,
-    ) -> Result<Option<RepositorySettings>, DatabaseError>;
 
     async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, DatabaseError>;
 
@@ -156,55 +141,6 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
             .await?;
 
         Ok(())
-    }
-
-    async fn get_settings(
-        &self,
-        owner: &str,
-        repo: &str,
-    ) -> Result<Option<RepositorySettings>, DatabaseError> {
-        let row = sqlx::query(
-            "SELECT settings FROM core.repositories WHERE owner_name = $1 AND name = $2",
-        )
-        .bind(owner)
-        .bind(repo)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        let Some(row) = row else { return Ok(None) };
-        let json: Option<serde_json::Value> = row.try_get("settings")?;
-        Ok(Some(
-            json.and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or(RepositorySettings {
-                    commit_filters: None,
-                }),
-        ))
-    }
-
-    async fn update_settings(
-        &self,
-        owner: &str,
-        repo: &str,
-        settings: RepositorySettings,
-    ) -> Result<Option<RepositorySettings>, DatabaseError> {
-        let settings = serde_json::to_value(&settings).unwrap();
-        let row = sqlx::query(
-            "UPDATE core.repositories SET settings = COALESCE(settings, '{}'::jsonb) || $3::jsonb WHERE owner_name = $1 AND name = $2 RETURNING settings",
-        )
-        .bind(owner)
-        .bind(repo)
-        .bind(settings)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        let Some(row) = row else { return Ok(None) };
-        let json: Option<serde_json::Value> = row.try_get("settings")?;
-        Ok(Some(
-            json.and_then(|v| serde_json::from_value(v).ok())
-                .unwrap_or(RepositorySettings {
-                    commit_filters: None,
-                }),
-        ))
     }
 
     async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, DatabaseError> {

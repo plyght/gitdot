@@ -10,10 +10,8 @@ mod get_repository_commit_diff;
 mod get_repository_commits;
 mod get_repository_paths;
 mod get_repository_resources;
-mod get_repository_settings;
 mod star_repository;
 mod unstar_repository;
-mod update_repository_settings;
 
 use axum::{
     Router,
@@ -34,10 +32,8 @@ use get_repository_commit_diff::get_repository_commit_diff;
 use get_repository_commits::get_repository_commits;
 use get_repository_paths::get_repository_paths;
 use get_repository_resources::get_repository_resources;
-use get_repository_settings::get_repository_settings;
 use star_repository::star_repository;
 use unstar_repository::unstar_repository;
-use update_repository_settings::update_repository_settings;
 
 pub fn create_repository_router() -> Router<AppState> {
     Router::new()
@@ -71,10 +67,6 @@ pub fn create_repository_router() -> Router<AppState> {
         .route(
             "/repository/{owner}/{repo}/commits/{sha}/diff",
             get(get_repository_commit_diff),
-        )
-        .route(
-            "/repository/{owner}/{repo}/settings",
-            get(get_repository_settings).patch(update_repository_settings),
         )
         .route(
             "/repository/{owner}/{repo}/resources",

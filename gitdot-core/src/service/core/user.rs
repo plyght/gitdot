@@ -4,15 +4,13 @@ use chrono::{Duration, Utc};
 use crate::{
     client::{ImageClient, ImageClientImpl, R2Client, R2ClientImpl},
     dto::{
-        CommitResponse, GetCurrentUserRequest, GetCurrentUserResponse,
-        GetCurrentUserSettingsRequest, GetUserRequest, HasUserRequest, ListUserCommitsRequest,
-        ListUserOrganizationsRequest, ListUserRepositoriesRequest, ListUserReviewsRequest,
-        ListUserStarsRequest, OrganizationMemberResponse, RepositoryResponse, ReviewResponse,
-        UpdateCurrentUserImageRequest, UpdateCurrentUserRequest, UpdateCurrentUserSettingsRequest,
-        UserResponse, UserSettingsResponse,
+        CommitResponse, GetCurrentUserRequest, GetCurrentUserResponse, GetUserRequest,
+        HasUserRequest, ListUserCommitsRequest, ListUserOrganizationsRequest,
+        ListUserRepositoriesRequest, ListUserReviewsRequest, ListUserStarsRequest,
+        OrganizationMemberResponse, RepositoryResponse, ReviewResponse, UpdateCurrentUserImageRequest,
+        UpdateCurrentUserRequest, UserResponse,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, UserError},
-    model::UserSettings,
     repository::{
         CommitRepository, CommitRepositoryImpl, OrganizationRepository, OrganizationRepositoryImpl,
         RepositoryRepository, RepositoryRepositoryImpl, ReviewRepository, ReviewRepositoryImpl,
@@ -66,16 +64,6 @@ pub trait UserService: Send + Sync + 'static {
         &self,
         request: ListUserCommitsRequest,
     ) -> Result<Vec<CommitResponse>, UserError>;
-
-    async fn get_current_user_settings(
-        &self,
-        request: GetCurrentUserSettingsRequest,
-    ) -> Result<UserSettingsResponse, UserError>;
-
-    async fn update_current_user_settings(
-        &self,
-        request: UpdateCurrentUserSettingsRequest,
-    ) -> Result<UserSettingsResponse, UserError>;
 }
 
 #[derive(Debug, Clone)]
@@ -308,29 +296,6 @@ where
             .await?;
 
         Ok(reviews.into_iter().map(ReviewResponse::from).collect())
-    }
-
-    async fn get_current_user_settings(
-        &self,
-        request: GetCurrentUserSettingsRequest,
-    ) -> Result<UserSettingsResponse, UserError> {
-        let settings = self.user_repo.get_settings(request.user_id).await?;
-        Ok(settings.unwrap_or_default().into())
-    }
-
-    async fn update_current_user_settings(
-        &self,
-        request: UpdateCurrentUserSettingsRequest,
-    ) -> Result<UserSettingsResponse, UserError> {
-        let patch = UserSettings {
-            repos: request.repos.unwrap_or_default(),
-        };
-        let settings = self
-            .user_repo
-            .update_settings(request.user_id, patch)
-            .await?
-            .or_not_found("user", request.user_id)?;
-        Ok(settings.into())
     }
 
     async fn list_commits(

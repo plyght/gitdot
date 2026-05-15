@@ -3,10 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type};
 use uuid::Uuid;
 
-use crate::{
-    error::{InputError, RepositoryError},
-    model::CommitFilter,
-};
+use crate::error::{InputError, RepositoryError};
 
 #[derive(Debug, Clone, FromRow)]
 pub struct Repository {
@@ -20,9 +17,6 @@ pub struct Repository {
     pub stars: i32,
     pub readonly: bool,
     pub created_at: DateTime<Utc>,
-
-    #[sqlx(json(nullable), default)]
-    pub settings: Option<RepositorySettings>,
 }
 
 impl Repository {
@@ -98,11 +92,6 @@ impl Into<String> for RepositoryVisibility {
             RepositoryVisibility::Private => "private".to_string(),
         }
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RepositorySettings {
-    pub commit_filters: Option<Vec<CommitFilter>>,
 }
 
 #[derive(Debug, Clone, FromRow)]

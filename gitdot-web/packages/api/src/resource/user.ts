@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { OrganizationMemberResource } from "./organization";
-import { CommitFilterResource } from "./settings";
 
 export const UserResource = z.object({
   id: z.uuid(),
@@ -19,13 +18,3 @@ export const CurrentUserResource = z.object({
   memberships: z.array(OrganizationMemberResource),
 });
 export type CurrentUserResource = z.infer<typeof CurrentUserResource>;
-
-export const UserRepoSettingsResource = z.object({
-  commit_filters: z.array(CommitFilterResource).optional(),
-});
-export type UserRepoSettingsResource = z.infer<typeof UserRepoSettingsResource>;
-
-export const UserSettingsResource = z.object({
-  repos: z.record(z.string(), UserRepoSettingsResource),
-});
-export type UserSettingsResource = z.infer<typeof UserSettingsResource>;

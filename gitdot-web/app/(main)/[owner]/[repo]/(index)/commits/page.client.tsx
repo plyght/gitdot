@@ -1,6 +1,5 @@
 "use client";
 
-import type { CommitFilterResource } from "gitdot-api";
 import { Suspense, use, useState } from "react";
 import {
   type ResourcePromisesType,
@@ -14,7 +13,7 @@ import { CommitsFilterPanel } from "./ui/commits-filter-panel";
 import { CommitsGrid } from "./ui/commits-grid";
 import { CommitsList } from "./ui/commits-list";
 import { CommitsShortcuts } from "./ui/commits-shortcuts";
-import { filterCommits } from "./util";
+import { type CommitFilter, filterCommits } from "./util";
 
 type ResourceRequests = ResourceRequestsType<Resources>;
 type ResourcePromises = ResourcePromisesType<Resources>;
@@ -38,20 +37,15 @@ export function PageClient({
   );
 }
 
-const ALL_COMMITS_FILTER: CommitFilterResource = {
-  name: "All commits",
-  created_at: "1970-01-01T00:00:00Z",
-  updated_at: "1970-01-01T00:00:00Z",
-};
+const ALL_COMMITS_FILTER: CommitFilter = { name: "All commits" };
 
 function PageContent({ promises }: { promises: ResourcePromises }) {
   const commits = use(promises.commits);
-  const settings = use(promises.settings);
   const paths = use(promises.paths);
 
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
-  const filters = [ALL_COMMITS_FILTER, ...(settings?.commit_filters ?? [])];
+  const filters = [ALL_COMMITS_FILTER];
   const [activeFilter, setActiveFilter] = useState(filters[0]);
 
   if (!commits) return null;
@@ -83,7 +77,7 @@ function PageContent({ promises }: { promises: ResourcePromises }) {
         setActiveFilter={setActiveFilter}
         pathOptions={
           paths?.entries.map((e) =>
-            e.path_type === "tree" ? `${e.name}/` : e.name,
+            e.path_type === "tree" ? `${e.path}/` : e.path,
           ) ?? []
         }
       />

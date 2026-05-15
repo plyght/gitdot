@@ -25,7 +25,7 @@ const blobKey = (owner: string, repo: string, commit: string, path: string) =>
 let dbPromise: Promise<IDBPDatabase> | null = null;
 function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = openDB("gitdot", 9, {
+    dbPromise = openDB("gitdot", 10, {
       upgrade(db) {
         if (!db.objectStoreNames.contains("commits"))
           db.createObjectStore("commits");
@@ -35,8 +35,8 @@ function getDb(): Promise<IDBPDatabase> {
           db.createObjectStore("blobs");
         if (!db.objectStoreNames.contains("hasts"))
           db.createObjectStore("hasts");
-        if (!db.objectStoreNames.contains("settings"))
-          db.createObjectStore("settings");
+        if (db.objectStoreNames.contains("settings"))
+          db.deleteObjectStore("settings");
         if (!db.objectStoreNames.contains("metadata"))
           db.createObjectStore("metadata");
         if (!db.objectStoreNames.contains("questions"))
@@ -189,16 +189,6 @@ export function openIdb(): Database {
     ) {
       const db = await getDb();
       await db.put("hasts", hast, blobKey(owner, repo, commit, path));
-    },
-
-    async getSettings(owner, repo) {
-      const db = await getDb();
-      return (await db.get("settings", repoKey(owner, repo))) ?? null;
-    },
-
-    async putSettings(owner, repo, settings) {
-      const db = await getDb();
-      await db.put("settings", settings, repoKey(owner, repo));
     },
 
     async getQuestions(owner, repo): Promise<QuestionResource[] | null> {

@@ -3,14 +3,14 @@
 import type { RepositoryCommitResource } from "gitdot-api";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { cn, pluralize } from "@/util";
-import { formatDate, inRange } from "@/util/date";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
+import { cn, pluralize } from "@/util";
+import { formatDate, inRange } from "@/util/date";
 import {
   buildGrid,
   cellColor,
@@ -65,9 +65,10 @@ export function CommitsGrid({
 
   const displayStart = startDate ?? graphStartDate;
   const displayEnd = endDate ?? graphEnd;
-  const commitsInRange = startDate && endDate
-    ? commits.filter((c) => inRange(c.date.slice(0, 10), startDate, endDate))
-    : commits;
+  const commitsInRange =
+    startDate && endDate
+      ? commits.filter((c) => inRange(c.date.slice(0, 10), startDate, endDate))
+      : commits;
 
   return (
     <div className="flex flex-col w-full h-42 border-b border-border">
@@ -79,20 +80,42 @@ export function CommitsGrid({
               type="button"
               className="flex items-center gap-0.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
             >
-              {pluralize(commitsInRange.length, "commit")}: {formatDate(new Date(`${displayStart}T00:00:00`))} – {formatDate(new Date(`${displayEnd}T00:00:00`))}
+              {pluralize(commitsInRange.length, "commit")}:{" "}
+              {formatDate(new Date(`${displayStart}T00:00:00`))} –{" "}
+              {formatDate(new Date(`${displayEnd}T00:00:00`))}
               <ChevronDownIcon className="size-3 shrink-0" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
+          <DropdownMenuContent align="start" className="min-w-0">
             {[
-              { label: "Year to date", start: `${new Date().getFullYear()}-01-01`, end: new Date().toISOString().slice(0, 10) },
-              { label: String(new Date().getFullYear()), start: `${new Date().getFullYear()}-01-01`, end: `${new Date().getFullYear()}-12-31` },
-              { label: String(new Date().getFullYear() - 1), start: `${new Date().getFullYear() - 1}-01-01`, end: `${new Date().getFullYear() - 1}-12-31` },
-              { label: String(new Date().getFullYear() - 2), start: `${new Date().getFullYear() - 2}-01-01`, end: `${new Date().getFullYear() - 2}-12-31` },
+              {
+                label: "Year to date",
+                start: `${new Date().getFullYear()}-01-01`,
+                end: new Date().toISOString().slice(0, 10),
+              },
+              {
+                label: String(new Date().getFullYear()),
+                start: `${new Date().getFullYear()}-01-01`,
+                end: `${new Date().getFullYear()}-12-31`,
+              },
+              {
+                label: String(new Date().getFullYear() - 1),
+                start: `${new Date().getFullYear() - 1}-01-01`,
+                end: `${new Date().getFullYear() - 1}-12-31`,
+              },
+              {
+                label: String(new Date().getFullYear() - 2),
+                start: `${new Date().getFullYear() - 2}-01-01`,
+                end: `${new Date().getFullYear() - 2}-12-31`,
+              },
             ].map((opt) => (
               <DropdownMenuItem
                 key={opt.label}
-                onClick={() => { setStartDate(opt.start); setEndDate(opt.end); }}
+                onClick={() => {
+                  setStartDate(opt.start);
+                  setEndDate(opt.end);
+                }}
+                className="text-xs font-mono py-1 px-2"
               >
                 {opt.label}
               </DropdownMenuItem>
@@ -100,6 +123,7 @@ export function CommitsGrid({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
       {/* day labels and the grid are in the same row */}
       <div className="flex flex-row items-start flex-1 h-full">
         <div
@@ -154,7 +178,6 @@ export function CommitsGrid({
             )),
           )}
         </div>
-
       </div>
 
       {/* month labels below */}

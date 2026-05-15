@@ -405,8 +405,8 @@ mod tests {
         model::{
             Answer, AuthProvider, Comment, CommentSide, Diff, DiffStatus, Organization,
             OrganizationMember, OrganizationRole, Question, Repository, RepositoryOwnerType,
-            RepositorySettings, RepositoryStar, RepositoryVisibility, Review, ReviewComment,
-            ReviewStatus, Reviewer, Revision, User, UserSettings, Verdict, VoteResult, VoteTarget,
+            RepositoryStar, RepositoryVisibility, Review, ReviewComment, ReviewStatus, Reviewer,
+            Revision, User, Verdict, VoteResult, VoteTarget,
         },
         repository::{
             OrganizationRepository, QuestionRepository, RepositoryRepository, ReviewRepository,
@@ -450,8 +450,6 @@ mod tests {
             async fn get_by_id(&self, id: Uuid) -> Result<Option<Repository>, crate::error::DatabaseError>;
             async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Repository>, crate::error::DatabaseError>;
             async fn delete(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
-            async fn get_settings(&self, owner: &str, repo: &str) -> Result<Option<RepositorySettings>, crate::error::DatabaseError>;
-            async fn update_settings(&self, owner: &str, repo: &str, settings: RepositorySettings) -> Result<Option<RepositorySettings>, crate::error::DatabaseError>;
             async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, crate::error::DatabaseError>;
             async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, crate::error::DatabaseError>;
             async fn is_starred(&self, id: Uuid, user_id: Uuid) -> Result<bool, crate::error::DatabaseError>;
@@ -497,8 +495,6 @@ mod tests {
             async fn get_by_email(&self, email: &str) -> Result<Option<User>, crate::error::DatabaseError>;
             async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<User>, crate::error::DatabaseError>;
             async fn verify_email(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
-            async fn get_settings(&self, id: Uuid) -> Result<Option<UserSettings>, crate::error::DatabaseError>;
-            async fn update_settings(&self, id: Uuid, settings: UserSettings) -> Result<Option<UserSettings>, crate::error::DatabaseError>;
             async fn is_name_taken(&self, name: &str) -> Result<bool, crate::error::DatabaseError>;
             async fn is_email_taken(&self, email: &str) -> Result<bool, crate::error::DatabaseError>;
             async fn list_starred_repositories(&self, user_id: Uuid) -> Result<Vec<Repository>, crate::error::DatabaseError>;
@@ -547,7 +543,6 @@ mod tests {
             stars: 0,
             readonly: false,
             created_at: chrono::Utc::now(),
-            settings: None,
         }
     }
 

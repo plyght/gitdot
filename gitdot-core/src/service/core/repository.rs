@@ -8,14 +8,13 @@ use crate::{
     dto::{
         CreateRepositoryRequest, DeleteRepositoryRequest, GetRepositoryActivityRequest,
         GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest, GetRepositoryBlobsRequest,
-        GetRepositoryPathsRequest, GetRepositoryRequest, GetRepositorySettingsRequest,
-        RepositoryActivityEvent, RepositoryBlobDiffsResponse, RepositoryBlobResponse,
-        RepositoryBlobsResponse, RepositoryPathsResponse, RepositoryResponse,
-        RepositorySettingsResponse, StarRepositoryRequest, UnstarRepositoryRequest,
-        UpdateRepositorySettingsRequest,
+        GetRepositoryPathsRequest, GetRepositoryRequest, RepositoryActivityEvent,
+        RepositoryBlobDiffsResponse, RepositoryBlobResponse, RepositoryBlobsResponse,
+        RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest,
+        UnstarRepositoryRequest,
     },
     error::{ConflictError, OptionNotFoundExt, RepositoryError},
-    model::{RepositoryOwnerType, RepositorySettings},
+    model::RepositoryOwnerType,
     repository::{
         OrganizationRepository, OrganizationRepositoryImpl, RepositoryRepository,
         RepositoryRepositoryImpl,
@@ -68,16 +67,6 @@ pub trait RepositoryService: Send + Sync + 'static {
         &self,
         request: GetRepositoryBlobDiffsRequest,
     ) -> Result<RepositoryBlobDiffsResponse, RepositoryError>;
-
-    async fn get_repository_settings(
-        &self,
-        request: GetRepositorySettingsRequest,
-    ) -> Result<RepositorySettingsResponse, RepositoryError>;
-
-    async fn update_repository_settings(
-        &self,
-        request: UpdateRepositorySettingsRequest,
-    ) -> Result<RepositorySettingsResponse, RepositoryError>;
 
     async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError>;
 
@@ -373,41 +362,6 @@ where
         }
 
         Ok(RepositoryBlobDiffsResponse { diffs })
-    }
-
-    async fn get_repository_settings(
-        &self,
-        request: GetRepositorySettingsRequest,
-    ) -> Result<RepositorySettingsResponse, RepositoryError> {
-        let owner = request.owner.as_ref();
-        let repo = request.repo.as_ref();
-        let settings = self
-            .repo_repo
-            .get_settings(owner, repo)
-            .await?
-            .or_not_found("repository", format!("{}/{}", owner, repo))?;
-        Ok(RepositorySettingsResponse {
-            commit_filters: settings.commit_filters,
-        })
-    }
-
-    async fn update_repository_settings(
-        &self,
-        request: UpdateRepositorySettingsRequest,
-    ) -> Result<RepositorySettingsResponse, RepositoryError> {
-        let owner = request.owner.as_ref();
-        let repo = request.repo.as_ref();
-        let patch = RepositorySettings {
-            commit_filters: request.commit_filters,
-        };
-        let settings = self
-            .repo_repo
-            .update_settings(owner, repo, patch)
-            .await?
-            .or_not_found("repository", format!("{}/{}", owner, repo))?;
-        Ok(RepositorySettingsResponse {
-            commit_filters: settings.commit_filters,
-        })
     }
 
     async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError> {

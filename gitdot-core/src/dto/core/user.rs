@@ -1,5 +1,4 @@
 mod get_current_user;
-mod get_current_user_settings;
 mod get_user;
 mod has_user;
 mod list_user_commits;
@@ -9,20 +8,13 @@ mod list_user_reviews;
 mod list_user_stars;
 mod update_current_user;
 mod update_current_user_image;
-mod update_current_user_settings;
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use std::collections::HashMap;
-
-use crate::{
-    dto::OrganizationMemberResponse,
-    model::{CommitFilter, User, UserRepoSettings, UserSettings},
-};
+use crate::{dto::OrganizationMemberResponse, model::User};
 
 pub use get_current_user::GetCurrentUserRequest;
-pub use get_current_user_settings::GetCurrentUserSettingsRequest;
 pub use get_user::GetUserRequest;
 pub use has_user::HasUserRequest;
 pub use list_user_commits::ListUserCommitsRequest;
@@ -32,7 +24,6 @@ pub use list_user_reviews::ListUserReviewsRequest;
 pub use list_user_stars::ListUserStarsRequest;
 pub use update_current_user::UpdateCurrentUserRequest;
 pub use update_current_user_image::UpdateCurrentUserImageRequest;
-pub use update_current_user_settings::UpdateCurrentUserSettingsRequest;
 
 #[derive(Debug, Clone)]
 pub struct UserResponse {
@@ -65,30 +56,4 @@ impl From<User> for UserResponse {
 pub struct GetCurrentUserResponse {
     pub user: UserResponse,
     pub memberships: Vec<OrganizationMemberResponse>,
-}
-
-#[derive(Debug, Clone)]
-pub struct UserSettingsResponse {
-    pub repos: HashMap<String, UserRepoSettingsResponse>,
-}
-
-impl From<UserSettings> for UserSettingsResponse {
-    fn from(s: UserSettings) -> Self {
-        Self {
-            repos: s.repos.into_iter().map(|(k, v)| (k, v.into())).collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct UserRepoSettingsResponse {
-    pub commit_filters: Option<Vec<CommitFilter>>,
-}
-
-impl From<UserRepoSettings> for UserRepoSettingsResponse {
-    fn from(s: UserRepoSettings) -> Self {
-        Self {
-            commit_filters: s.commit_filters,
-        }
-    }
 }

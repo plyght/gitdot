@@ -7,7 +7,6 @@ import type {
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  RepositorySettingsResource,
   ReviewResource,
 } from "gitdot-api";
 import type { Root } from "hast";
@@ -18,7 +17,6 @@ type Store = {
   paths: RepositoryPathsResource | undefined;
   blobs: RepositoryBlobsResource | undefined;
   commits: RepositoryCommitResource[] | undefined;
-  settings: RepositorySettingsResource | undefined;
   questions: QuestionResource[] | undefined;
   builds: BuildResource[] | undefined;
   blob: Map<string, RepositoryBlobResource>;
@@ -33,7 +31,6 @@ export class InMemoryProvider extends ClientProvider {
     paths: undefined,
     blobs: undefined,
     commits: undefined,
-    settings: undefined,
     questions: undefined,
     builds: undefined,
     blob: new Map(),
@@ -80,10 +77,6 @@ export class InMemoryProvider extends ClientProvider {
     return this.store.blobs ?? null;
   }
 
-  async getSettings(): Promise<RepositorySettingsResource | null> {
-    return this.store.settings ?? null;
-  }
-
   async getQuestions(): Promise<QuestionResource[] | null> {
     return this.store.questions ?? null;
   }
@@ -110,12 +103,11 @@ export class InMemoryProvider extends ClientProvider {
     const metadata = await db.getMetadata(this.owner, this.repo);
     if (!metadata) return;
     const { last_commit: commit } = metadata;
-    const [paths, blobs, commits, settings, hasts, questions, reviews, builds] =
+    const [paths, blobs, commits, hasts, questions, reviews, builds] =
       await Promise.all([
         db.getPaths(this.owner, this.repo),
         db.getBlobs(this.owner, this.repo, commit),
         db.getCommits(this.owner, this.repo),
-        db.getSettings(this.owner, this.repo),
         db.getHasts(this.owner, this.repo, commit),
         db.getQuestions(this.owner, this.repo),
         db.getReviews(this.owner, this.repo),
@@ -130,7 +122,6 @@ export class InMemoryProvider extends ClientProvider {
       this.store.commits = commits;
       for (const c of commits) this.store.commit.set(c.sha.slice(0, 7), c);
     }
-    if (settings) this.store.settings = settings;
     if (hasts) this.store.hast = hasts;
     if (questions?.length) this.store.questions = questions;
     if (reviews?.length) {

@@ -5,7 +5,6 @@ import type {
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  RepositorySettingsResource,
   ReviewResource,
 } from "gitdot-api";
 import type { Root } from "hast";
@@ -93,17 +92,6 @@ export interface Database {
     path: string,
     hast: Root,
     commit: string,
-  ): Promise<void>;
-
-  getSettings(
-    owner: string,
-    repo: string,
-  ): Promise<RepositorySettingsResource | null>;
-
-  putSettings(
-    owner: string,
-    repo: string,
-    settings: RepositorySettingsResource,
   ): Promise<void>;
 
   getQuestions(owner: string, repo: string): Promise<QuestionResource[] | null>;

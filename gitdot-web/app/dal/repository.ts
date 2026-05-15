@@ -18,14 +18,11 @@ import {
   RepositoryPathsResource,
   RepositoryResource,
   RepositoryResourcesResource,
-  RepositorySettingsResource,
-  type UpdateRepositorySettingsRequest,
 } from "gitdot-api";
 import { toQueryString } from "@/util";
 import {
   authDelete,
   authFetch,
-  authPatch,
   authPost,
   GITDOT_SERVER_URL,
   handleEmptyResponse,
@@ -150,16 +147,6 @@ export async function getRepositoryActivity(
   return await handleResponse(response, GetRepositoryActivityResponse);
 }
 
-export async function getRepositorySettings(
-  owner: string,
-  repo: string,
-): Promise<RepositorySettingsResource | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/settings`,
-  );
-  return await handleResponse(response, RepositorySettingsResource);
-}
-
 export async function getRepositoryResources(
   owner: string,
   repo: string,
@@ -170,19 +157,6 @@ export async function getRepositoryResources(
     request,
   );
   return await handleResponse(response, RepositoryResourcesResource);
-}
-
-export async function updateRepositorySettings(
-  owner: string,
-  repo: string,
-  request: UpdateRepositorySettingsRequest,
-): Promise<RepositorySettingsResource | null> {
-  const response = await authPatch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/settings`,
-    request,
-  );
-
-  return await handleResponse(response, RepositorySettingsResource);
 }
 
 export async function deleteRepository(
