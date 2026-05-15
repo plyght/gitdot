@@ -13,7 +13,7 @@ use sqlx::PgPool;
 use tokio::net;
 use tower::ServiceBuilder;
 use tower_http::{
-    cors::CorsLayer,
+    cors::{AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     timeout::TimeoutLayer,
     trace::TraceLayer,
@@ -70,11 +70,28 @@ impl GitdotServer {
 }
 
 fn create_router(app_state: AppState) -> Router {
+    let web_origin = app_state
+        .settings
+        .gitdot_web_url
+        .parse()
+        .expect("GITDOT_WEB_URL must be a valid origin");
     let api_middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
         .layer(GitdotLayer::api_metrics())
-        .layer(CorsLayer::permissive()) // TODO: update CORS policy
+        .layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::list([web_origin]))
+                .allow_methods([
+                    http::Method::GET,
+                    http::Method::POST,
+                    http::Method::PATCH,
+                    http::Method::DELETE,
+                    http::Method::HEAD,
+                ])
+                .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION])
+                .allow_credentials(true),
+        )
         .layer(TimeoutLayer::with_status_code(
             StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(90), // TODO: only 90s for /task/poll, rest should be 10s
