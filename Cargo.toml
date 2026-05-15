@@ -125,6 +125,7 @@ tokio-stream = "0.1"
 tokio-util = { version = "0.7.18", features = ["io"] }
 toml = "1.0"
 tower = "0.5.2"
+tower_governor = "0.6"
 tower-http = "0.6"
 tracing = "0.1"
 tracing-subscriber = "0.3"

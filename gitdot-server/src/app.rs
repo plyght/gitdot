@@ -12,6 +12,9 @@ use http::StatusCode;
 use sqlx::PgPool;
 use tokio::net;
 use tower::ServiceBuilder;
+use tower_governor::{
+    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
+};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -70,11 +73,19 @@ impl GitdotServer {
 }
 
 fn create_router(app_state: AppState) -> Router {
+    let governor_config = GovernorConfigBuilder::default()
+        .per_second(100)
+        .burst_size(200)
+        .key_extractor(SmartIpKeyExtractor)
+        .finish()
+        .expect("Failed to build governor config");
+
     let web_origin = app_state
         .settings
         .gitdot_web_url
         .parse()
         .expect("GITDOT_WEB_URL must be a valid origin");
+
     let api_middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
@@ -96,6 +107,9 @@ fn create_router(app_state: AppState) -> Router {
             StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(90), // TODO: only 90s for /task/poll, rest should be 10s
         ))
+        .layer(GovernorLayer {
+            config: governor_config.into(),
+        })
         .layer(PropagateRequestIdLayer::x_request_id());
 
     let api_router = Router::new()
