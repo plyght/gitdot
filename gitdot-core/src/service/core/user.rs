@@ -130,7 +130,7 @@ impl
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<U, R, O, V, C, I, R2> UserService for UserServiceImpl<U, R, O, V, C, I, R2>
 where

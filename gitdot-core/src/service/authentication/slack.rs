@@ -34,7 +34,7 @@ impl SlackServiceImpl<SlackRepositoryImpl, SlackBotClientImpl> {
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<SlR, SBC> SlackService for SlackServiceImpl<SlR, SBC>
 where

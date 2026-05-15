@@ -78,7 +78,7 @@ impl
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<C, R, U, G, D> CommitService for CommitServiceImpl<C, R, U, G, D>
 where

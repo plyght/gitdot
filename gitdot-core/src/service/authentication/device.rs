@@ -71,7 +71,7 @@ impl
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<DR, TR, UR, TC> DeviceService for DeviceServiceImpl<DR, TR, UR, TC>
 where

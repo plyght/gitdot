@@ -82,7 +82,7 @@ impl
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<G, S, B, T, R> BuildService for BuildServiceImpl<G, S, B, T, R>
 where

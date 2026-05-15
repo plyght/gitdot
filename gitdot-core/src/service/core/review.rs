@@ -199,7 +199,7 @@ where
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<V, R, U, G, D> ReviewService for ReviewServiceImpl<V, R, U, G, D>
 where

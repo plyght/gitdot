@@ -35,7 +35,7 @@ impl GitHttpServiceImpl<GitHttpClientImpl> {
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<G> GitHttpService for GitHttpServiceImpl<G>
 where

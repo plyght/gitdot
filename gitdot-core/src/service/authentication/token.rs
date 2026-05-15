@@ -71,7 +71,7 @@ impl TokenServiceImpl<TokenRepositoryImpl, OctocrabClient, SlackBotClientImpl, T
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<TR, GH, SBC, TC> TokenService for TokenServiceImpl<TR, GH, SBC, TC>
 where

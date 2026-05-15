@@ -56,7 +56,7 @@ impl
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<R, MR, G, GH> GithubWebhookService for GithubWebhookServiceImpl<R, MR, G, GH>
 where

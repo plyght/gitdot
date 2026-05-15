@@ -152,7 +152,7 @@ where
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<SR, UR, EC, GH, TC, IC, RC, RD> SessionService
     for SessionServiceImpl<SR, UR, EC, GH, TC, IC, RC, RD>

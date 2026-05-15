@@ -39,7 +39,7 @@ impl EventServiceImpl<UserRepositoryImpl, Git2Client, KafkaClientImpl> {
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<U, G, K> EventService for EventServiceImpl<U, G, K>
 where

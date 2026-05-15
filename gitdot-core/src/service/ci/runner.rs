@@ -77,7 +77,7 @@ impl
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<R, O, T, TC> RunnerService for RunnerServiceImpl<R, O, T, TC>
 where

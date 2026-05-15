@@ -102,7 +102,7 @@ impl
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<O, U, R, I, R2> OrganizationService for OrganizationServiceImpl<O, U, R, I, R2>
 where

@@ -55,7 +55,7 @@ impl WebhookServiceImpl<WebhookRepositoryImpl, RepositoryRepositoryImpl> {
     }
 }
 
-#[crate::instrument_all]
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl<W, R> WebhookService for WebhookServiceImpl<W, R>
 where
