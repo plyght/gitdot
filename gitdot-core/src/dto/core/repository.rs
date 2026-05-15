@@ -1,4 +1,5 @@
 mod create_repository;
+mod create_repository_commit_filter;
 mod delete_repository;
 mod get_repository;
 mod get_repository_activity;
@@ -8,15 +9,17 @@ mod get_repository_blobs;
 mod get_repository_commit;
 mod get_repository_file;
 mod get_repository_paths;
+mod list_repository_commit_filters;
 mod star_repository;
 mod unstar_repository;
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::model::Repository;
+use crate::model::{CommitFilter, Repository};
 
 pub use create_repository::CreateRepositoryRequest;
+pub use create_repository_commit_filter::CreateRepositoryCommitFilterRequest;
 pub use delete_repository::DeleteRepositoryRequest;
 pub use get_repository::GetRepositoryRequest;
 pub use get_repository_activity::{GetRepositoryActivityRequest, RepositoryActivityEvent};
@@ -30,6 +33,7 @@ pub use get_repository_file::RepositoryFileResponse;
 pub use get_repository_paths::{
     GetRepositoryPathsRequest, PathType, RepositoryPath, RepositoryPathsResponse,
 };
+pub use list_repository_commit_filters::ListRepositoryCommitFiltersRequest;
 pub use star_repository::StarRepositoryRequest;
 pub use unstar_repository::UnstarRepositoryRequest;
 
@@ -155,4 +159,31 @@ pub enum SyntaxHighlight {
     Comment,
     Keyword,
     TreeSitterError,
+}
+
+#[derive(Debug, Clone)]
+pub struct RepositoryCommitFilterResponse {
+    pub id: Uuid,
+    pub repository_id: Uuid,
+    pub name: String,
+    pub authors: Option<Vec<String>>,
+    pub tags: Option<Vec<String>>,
+    pub paths: Option<Vec<String>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl From<CommitFilter> for RepositoryCommitFilterResponse {
+    fn from(f: CommitFilter) -> Self {
+        Self {
+            id: f.id,
+            repository_id: f.repository_id,
+            name: f.name,
+            authors: f.authors,
+            tags: f.tags,
+            paths: f.paths,
+            created_at: f.created_at,
+            updated_at: f.updated_at,
+        }
+    }
 }

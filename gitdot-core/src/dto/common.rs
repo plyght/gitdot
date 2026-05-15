@@ -24,6 +24,10 @@ fn is_valid_email(s: &str) -> bool {
     !s.is_empty() && s.contains('@')
 }
 
+fn is_valid_filter_name(s: &str) -> bool {
+    !s.is_empty() && s.len() <= 100
+}
+
 #[nutype(
     sanitize(trim, lowercase),
     validate(predicate = is_valid_slug),
@@ -58,6 +62,13 @@ pub struct WebhookUrl(String);
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
 pub struct Email(String);
+
+#[nutype(
+    sanitize(trim),
+    validate(predicate = is_valid_filter_name),
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
+)]
+pub struct FilterName(String);
 
 #[cfg(test)]
 mod tests {

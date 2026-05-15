@@ -6,10 +6,11 @@ use uuid::Uuid;
 use crate::{
     client::{DiffClient, DifftClient, Git2Client, GitClient},
     dto::{
-        CreateRepositoryRequest, DeleteRepositoryRequest, GetRepositoryActivityRequest,
-        GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest, GetRepositoryBlobsRequest,
-        GetRepositoryPathsRequest, GetRepositoryRequest, RepositoryActivityEvent,
-        RepositoryBlobDiffsResponse, RepositoryBlobResponse, RepositoryBlobsResponse,
+        CreateRepositoryCommitFilterRequest, CreateRepositoryRequest, DeleteRepositoryRequest,
+        GetRepositoryActivityRequest, GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest,
+        GetRepositoryBlobsRequest, GetRepositoryPathsRequest, GetRepositoryRequest,
+        ListRepositoryCommitFiltersRequest, RepositoryActivityEvent, RepositoryBlobDiffsResponse,
+        RepositoryBlobResponse, RepositoryBlobsResponse, RepositoryCommitFilterResponse,
         RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest,
         UnstarRepositoryRequest,
     },
@@ -79,6 +80,16 @@ pub trait RepositoryService: Send + Sync + 'static {
         &self,
         request: GetRepositoryActivityRequest,
     ) -> Result<Vec<RepositoryActivityEvent>, RepositoryError>;
+
+    async fn list_repository_commit_filters(
+        &self,
+        request: ListRepositoryCommitFiltersRequest,
+    ) -> Result<Vec<RepositoryCommitFilterResponse>, RepositoryError>;
+
+    async fn create_repository_commit_filter(
+        &self,
+        request: CreateRepositoryCommitFilterRequest,
+    ) -> Result<RepositoryCommitFilterResponse, RepositoryError>;
 }
 
 #[derive(Debug, Clone)]
@@ -434,5 +445,60 @@ where
             .into_iter()
             .map(|(user, at)| RepositoryActivityEvent::Starred { user, at })
             .collect())
+    }
+
+    async fn list_repository_commit_filters(
+        &self,
+        request: ListRepositoryCommitFiltersRequest,
+    ) -> Result<Vec<RepositoryCommitFilterResponse>, RepositoryError> {
+        let owner = request.owner.as_ref();
+        let repo = request.repo.as_ref();
+
+        let repository = self
+            .repo_repo
+            .get(owner, repo)
+            .await?
+            .or_not_found("repository", format!("{}/{}", owner, repo))?;
+
+        let filters = self.repo_repo.list_commit_filters(repository.id).await?;
+        Ok(filters
+            .into_iter()
+            .map(RepositoryCommitFilterResponse::from)
+            .collect())
+    }
+
+    async fn create_repository_commit_filter(
+        &self,
+        request: CreateRepositoryCommitFilterRequest,
+    ) -> Result<RepositoryCommitFilterResponse, RepositoryError> {
+        let owner = request.owner.as_ref();
+        let repo = request.repo.as_ref();
+        let name = request.name.to_string();
+
+        let repository = self
+            .repo_repo
+            .get(owner, repo)
+            .await?
+            .or_not_found("repository", format!("{}/{}", owner, repo))?;
+
+        let existing = self.repo_repo.list_commit_filters(repository.id).await?;
+        if existing.iter().any(|f| f.name == name) {
+            return Err(RepositoryError::Conflict(ConflictError::new(
+                "commit filter",
+                format!("{}/{}/{}", owner, repo, name),
+            )));
+        }
+
+        let filter = self
+            .repo_repo
+            .create_commit_filter(
+                repository.id,
+                &name,
+                request.authors,
+                request.tags,
+                request.paths,
+            )
+            .await?;
+        Ok(filter.into())
     }
 }

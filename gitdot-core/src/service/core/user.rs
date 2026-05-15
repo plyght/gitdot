@@ -7,8 +7,8 @@ use crate::{
         CommitResponse, GetCurrentUserRequest, GetCurrentUserResponse, GetUserRequest,
         HasUserRequest, ListUserCommitsRequest, ListUserOrganizationsRequest,
         ListUserRepositoriesRequest, ListUserReviewsRequest, ListUserStarsRequest,
-        OrganizationMemberResponse, RepositoryResponse, ReviewResponse, UpdateCurrentUserImageRequest,
-        UpdateCurrentUserRequest, UserResponse,
+        OrganizationMemberResponse, RepositoryResponse, ReviewResponse,
+        UpdateCurrentUserImageRequest, UpdateCurrentUserRequest, UserResponse,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, UserError},
     repository::{

@@ -55,8 +55,20 @@ const CommitRow = memo(function CommitRow({
     <div
       data-page-item
       tabIndex={-1}
-      onClick={() => {
-        window.open(href, "_blank");
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey) {
+          window.open(href, "_blank", "noopener,noreferrer");
+          return;
+        }
+        window.dispatchEvent(
+          new CustomEvent("openCommitDialog", { detail: { commit } }),
+        );
+      }}
+      onAuxClick={(e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          window.open(href, "_blank", "noopener,noreferrer");
+        }
       }}
       className="flex w-full h-7 border-b items-center px-2 gap-2 cursor-default hover:bg-accent/50 focus:bg-accent/50 focus:outline-none select-none"
     >

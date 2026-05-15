@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::{
     dto::UserResponse,
     error::DatabaseError,
-    model::{Repository, RepositoryOwnerType, RepositoryStar, RepositoryVisibility},
+    model::{CommitFilter, Repository, RepositoryOwnerType, RepositoryStar, RepositoryVisibility},
 };
 
 #[async_trait]
@@ -41,6 +41,20 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         repository_id: Uuid,
         limit: i64,
     ) -> Result<Vec<(UserResponse, DateTime<Utc>)>, DatabaseError>;
+
+    async fn list_commit_filters(
+        &self,
+        repository_id: Uuid,
+    ) -> Result<Vec<CommitFilter>, DatabaseError>;
+
+    async fn create_commit_filter(
+        &self,
+        repository_id: Uuid,
+        name: &str,
+        authors: Option<Vec<String>>,
+        tags: Option<Vec<String>>,
+        paths: Option<Vec<String>>,
+    ) -> Result<CommitFilter, DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -248,5 +262,50 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
                 Ok((user, starred_at))
             })
             .collect()
+    }
+
+    async fn list_commit_filters(
+        &self,
+        repository_id: Uuid,
+    ) -> Result<Vec<CommitFilter>, DatabaseError> {
+        let filters = sqlx::query_as::<_, CommitFilter>(
+            r#"
+            SELECT id, repository_id, name, authors, tags, paths, created_at, updated_at
+            FROM core.commit_filters
+            WHERE repository_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(repository_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(filters)
+    }
+
+    async fn create_commit_filter(
+        &self,
+        repository_id: Uuid,
+        name: &str,
+        authors: Option<Vec<String>>,
+        tags: Option<Vec<String>>,
+        paths: Option<Vec<String>>,
+    ) -> Result<CommitFilter, DatabaseError> {
+        let filter = sqlx::query_as::<_, CommitFilter>(
+            r#"
+            INSERT INTO core.commit_filters (repository_id, name, authors, tags, paths)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, repository_id, name, authors, tags, paths, created_at, updated_at
+            "#,
+        )
+        .bind(repository_id)
+        .bind(name)
+        .bind(authors)
+        .bind(tags)
+        .bind(paths)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(filter)
     }
 }

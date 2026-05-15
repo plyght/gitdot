@@ -3,9 +3,9 @@ use gitdot_core::{
     dto::{
         CommitAuthorResponse, CommitDiffResponse, CommitResponse, CommitsResponse, PathType,
         RepositoryActivityEvent, RepositoryBlobDiffsResponse, RepositoryBlobResponse,
-        RepositoryBlobsResponse, RepositoryCommitResponse, RepositoryCommitsResponse,
-        RepositoryDiffFileResponse, RepositoryFileResponse, RepositoryFolderResponse,
-        RepositoryPath, RepositoryPathsResponse, RepositoryResponse,
+        RepositoryBlobsResponse, RepositoryCommitFilterResponse, RepositoryCommitResponse,
+        RepositoryCommitsResponse, RepositoryDiffFileResponse, RepositoryFileResponse,
+        RepositoryFolderResponse, RepositoryPath, RepositoryPathsResponse, RepositoryResponse,
     },
     model::CommitDiff,
 };
@@ -242,6 +242,22 @@ impl IntoApi for RepositoryActivityEvent {
                     at,
                 }
             }
+        }
+    }
+}
+
+impl IntoApi for RepositoryCommitFilterResponse {
+    type ApiType = api::RepositoryCommitFilterResource;
+    fn into_api(self) -> Self::ApiType {
+        api::RepositoryCommitFilterResource {
+            id: self.id,
+            repository_id: self.repository_id,
+            name: self.name,
+            authors: self.authors,
+            tags: self.tags,
+            paths: self.paths,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
         }
     }
 }

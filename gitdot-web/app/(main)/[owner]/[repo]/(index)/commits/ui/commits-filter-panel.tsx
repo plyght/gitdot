@@ -117,6 +117,21 @@ function FilterDetail({
         }
         onRemove={(p) => setPaths((prev) => prev.filter((x) => x !== p))}
       />
+      <SaveButton />
+    </div>
+  );
+}
+
+function SaveButton() {
+  return (
+    <div className="flex justify-end px-2 py-2 shrink-0">
+      <button
+        type="button"
+        disabled
+        className="px-2.5 h-6 text-xs font-mono bg-primary text-primary-foreground border border-border rounded-xs opacity-50 cursor-not-allowed focus:outline-none"
+      >
+        Save
+      </button>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 mod create_repository;
+mod create_repository_commit_filter;
 mod delete_repository;
 mod get_repository;
 mod get_repository_activity;
@@ -10,6 +11,7 @@ mod get_repository_commit_diff;
 mod get_repository_commits;
 mod get_repository_paths;
 mod get_repository_resources;
+mod list_repository_commit_filters;
 mod star_repository;
 mod unstar_repository;
 
@@ -21,6 +23,7 @@ use axum::{
 use crate::app::AppState;
 
 use create_repository::create_repository;
+use create_repository_commit_filter::create_repository_commit_filter;
 use delete_repository::delete_repository;
 use get_repository::get_repository;
 use get_repository_activity::get_repository_activity;
@@ -32,6 +35,7 @@ use get_repository_commit_diff::get_repository_commit_diff;
 use get_repository_commits::get_repository_commits;
 use get_repository_paths::get_repository_paths;
 use get_repository_resources::get_repository_resources;
+use list_repository_commit_filters::list_repository_commit_filters;
 use star_repository::star_repository;
 use unstar_repository::unstar_repository;
 
@@ -77,5 +81,9 @@ pub fn create_repository_router() -> Router<AppState> {
         .route(
             "/repository/{owner}/{repo}/activity",
             get(get_repository_activity),
+        )
+        .route(
+            "/repository/{owner}/{repo}/commit_filters",
+            post(create_repository_commit_filter).get(list_repository_commit_filters),
         )
 }
