@@ -77,9 +77,9 @@ export function CommitsGrid({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-0.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
             >
-              {formatDate(new Date(`${displayStart}T00:00:00`))} – {formatDate(new Date(`${displayEnd}T00:00:00`))} ({pluralize(commitsInRange.length, "commit")})
+              {pluralize(commitsInRange.length, "commit")}: {formatDate(new Date(`${displayStart}T00:00:00`))} – {formatDate(new Date(`${displayEnd}T00:00:00`))}
               <ChevronDownIcon className="size-3 shrink-0" />
             </button>
           </DropdownMenuTrigger>

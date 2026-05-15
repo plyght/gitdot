@@ -47,6 +47,7 @@ const ALL_COMMITS_FILTER: CommitFilterResource = {
 function PageContent({ promises }: { promises: ResourcePromises }) {
   const commits = use(promises.commits);
   const settings = use(promises.settings);
+  const paths = use(promises.paths);
 
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
@@ -80,6 +81,11 @@ function PageContent({ promises }: { promises: ResourcePromises }) {
         filters={filters}
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}
+        pathOptions={
+          paths?.entries.map((e) =>
+            e.path_type === "tree" ? `${e.name}/` : e.name,
+          ) ?? []
+        }
       />
     </div>
   );
