@@ -48,7 +48,7 @@ Each command follows: `load config → build client → execute`
 ### Config Defaults
 
 ```
-Web:    https://www.gitdot.io
+Web:    https://gitdot.io
 API:    https://api.gitdot.io
 S2:     https://s2.gitdot.io
 ```

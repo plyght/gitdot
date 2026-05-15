@@ -1,6 +1,6 @@
 use crate::util::ci;
 
-const TEMPLATE: &str = r#"#:schema https://www.gitdot.io/schema/gitdot-ci.json
+const TEMPLATE: &str = r#"#:schema https://gitdot.io/schema/gitdot-ci.json
 
 [[builds]]
 trigger = "pull_request"

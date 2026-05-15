@@ -25,7 +25,7 @@ Authenticates with gitdot via the OAuth device-code flow. Opens a verification U
 ```sh
 $ dot login
 Open the following URL in your browser:
-https://www.gitdot.io/oauth/device
+https://gitdot.io/oauth/device
 Enter the code: ABCD-1234
 Successfully logged in as mikkel!
 ```
