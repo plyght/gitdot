@@ -73,8 +73,10 @@ impl GitdotServer {
 }
 
 fn create_router(app_state: AppState) -> Router {
+    // Per-IP rate limit: 1 token replenished every 10ms (= 100 req/sec sustained),
+    // with 200 initial tokens to absorb brief spikes from a page load.
     let governor_config = GovernorConfigBuilder::default()
-        .per_second(100)
+        .per_millisecond(10)
         .burst_size(200)
         .key_extractor(SmartIpKeyExtractor)
         .finish()
