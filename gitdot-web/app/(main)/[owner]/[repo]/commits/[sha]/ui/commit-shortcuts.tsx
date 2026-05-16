@@ -44,19 +44,6 @@ export function CommitShortcuts() {
           navigateTo(prev, files);
         },
       },
-      {
-        name: "ToggleFile",
-        description: "Collapse/expand file",
-        keys: ["Enter"],
-        execute: () => {
-          if (indexRef.current === 0) return;
-          const files = getDiffFiles();
-          const file = files[indexRef.current - 1];
-
-          if (!file) return;
-          file.querySelector<HTMLElement>("[data-diff-toggle]")?.click();
-        },
-      },
     ],
     [],
   );
@@ -69,19 +56,6 @@ function getDiffFiles() {
   return Array.from(document.querySelectorAll<HTMLElement>("[data-diff-file]"));
 }
 
-function flashHeader(file: HTMLElement) {
-  const path = file.querySelector<HTMLElement>("[data-diff-path]");
-  if (!path) return;
-  path.removeAttribute("data-diff-path-flash");
-  void path.offsetWidth;
-  path.setAttribute("data-diff-path-flash", "");
-  path.addEventListener(
-    "animationend",
-    () => path.removeAttribute("data-diff-path-flash"),
-    { once: true },
-  );
-}
-
 function navigateTo(index: number, files: HTMLElement[]) {
   if (index === 0) {
     document.querySelector<HTMLElement>("[data-diff-top]")?.scrollIntoView();
@@ -89,7 +63,6 @@ function navigateTo(index: number, files: HTMLElement[]) {
     const target = files[index - 1];
     if (!target) return;
     target.scrollIntoView();
-    flashHeader(target);
   }
 }
 

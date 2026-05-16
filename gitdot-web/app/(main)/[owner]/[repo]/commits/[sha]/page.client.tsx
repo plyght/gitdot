@@ -13,6 +13,7 @@ import type { Resources } from "./page";
 import { CommitBody } from "./ui/commit-body";
 import { CommitHeader } from "./ui/commit-header";
 import { CommitShortcuts } from "./ui/commit-shortcuts";
+import { CommitSidebar } from "./ui/commit-sidebar";
 
 type ResourceRequests = ResourceRequestsType<Resources>;
 type ResourcePromises = ResourcePromisesType<Resources>;
@@ -63,11 +64,17 @@ function PageContent({
   return (
     <div
       data-diff-top
-      className="max-w-5xl mx-auto w-full px-4 py-6 flex flex-col gap-6"
+      className="grid grid-cols-[1fr_minmax(0,64rem)_1fr] w-full"
     >
-      <CommitHeader commit={commit} owner={owner} repo={repo} />
-      <Suspense fallback={<Loading />}>
-        <CommitBody diffEntriesPromise={diffEntriesPromise} />
+      <div />
+      <div className="w-full px-4 py-4 flex flex-col gap-6 min-w-0">
+        <CommitHeader commit={commit} owner={owner} repo={repo} />
+        <Suspense fallback={<Loading />}>
+          <CommitBody diffEntriesPromise={diffEntriesPromise} />
+        </Suspense>
+      </div>
+      <Suspense fallback={null}>
+        <CommitSidebar diffEntriesPromise={diffEntriesPromise} />
       </Suspense>
       <CommitShortcuts />
     </div>

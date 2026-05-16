@@ -208,18 +208,3 @@
     opacity: 0;
   }
 }
-
-@keyframes diff-path-underline {
-  0% {
-    text-decoration-line: underline;
-    text-decoration-color: currentColor;
-  }
-  100% {
-    text-decoration-line: underline;
-    text-decoration-color: transparent;
-  }
-}
-
-[data-diff-path-flash] {
-  animation: diff-path-underline 0.3s ease-out;
-}

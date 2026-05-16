@@ -16,8 +16,8 @@ export function CommitHeader({
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-end gap-1.5 text-sm text-muted-foreground">
-        <UserImage userId={commit.author.id} px={28} />
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <UserImage userId={commit.author.id} px={20} />
         <span>
           <Link
             href={`/${commit.author.name}`}
@@ -46,7 +46,7 @@ export function CommitHeader({
           </span>
         </span>
       </div>
-      <div className="text-sm text-primary whitespace-pre-wrap mt-2">
+      <div className="text-sm text-primary whitespace-pre-wrap mt-1">
         {commit.message}
       </div>
       <div className="flex items-baseline gap-1.5 text-xs text-muted-foreground mt-1">

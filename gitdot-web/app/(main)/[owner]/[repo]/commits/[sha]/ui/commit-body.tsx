@@ -1,6 +1,6 @@
 import { use } from "react";
 import type { DiffEntry } from "@/actions";
-import { DiffFile } from "./diff-file";
+import { CommitDiffFile } from "./commit-diff-file";
 
 export function CommitBody({
   diffEntriesPromise,
@@ -12,7 +12,7 @@ export function CommitBody({
   return (
     <div className="flex flex-col gap-4">
       {entries.map((entry) => (
-        <DiffFile key={entry.resource.path} entry={entry} />
+        <CommitDiffFile key={entry.resource.path} entry={entry} />
       ))}
     </div>
   );
