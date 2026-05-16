@@ -16,7 +16,12 @@ import type { Resources } from "./page";
 import { CommitsFilterPanel } from "./ui/commits-filter-panel";
 import { CommitsGrid } from "./ui/commits-grid";
 import { CommitsList } from "./ui/commits-list";
-import { ALL_COMMITS_FILTER, filterCommits } from "./util";
+import {
+  ALL_COMMITS_FILTER,
+  defaultWindowEnd,
+  defaultWindowStart,
+  filterCommits,
+} from "./util";
 
 type ResourceRequests = ResourceRequestsType<Resources>;
 type ResourcePromises = ResourcePromisesType<Resources>;
@@ -53,8 +58,12 @@ function PageContent({
   const paths = use(promises.paths);
   const commitFilters = use(promises.commitFilters);
 
-  const [startDate, setStartDate] = useState<string | null>(null);
-  const [endDate, setEndDate] = useState<string | null>(null);
+  const [windowStart, setWindowStart] = useState(() =>
+    defaultWindowStart(commits),
+  );
+  const [windowEnd, setWindowEnd] = useState(() => defaultWindowEnd(commits));
+  const [selectedStart, setSelectedStart] = useState<string | null>(null);
+  const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
   const filters = [ALL_COMMITS_FILTER, ...(commitFilters ?? [])];
   const [activeFilter, setActiveFilter] =
     useState<RepositoryCommitFilterResource>(ALL_COMMITS_FILTER);
@@ -62,12 +71,11 @@ function PageContent({
   if (!commits) return null;
 
   const filteredCommits = filterCommits(activeFilter, commits);
-  const commitsInRange =
-    startDate && endDate
-      ? filteredCommits.filter((commit) =>
-          inRange(commit.date.slice(0, 10), startDate, endDate),
-        )
-      : filteredCommits;
+  const filterStart = selectedStart ?? windowStart;
+  const filterEnd = selectedEnd ?? windowEnd;
+  const commitsInRange = filteredCommits.filter((commit) =>
+    inRange(commit.date.slice(0, 10), filterStart, filterEnd),
+  );
 
   return (
     <div className="flex flex-row h-full">
@@ -75,10 +83,14 @@ function PageContent({
         <CommitsGrid
           commits={filteredCommits}
           repository={repository}
-          startDate={startDate}
-          endDate={endDate}
-          setStartDate={setStartDate}
-          setEndDate={setEndDate}
+          windowStart={windowStart}
+          windowEnd={windowEnd}
+          setWindowStart={setWindowStart}
+          setWindowEnd={setWindowEnd}
+          selectedStart={selectedStart}
+          selectedEnd={selectedEnd}
+          setSelectedStart={setSelectedStart}
+          setSelectedEnd={setSelectedEnd}
         />
         <CommitsList commits={commitsInRange} />
       </div>

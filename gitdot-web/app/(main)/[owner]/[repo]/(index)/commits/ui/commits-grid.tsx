@@ -10,13 +10,14 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
 import { cn, pluralize } from "@/util";
-import { formatDate, inRange, subtractDays } from "@/util/date";
+import { formatDate, inRange } from "@/util/date";
 import {
   buildGrid,
   cellColor,
   computeThresholds,
+  defaultWindowEnd,
+  defaultWindowStart,
   NUM_DAYS,
-  NUM_WEEKS,
 } from "../util";
 
 const CELL_HEIGHT = 15;
@@ -25,52 +26,60 @@ const GAP_HEIGHT = 2;
 /**
  * renders a calendar view of commits, few notes:
  * - uses css-rendering only
- * - fixed to showing the last year of commits
+ * - the visible range is controlled by windowStart/windowEnd (set via the dropdown)
+ * - a sub-range can be highlighted via selectedStart/selectedEnd (drag / month-click)
  * - cell height is fixed but width is determined by the size of the outer container
  */
 export function CommitsGrid({
   commits,
   repository,
-  startDate,
-  endDate,
-  setStartDate,
-  setEndDate,
+  windowStart,
+  windowEnd,
+  setWindowStart,
+  setWindowEnd,
+  selectedStart,
+  selectedEnd,
+  setSelectedStart,
+  setSelectedEnd,
 }: {
   commits: RepositoryCommitResource[];
   repository: RepositoryResource | null;
-  startDate: string | null;
-  endDate: string | null;
-  setStartDate: (date: string | null) => void;
-  setEndDate: (date: string | null) => void;
+  windowStart: string;
+  windowEnd: string;
+  setWindowStart: (date: string) => void;
+  setWindowEnd: (date: string) => void;
+  selectedStart: string | null;
+  selectedEnd: string | null;
+  setSelectedStart: (date: string | null) => void;
+  setSelectedEnd: (date: string | null) => void;
 }) {
   const [hoverActive, setHoverActive] = useState(false);
   const { onCellMouseDown, onCellMouseEnter } = useDragSelect(
-    startDate,
-    endDate,
-    setStartDate,
-    setEndDate,
+    selectedStart,
+    selectedEnd,
+    setSelectedStart,
+    setSelectedEnd,
     setHoverActive,
   );
 
-  const { weeks, months } = buildGrid(commits);
+  const { weeks, months, numWeeks } = buildGrid(
+    commits,
+    windowStart,
+    windowEnd,
+  );
   const thresholds = computeThresholds(
     weeks.flatMap((w) => w.map((d) => d.commitCount)),
   );
   const dayOfWeek = new Date().getDay();
-  const dimmed = hoverActive || !!(startDate && endDate);
+  const dimmed = hoverActive || !!(selectedStart && selectedEnd);
 
-  const today = new Date();
-  const graphEnd = today.toISOString().slice(0, 10);
-  const graphStart = new Date(today);
-  graphStart.setDate(today.getDate() - today.getDay() - (NUM_WEEKS - 1) * 7);
-  const graphStartDate = graphStart.toISOString().slice(0, 10);
-
-  const displayStart = startDate ?? graphStartDate;
-  const displayEnd = endDate ?? graphEnd;
-  const commitsInRange =
-    startDate && endDate
-      ? commits.filter((c) => inRange(c.date.slice(0, 10), startDate, endDate))
-      : commits;
+  const commitsInRange = commits.filter((c) =>
+    inRange(
+      c.date.slice(0, 10),
+      selectedStart ?? windowStart,
+      selectedEnd ?? windowEnd,
+    ),
+  );
 
   return (
     <div className="flex flex-col w-full h-42 border-b border-border">
@@ -78,12 +87,14 @@ export function CommitsGrid({
       <div className="flex items-center px-1 h-6 border-b border-border shrink-0">
         <DateDropdown
           commits={commits}
-          createdAt={repository?.created_at ?? null}
-          displayStart={displayStart}
-          displayEnd={displayEnd}
+          repository={repository}
+          windowStart={windowStart}
+          windowEnd={windowEnd}
           commitsInRange={commitsInRange}
-          setStartDate={setStartDate}
-          setEndDate={setEndDate}
+          setWindowStart={setWindowStart}
+          setWindowEnd={setWindowEnd}
+          setSelectedStart={setSelectedStart}
+          setSelectedEnd={setSelectedEnd}
         />
       </div>
 
@@ -111,34 +122,40 @@ export function CommitsGrid({
           className="grid w-full pt-1.5 pb-1 px-1.5"
           style={{
             gap: GAP_HEIGHT,
-            gridTemplateColumns: `repeat(${NUM_WEEKS}, 1fr)`,
+            gridTemplateColumns: `repeat(${numWeeks}, 1fr)`,
             gridTemplateRows: `repeat(${NUM_DAYS}, ${CELL_HEIGHT}px)`,
           }}
           onMouseEnter={() => setHoverActive(true)}
           onMouseLeave={() => setHoverActive(false)}
         >
           {weeks.flatMap((week, col) =>
-            week.map((day, row) => (
-              <button
-                key={`cell-${day.date}`}
-                type="button"
-                className="group appearance-none border-none bg-transparent -m-px p-px"
-                style={{ gridRow: row + 1, gridColumn: NUM_WEEKS - col }}
-                title={`${day.date}: ${day.commitCount} commits`}
-                onMouseDown={(e) => onCellMouseDown(day.date, e)}
-                onMouseEnter={() => onCellMouseEnter(day.date)}
-              >
-                <div
-                  className={cn(
-                    "w-full h-full transition-opacity duration-300 group-hover:duration-0",
-                    cellColor(day.commitCount, thresholds),
-                    inRange(day.date, startDate, endDate)
-                      ? "opacity-100! ring-1 ring-inset ring-foreground"
-                      : cn(dimmed && "opacity-40", "group-hover:opacity-100!"),
-                  )}
-                />
-              </button>
-            )),
+            week.map((day) => {
+              const row = new Date(`${day.date}T00:00:00`).getDay();
+              return (
+                <button
+                  key={`cell-${day.date}`}
+                  type="button"
+                  className="group appearance-none border-none bg-transparent -m-px p-px"
+                  style={{ gridRow: row + 1, gridColumn: numWeeks - col }}
+                  title={`${day.date}: ${day.commitCount} commits`}
+                  onMouseDown={(e) => onCellMouseDown(day.date, e)}
+                  onMouseEnter={() => onCellMouseEnter(day.date)}
+                >
+                  <div
+                    className={cn(
+                      "w-full h-full transition-opacity duration-300 group-hover:duration-0",
+                      cellColor(day.commitCount, thresholds),
+                      inRange(day.date, selectedStart, selectedEnd)
+                        ? "opacity-100! ring-1 ring-inset ring-foreground"
+                        : cn(
+                            dimmed && "opacity-40",
+                            "group-hover:opacity-100!",
+                          ),
+                    )}
+                  />
+                </button>
+              );
+            }),
           )}
         </div>
       </div>
@@ -147,7 +164,7 @@ export function CommitsGrid({
       <div className="flex flex-row border-t border-border">
         <div
           className="grid w-full pl-1 pb-1"
-          style={{ gridTemplateColumns: `repeat(${NUM_WEEKS}, 1fr)` }}
+          style={{ gridTemplateColumns: `repeat(${numWeeks}, 1fr)` }}
         >
           {months.map((m, i) => (
             <button
@@ -159,7 +176,7 @@ export function CommitsGrid({
               )}
               style={{
                 gridRow: 1,
-                gridColumn: `${NUM_WEEKS - m.startingWeek - m.numWeeks + 1} / span ${m.numWeeks}`,
+                gridColumn: `${numWeeks - m.startingWeek - m.numWeeks + 1} / span ${m.numWeeks}`,
               }}
               onClick={() => {
                 const monthWeeks = weeks.slice(
@@ -173,12 +190,12 @@ export function CommitsGrid({
                 const first = sorted[0];
                 const last = sorted[sorted.length - 1];
 
-                if (startDate === first && endDate === last) {
-                  setStartDate(null);
-                  setEndDate(null);
+                if (selectedStart === first && selectedEnd === last) {
+                  setSelectedStart(null);
+                  setSelectedEnd(null);
                 } else {
-                  setStartDate(first);
-                  setEndDate(last);
+                  setSelectedStart(first);
+                  setSelectedEnd(last);
                 }
               }}
             >
@@ -193,10 +210,10 @@ export function CommitsGrid({
 }
 
 function useDragSelect(
-  startDate: string | null,
-  endDate: string | null,
-  setStartDate: (d: string | null) => void,
-  setEndDate: (d: string | null) => void,
+  selectedStart: string | null,
+  selectedEnd: string | null,
+  setSelectedStart: (d: string | null) => void,
+  setSelectedEnd: (d: string | null) => void,
   setHoverActive: (active: boolean) => void,
 ) {
   const isDraggingRef = useRef(false);
@@ -205,8 +222,8 @@ function useDragSelect(
   useEffect(() => {
     const onMouseUp = () => {
       if (pendingStartRef.current !== null) {
-        setStartDate(null);
-        setEndDate(null);
+        setSelectedStart(null);
+        setSelectedEnd(null);
         setHoverActive(false);
       }
       isDraggingRef.current = false;
@@ -214,28 +231,28 @@ function useDragSelect(
     };
     window.addEventListener("mouseup", onMouseUp);
     return () => window.removeEventListener("mouseup", onMouseUp);
-  }, [setStartDate, setEndDate, setHoverActive]);
+  }, [setSelectedStart, setSelectedEnd, setHoverActive]);
 
   const onCellMouseDown = (date: string, e: React.MouseEvent) => {
     e.preventDefault();
     isDraggingRef.current = true;
-    const isRange = startDate !== endDate;
-    const isSameDate = startDate === date;
-    if (startDate && endDate && (isRange || isSameDate)) {
+    const isRange = selectedStart !== selectedEnd;
+    const isSameDate = selectedStart === date;
+    if (selectedStart && selectedEnd && (isRange || isSameDate)) {
       pendingStartRef.current = date;
     } else {
-      setStartDate(date);
-      setEndDate(date);
+      setSelectedStart(date);
+      setSelectedEnd(date);
     }
   };
 
   const onCellMouseEnter = (date: string) => {
     if (!isDraggingRef.current) return;
     if (pendingStartRef.current !== null) {
-      setStartDate(pendingStartRef.current);
+      setSelectedStart(pendingStartRef.current);
       pendingStartRef.current = null;
     }
-    setEndDate(date);
+    setSelectedEnd(date);
   };
 
   return { onCellMouseDown, onCellMouseEnter };
@@ -243,52 +260,43 @@ function useDragSelect(
 
 function DateDropdown({
   commits,
-  createdAt,
-  displayStart,
-  displayEnd,
+  repository,
+  windowStart,
+  windowEnd,
   commitsInRange,
-  setStartDate,
-  setEndDate,
+  setWindowStart,
+  setWindowEnd,
+  setSelectedStart,
+  setSelectedEnd,
 }: {
   commits: RepositoryCommitResource[];
-  createdAt: string | null;
-  displayStart: string;
-  displayEnd: string;
+  repository: RepositoryResource | null;
+  windowStart: string;
+  windowEnd: string;
   commitsInRange: RepositoryCommitResource[];
-  setStartDate: (date: string | null) => void;
-  setEndDate: (date: string | null) => void;
+  setWindowStart: (date: string) => void;
+  setWindowEnd: (date: string) => void;
+  setSelectedStart: (date: string | null) => void;
+  setSelectedEnd: (date: string | null) => void;
 }) {
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const currentYear = today.getFullYear();
-  const createdYear = createdAt
-    ? new Date(createdAt).getFullYear()
+  const currentYear = new Date().getFullYear();
+  const createdYear = repository?.created_at
+    ? new Date(repository.created_at).getFullYear()
     : currentYear;
-  const mostRecent = commits[0]?.date.slice(0, 10) ?? todayStr;
 
   const presets: { label: string; start: string; end: string }[] = [
     {
       label: "Recent",
-      start: subtractDays(new Date(`${mostRecent}T00:00:00`), 365)
-        .toISOString()
-        .slice(0, 10),
-      end: mostRecent,
+      start: defaultWindowStart(commits),
+      end: defaultWindowEnd(commits),
     },
   ];
   for (let y = currentYear; y >= createdYear; y--) {
-    presets.push(
-      y === currentYear
-        ? {
-            label: String(y),
-            start: subtractDays(today, 365).toISOString().slice(0, 10),
-            end: todayStr,
-          }
-        : {
-            label: String(y),
-            start: `${y}-01-01`,
-            end: `${y}-12-31`,
-          },
-    );
+    presets.push({
+      label: String(y),
+      start: `${y}-01-01`,
+      end: `${y}-12-31`,
+    });
   }
 
   return (
@@ -299,8 +307,8 @@ function DateDropdown({
           className="flex items-center gap-0.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
         >
           {pluralize(commitsInRange.length, "commit")}:{" "}
-          {formatDate(new Date(`${displayStart}T00:00:00`))} –{" "}
-          {formatDate(new Date(`${displayEnd}T00:00:00`))}
+          {formatDate(new Date(`${windowStart}T00:00:00`))} –{" "}
+          {formatDate(new Date(`${windowEnd}T00:00:00`))}
           <ChevronDownIcon className="size-3 shrink-0" />
         </button>
       </DropdownMenuTrigger>
@@ -309,8 +317,10 @@ function DateDropdown({
           <DropdownMenuItem
             key={opt.label}
             onClick={() => {
-              setStartDate(opt.start);
-              setEndDate(opt.end);
+              setWindowStart(opt.start);
+              setWindowEnd(opt.end);
+              setSelectedStart(null);
+              setSelectedEnd(null);
             }}
             className="text-xs font-mono py-1 px-2"
           >

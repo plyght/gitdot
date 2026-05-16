@@ -72,8 +72,8 @@ function filterCommit(
 // ---------------------------------------------------------------------------
 // commits-grid utils
 // ---------------------------------------------------------------------------
-export const NUM_WEEKS = 53;
 export const NUM_DAYS = 7;
+const MS_PER_WEEK = 7 * 86400000;
 
 export type Day = {
   date: string;
@@ -91,10 +91,31 @@ export type Month = {
 // [low, med, high] buckets
 export type Thresholds = [number, number, number];
 
-export function buildGrid(commits: RepositoryCommitResource[]): {
-  weeks: Week[];
-  months: Month[];
-} {
+export function defaultWindowEnd(
+  commits: RepositoryCommitResource[] | null,
+): string {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const mostRecent = commits?.[0]?.date.slice(0, 10);
+  if (!mostRecent) return todayStr;
+  const oneYearAgo = subtractDays(today, 365).toISOString().slice(0, 10);
+  return mostRecent >= oneYearAgo ? todayStr : mostRecent;
+}
+
+export function defaultWindowStart(
+  commits: RepositoryCommitResource[] | null,
+): string {
+  const end = defaultWindowEnd(commits);
+  return subtractDays(new Date(`${end}T00:00:00`), 365)
+    .toISOString()
+    .slice(0, 10);
+}
+
+export function buildGrid(
+  commits: RepositoryCommitResource[],
+  windowStart: string,
+  windowEnd: string,
+): { weeks: Week[]; months: Month[]; numWeeks: number } {
   const countMap = new Map<string, number>();
   for (const commit of commits) {
     const date = commit.date.slice(0, 10); // iso date YYYY-MM-DD
@@ -102,20 +123,26 @@ export function buildGrid(commits: RepositoryCommitResource[]): {
   }
 
   const today = dateOnly(new Date());
-  const thisWeekStart = subtractDays(today, today.getDay());
+  const start = dateOnly(windowStart);
+  const end = dateOnly(windowEnd);
+  const firstSunday = subtractDays(start, start.getDay());
+  const lastSunday = subtractDays(end, end.getDay());
+  const numWeeks =
+    Math.round((lastSunday.getTime() - firstSunday.getTime()) / MS_PER_WEEK) +
+    1;
 
   const weeks: Week[] = [];
   const months: Month[] = [];
   let prevMonth = -1;
 
-  for (let col = 0; col < NUM_WEEKS; col++) {
-    const weekStart: Date = subtractDays(thisWeekStart, col * 7);
+  // col 0 = most recent week (rightmost in the grid), going back to col numWeeks-1.
+  for (let col = 0; col < numWeeks; col++) {
+    const weekStart: Date = subtractDays(lastSunday, col * 7);
     const week: Day[] = [];
 
     for (let row = 0; row < NUM_DAYS; row++) {
       const d = addDays(weekStart, row);
-      if (d > today) break;
-
+      if (d < start || d > end || d > today) continue;
       const dateStr = d.toISOString().slice(0, 10);
       week.push({
         date: dateStr,
@@ -141,10 +168,10 @@ export function buildGrid(commits: RepositoryCommitResource[]): {
     const next = months[i + 1];
     months[i].numWeeks = next
       ? next.startingWeek - months[i].startingWeek
-      : NUM_WEEKS - months[i].startingWeek;
+      : numWeeks - months[i].startingWeek;
   }
 
-  return { weeks, months };
+  return { weeks, months, numWeeks };
 }
 
 export function computeThresholds(counts: number[]): Thresholds {
