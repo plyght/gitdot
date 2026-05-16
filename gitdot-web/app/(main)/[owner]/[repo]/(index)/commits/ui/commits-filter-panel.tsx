@@ -33,6 +33,8 @@ export function CommitsFilterPanel({
   return (
     <div className="flex flex-col w-64 shrink-0 border-l border-border">
       <CommitsFilterList
+        owner={owner}
+        repo={repo}
         filters={filters}
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}

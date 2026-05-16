@@ -1,6 +1,7 @@
 export * from "./create-repository";
 export * from "./create-repository-commit-filter";
 export * from "./delete-repository";
+export * from "./delete-repository-commit-filter";
 export * from "./get-repository";
 export * from "./get-repository-activity";
 export * from "./get-repository-blob";

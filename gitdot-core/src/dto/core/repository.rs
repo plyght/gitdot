@@ -1,6 +1,7 @@
 mod create_repository;
 mod create_repository_commit_filter;
 mod delete_repository;
+mod delete_repository_commit_filter;
 mod get_repository;
 mod get_repository_activity;
 mod get_repository_blob;
@@ -22,6 +23,7 @@ use crate::model::{CommitFilter, Repository};
 pub use create_repository::CreateRepositoryRequest;
 pub use create_repository_commit_filter::CreateRepositoryCommitFilterRequest;
 pub use delete_repository::DeleteRepositoryRequest;
+pub use delete_repository_commit_filter::DeleteRepositoryCommitFilterRequest;
 pub use get_repository::GetRepositoryRequest;
 pub use get_repository_activity::{GetRepositoryActivityRequest, RepositoryActivityEvent};
 pub use get_repository_blob::{

@@ -134,6 +134,17 @@ export async function updateRepositoryCommitFilter(
   return await handleResponse(response, UpdateRepositoryCommitFilterResponse);
 }
 
+export async function deleteRepositoryCommitFilter(
+  owner: string,
+  repo: string,
+  filterId: string,
+): Promise<void> {
+  const response = await authDelete(
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit_filters/${filterId}`,
+  );
+  await handleEmptyResponse(response);
+}
+
 export async function getRepositoryBlobs(
   owner: string,
   repo: string,

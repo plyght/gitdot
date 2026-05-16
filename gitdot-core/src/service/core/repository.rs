@@ -6,15 +6,16 @@ use uuid::Uuid;
 use crate::{
     client::{DiffClient, DifftClient, Git2Client, GitClient},
     dto::{
-        CreateRepositoryCommitFilterRequest, CreateRepositoryRequest, DeleteRepositoryRequest,
-        GetRepositoryActivityRequest, GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest,
-        GetRepositoryBlobsRequest, GetRepositoryPathsRequest, GetRepositoryRequest,
-        ListRepositoryCommitFiltersRequest, RepositoryActivityEvent, RepositoryBlobDiffsResponse,
-        RepositoryBlobResponse, RepositoryBlobsResponse, RepositoryCommitFilterResponse,
-        RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest,
-        UnstarRepositoryRequest, UpdateRepositoryCommitFilterRequest,
+        CreateRepositoryCommitFilterRequest, CreateRepositoryRequest,
+        DeleteRepositoryCommitFilterRequest, DeleteRepositoryRequest, GetRepositoryActivityRequest,
+        GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest, GetRepositoryBlobsRequest,
+        GetRepositoryPathsRequest, GetRepositoryRequest, ListRepositoryCommitFiltersRequest,
+        RepositoryActivityEvent, RepositoryBlobDiffsResponse, RepositoryBlobResponse,
+        RepositoryBlobsResponse, RepositoryCommitFilterResponse, RepositoryPathsResponse,
+        RepositoryResponse, StarRepositoryRequest, UnstarRepositoryRequest,
+        UpdateRepositoryCommitFilterRequest,
     },
-    error::{ConflictError, OptionNotFoundExt, RepositoryError},
+    error::{ConflictError, NotFoundError, OptionNotFoundExt, RepositoryError},
     model::RepositoryOwnerType,
     repository::{
         OrganizationRepository, OrganizationRepositoryImpl, RepositoryRepository,
@@ -95,6 +96,11 @@ pub trait RepositoryService: Send + Sync + 'static {
         &self,
         request: UpdateRepositoryCommitFilterRequest,
     ) -> Result<RepositoryCommitFilterResponse, RepositoryError>;
+
+    async fn delete_repository_commit_filter(
+        &self,
+        request: DeleteRepositoryCommitFilterRequest,
+    ) -> Result<(), RepositoryError>;
 }
 
 #[derive(Debug, Clone)]
@@ -524,5 +530,19 @@ where
             .or_not_found("commit filter", request.filter_id)?;
 
         Ok(filter.into())
+    }
+
+    async fn delete_repository_commit_filter(
+        &self,
+        request: DeleteRepositoryCommitFilterRequest,
+    ) -> Result<(), RepositoryError> {
+        let deleted = self
+            .repo_repo
+            .delete_commit_filter(request.filter_id)
+            .await?;
+        if !deleted {
+            return Err(NotFoundError::new("commit filter", request.filter_id).into());
+        }
+        Ok(())
     }
 }

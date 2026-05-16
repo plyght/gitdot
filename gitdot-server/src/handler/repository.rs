@@ -1,6 +1,7 @@
 mod create_repository;
 mod create_repository_commit_filter;
 mod delete_repository;
+mod delete_repository_commit_filter;
 mod get_repository;
 mod get_repository_activity;
 mod get_repository_blob;
@@ -26,6 +27,7 @@ use crate::app::AppState;
 use create_repository::create_repository;
 use create_repository_commit_filter::create_repository_commit_filter;
 use delete_repository::delete_repository;
+use delete_repository_commit_filter::delete_repository_commit_filter;
 use get_repository::get_repository;
 use get_repository_activity::get_repository_activity;
 use get_repository_blob::get_repository_blob;
@@ -90,6 +92,6 @@ pub fn create_repository_router() -> Router<AppState> {
         )
         .route(
             "/repository/{owner}/{repo}/commit_filters/{filter_id}",
-            patch(update_repository_commit_filter),
+            patch(update_repository_commit_filter).delete(delete_repository_commit_filter),
         )
 }

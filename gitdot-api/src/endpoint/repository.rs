@@ -1,6 +1,7 @@
 pub mod create_repository;
 pub mod create_repository_commit_filter;
 pub mod delete_repository;
+pub mod delete_repository_commit_filter;
 pub mod get_repository;
 pub mod get_repository_activity;
 pub mod get_repository_blob;

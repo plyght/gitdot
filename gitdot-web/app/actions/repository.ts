@@ -19,6 +19,7 @@ import {
   createRepository,
   createRepositoryCommitFilter,
   deleteRepository,
+  deleteRepositoryCommitFilter,
   getMigration,
   getRepositoryBlob,
   getRepositoryBlobs,
@@ -263,4 +264,25 @@ export async function updateRepositoryCommitFilterAction(
       error: e instanceof ApiError ? e.message : "Failed to update filter",
     };
   }
+}
+
+export type DeleteCommitFilterActionResult =
+  | { success: true }
+  | { error: string };
+
+export async function deleteRepositoryCommitFilterAction(
+  owner: string,
+  repo: string,
+  filterId: string,
+): Promise<DeleteCommitFilterActionResult> {
+  try {
+    await deleteRepositoryCommitFilter(owner, repo, filterId);
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to delete filter",
+    };
+  }
+
+  refresh();
+  return { success: true };
 }

@@ -78,7 +78,7 @@ export function DeleteRepositoryDialog({
               {error}
             </p>
           )}
-          <div className="flex h-9 justify-end">
+          <div className="flex h-7 justify-end">
             <button
               type="button"
               className="h-full px-3 text-xs border-l border-r border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"

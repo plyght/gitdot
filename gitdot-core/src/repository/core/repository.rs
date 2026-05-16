@@ -64,6 +64,8 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         tags: Option<Vec<String>>,
         paths: Option<Vec<String>>,
     ) -> Result<Option<CommitFilter>, DatabaseError>;
+
+    async fn delete_commit_filter(&self, filter_id: Uuid) -> Result<bool, DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -380,5 +382,13 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         .await?;
 
         Ok(filter)
+    }
+
+    async fn delete_commit_filter(&self, filter_id: Uuid) -> Result<bool, DatabaseError> {
+        let result = sqlx::query("DELETE FROM core.commit_filters WHERE id = $1")
+            .bind(filter_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
     }
 }
