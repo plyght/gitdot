@@ -380,7 +380,13 @@ impl QuestionRepository for QuestionRepositoryImpl {
             SELECT q.id
             FROM core.questions q
             JOIN core.repositories r ON q.repository_id = r.id
-            WHERE r.owner_name = $1 AND r.name = $2 AND q.number = $3
+            WHERE r.name = $2
+              AND r.owner_id IN (
+                SELECT id FROM core.users         WHERE name = $1
+                UNION ALL
+                SELECT id FROM core.organizations WHERE name = $1
+              )
+              AND q.number = $3
             "#,
         )
         .bind(owner)
@@ -429,7 +435,13 @@ impl QuestionRepository for QuestionRepositoryImpl {
             SELECT q.id, $4, $5
             FROM core.questions q
             JOIN core.repositories r ON q.repository_id = r.id
-            WHERE r.owner_name = $1 AND r.name = $2 AND q.number = $3
+            WHERE r.name = $2
+              AND r.owner_id IN (
+                SELECT id FROM core.users         WHERE name = $1
+                UNION ALL
+                SELECT id FROM core.organizations WHERE name = $1
+              )
+              AND q.number = $3
             RETURNING id, question_id, author_id, body, upvote, created_at, updated_at,
                       NULL::smallint AS user_vote, NULL AS author, NULL AS comments
             "#,
@@ -500,7 +512,13 @@ impl QuestionRepository for QuestionRepositoryImpl {
             SELECT q.id, $4, $5
             FROM core.questions q
             JOIN core.repositories r ON q.repository_id = r.id
-            WHERE r.owner_name = $1 AND r.name = $2 AND q.number = $3
+            WHERE r.name = $2
+              AND r.owner_id IN (
+                SELECT id FROM core.users         WHERE name = $1
+                UNION ALL
+                SELECT id FROM core.organizations WHERE name = $1
+              )
+              AND q.number = $3
             RETURNING id, parent_id, author_id, body, upvote, created_at, updated_at,
                       NULL::smallint AS user_vote, NULL AS author
             "#,
@@ -545,7 +563,13 @@ impl QuestionRepository for QuestionRepositoryImpl {
             SELECT q.author_id
             FROM core.questions q
             JOIN core.repositories r ON q.repository_id = r.id
-            WHERE r.owner_name = $1 AND r.name = $2 AND q.number = $3
+            WHERE r.name = $2
+              AND r.owner_id IN (
+                SELECT id FROM core.users         WHERE name = $1
+                UNION ALL
+                SELECT id FROM core.organizations WHERE name = $1
+              )
+              AND q.number = $3
             "#,
         )
         .bind(owner)

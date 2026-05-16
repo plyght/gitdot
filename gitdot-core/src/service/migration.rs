@@ -200,7 +200,7 @@ where
         let repository = self
             .repo_repo
             .create(
-                repo_name, owner_id, owner_name, owner_type, visibility, None, readonly, created_at,
+                repo_name, owner_id, owner_type, visibility, None, readonly, created_at,
             )
             .await?;
 

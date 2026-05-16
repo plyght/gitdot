@@ -15,7 +15,6 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         &self,
         name: &str,
         owner_id: Uuid,
-        owner_name: &str,
         owner_type: &RepositoryOwnerType,
         visibility: &RepositoryVisibility,
         description: Option<String>,
@@ -85,7 +84,6 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         &self,
         name: &str,
         owner_id: Uuid,
-        owner_name: &str,
         owner_type: &RepositoryOwnerType,
         visibility: &RepositoryVisibility,
         description: Option<String>,
@@ -94,14 +92,22 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     ) -> Result<Repository, DatabaseError> {
         let repository = sqlx::query_as::<_, Repository>(
             r#"
-            INSERT INTO core.repositories (name, owner_id, owner_name, owner_type, visibility, description, readonly, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, NOW()))
-            RETURNING id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
+            WITH inserted AS (
+                INSERT INTO core.repositories (name, owner_id, owner_type, visibility, description, readonly, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, NOW()))
+                RETURNING id, name, owner_id, owner_type, visibility, description, stars, readonly, created_at
+            )
+            SELECT i.id, i.name, i.owner_id, COALESCE(u.name, o.name) AS owner_name,
+                   i.owner_type, i.visibility, i.description, i.stars, i.readonly, i.created_at
+            FROM inserted i
+            LEFT JOIN core.users u
+              ON i.owner_id = u.id AND i.owner_type = 'user'
+            LEFT JOIN core.organizations o
+              ON i.owner_id = o.id AND i.owner_type = 'organization'
             "#,
         )
         .bind(name)
         .bind(owner_id)
-        .bind(owner_name)
         .bind(owner_type)
         .bind(visibility)
         .bind(description)
@@ -116,9 +122,19 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     async fn get(&self, owner: &str, repo: &str) -> Result<Option<Repository>, DatabaseError> {
         let repository = sqlx::query_as::<_, Repository>(
             r#"
-            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
-            FROM core.repositories
-            WHERE owner_name = $1 AND name = $2
+            SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
+            FROM core.repositories r
+            LEFT JOIN core.users u
+              ON r.owner_id = u.id AND r.owner_type = 'user'
+            LEFT JOIN core.organizations o
+              ON r.owner_id = o.id AND r.owner_type = 'organization'
+            WHERE r.name = $2
+              AND r.owner_id IN (
+                SELECT id FROM core.users         WHERE name = $1
+                UNION ALL
+                SELECT id FROM core.organizations WHERE name = $1
+              )
             "#,
         )
         .bind(owner)
@@ -132,9 +148,14 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     async fn get_by_id(&self, id: Uuid) -> Result<Option<Repository>, DatabaseError> {
         let repository = sqlx::query_as::<_, Repository>(
             r#"
-            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
-            FROM core.repositories
-            WHERE id = $1
+            SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
+            FROM core.repositories r
+            LEFT JOIN core.users u
+              ON r.owner_id = u.id AND r.owner_type = 'user'
+            LEFT JOIN core.organizations o
+              ON r.owner_id = o.id AND r.owner_type = 'organization'
+            WHERE r.id = $1
             "#,
         )
         .bind(id)
@@ -147,10 +168,19 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Repository>, DatabaseError> {
         let repositories = sqlx::query_as::<_, Repository>(
             r#"
-            SELECT id, name, owner_id, owner_name, owner_type, visibility, description, stars, readonly, created_at
-            FROM core.repositories
-            WHERE owner_name = $1
-            ORDER BY created_at DESC
+            SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
+            FROM core.repositories r
+            LEFT JOIN core.users u
+              ON r.owner_id = u.id AND r.owner_type = 'user'
+            LEFT JOIN core.organizations o
+              ON r.owner_id = o.id AND r.owner_type = 'organization'
+            WHERE r.owner_id IN (
+                SELECT id FROM core.users         WHERE name = $1
+                UNION ALL
+                SELECT id FROM core.organizations WHERE name = $1
+            )
+            ORDER BY r.created_at DESC
             "#,
         )
         .bind(owner_name)

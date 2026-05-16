@@ -208,7 +208,6 @@ where
             .create(
                 &repo_name,
                 owner_id,
-                &request.owner_name,
                 &request.owner_type,
                 &request.visibility,
                 request.description,

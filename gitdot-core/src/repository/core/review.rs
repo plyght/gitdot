@@ -275,7 +275,14 @@ impl ReviewRepository for ReviewRepositoryImpl {
         number: i32,
     ) -> Result<Option<Review>, DatabaseError> {
         let query = format!(
-            "{} JOIN core.repositories repo ON r.repository_id = repo.id WHERE repo.owner_name = $1 AND repo.name = $2 AND r.number = $3",
+            "{} JOIN core.repositories repo ON r.repository_id = repo.id \
+            WHERE repo.name = $2 \
+              AND repo.owner_id IN ( \
+                SELECT id FROM core.users         WHERE name = $1 \
+                UNION ALL \
+                SELECT id FROM core.organizations WHERE name = $1 \
+              ) \
+              AND r.number = $3",
             REVIEW_DETAILS_QUERY
         );
 
@@ -299,9 +306,14 @@ impl ReviewRepository for ReviewRepositoryImpl {
     ) -> Result<Vec<Review>, DatabaseError> {
         let query = format!(
             "{} JOIN core.repositories repo ON r.repository_id = repo.id \
-            WHERE repo.owner_name = $1 AND repo.name = $2 \
-            AND (r.status != 'draft' OR r.author_id = $3) \
-            AND r.updated_at >= $4 AND r.updated_at <= $5 \
+            WHERE repo.name = $2 \
+              AND repo.owner_id IN ( \
+                SELECT id FROM core.users         WHERE name = $1 \
+                UNION ALL \
+                SELECT id FROM core.organizations WHERE name = $1 \
+              ) \
+              AND (r.status != 'draft' OR r.author_id = $3) \
+              AND r.updated_at >= $4 AND r.updated_at <= $5 \
             ORDER BY r.created_at DESC",
             REVIEW_DETAILS_QUERY
         );
@@ -349,7 +361,14 @@ impl ReviewRepository for ReviewRepositoryImpl {
             param_index += 1;
         }
         if owner.is_some() {
-            query.push_str(&format!(" AND repo.owner_name = ${}", param_index));
+            query.push_str(&format!(
+                " AND repo.owner_id IN ( \
+                    SELECT id FROM core.users         WHERE name = ${idx} \
+                    UNION ALL \
+                    SELECT id FROM core.organizations WHERE name = ${idx} \
+                 )",
+                idx = param_index,
+            ));
             param_index += 1;
         }
         if repo.is_some() {

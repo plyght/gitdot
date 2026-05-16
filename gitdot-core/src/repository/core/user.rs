@@ -241,9 +241,14 @@ impl UserRepository for UserRepositoryImpl {
     ) -> Result<Vec<Repository>, DatabaseError> {
         let repositories = sqlx::query_as::<_, Repository>(
             r#"
-            SELECT r.id, r.name, r.owner_id, r.owner_name, r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
+            SELECT r.id, r.name, r.owner_id, COALESCE(ru.name, ro.name) AS owner_name,
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
             FROM core.stars s
             JOIN core.repositories r ON r.id = s.repository_id
+            LEFT JOIN core.users ru
+              ON r.owner_id = ru.id AND r.owner_type = 'user'
+            LEFT JOIN core.organizations ro
+              ON r.owner_id = ro.id AND r.owner_type = 'organization'
             WHERE s.user_id = $1
             ORDER BY s.created_at DESC
             "#,
