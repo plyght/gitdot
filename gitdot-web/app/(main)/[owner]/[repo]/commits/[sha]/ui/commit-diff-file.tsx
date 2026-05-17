@@ -6,7 +6,7 @@ export function CommitDiffFile({ entry }: { entry: DiffEntry }) {
   return (
     <div
       data-diff-file
-      className="rounded-sm border border-border overflow-hidden"
+      className="rounded-sm border border-border overflow-hidden scroll-mt-4"
     >
       <CommitDiffHeader
         path={entry.resource.path}

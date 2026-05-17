@@ -1,14 +1,7 @@
-import { use } from "react";
 import type { DiffEntry } from "@/actions";
 import { CommitDiffFile } from "./commit-diff-file";
 
-export function CommitBody({
-  diffEntriesPromise,
-}: {
-  diffEntriesPromise: Promise<DiffEntry[]>;
-}) {
-  const entries = use(diffEntriesPromise);
-
+export function CommitBody({ entries }: { entries: DiffEntry[] }) {
   return (
     <div className="flex flex-col gap-4">
       {entries.map((entry) => (

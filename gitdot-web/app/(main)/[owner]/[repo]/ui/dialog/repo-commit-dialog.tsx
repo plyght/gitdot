@@ -2,7 +2,7 @@
 
 import type { RepositoryCommitResource } from "gitdot-api";
 import { ExternalLink } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 import { CommitBody } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-body";
 import { CommitHeader } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-header";
 import { type DiffEntry, renderCommitDiffAction } from "@/actions";
@@ -67,7 +67,7 @@ export function RepoCommitDialog({
             <CommitHeader commit={commit} owner={owner} repo={repo} />
             {diffPromise && (
               <Suspense fallback={<Loading />}>
-                <CommitBody diffEntriesPromise={diffPromise} />
+                <CommitBodyAsync promise={diffPromise} />
               </Suspense>
             )}
           </div>
@@ -75,4 +75,9 @@ export function RepoCommitDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function CommitBodyAsync({ promise }: { promise: Promise<DiffEntry[]> }) {
+  const entries = use(promise);
+  return <CommitBody entries={entries} />;
 }

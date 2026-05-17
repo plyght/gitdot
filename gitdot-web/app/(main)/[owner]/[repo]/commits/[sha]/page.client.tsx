@@ -1,84 +1,144 @@
 "use client";
 
-import { Suspense, use } from "react";
-import {
-  type ResourcePromisesType,
-  type ResourceRequestsType,
-  useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
+import type { RepositoryCommitResource } from "gitdot-api";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DiffEntry } from "@/actions";
-import { Loading } from "@/ui/loading";
 import { OverlayScroll } from "@/ui/scroll";
-import type { Resources } from "./page";
 import { CommitBody } from "./ui/commit-body";
 import { CommitHeader } from "./ui/commit-header";
 import { CommitShortcuts } from "./ui/commit-shortcuts";
 import { CommitSidebar } from "./ui/commit-sidebar";
 
-type ResourceRequests = ResourceRequestsType<Resources>;
-type ResourcePromises = ResourcePromisesType<Resources>;
+type ScrollDirection = "up" | "down";
 
 export function PageClient({
   owner,
   repo,
-  requests,
-  promises,
-  diffEntriesPromise,
+  commit,
+  diffEntries,
 }: {
   owner: string;
   repo: string;
-  requests: ResourceRequests;
-  promises: ResourcePromises;
-  diffEntriesPromise: Promise<DiffEntry[]>;
+  commit: RepositoryCommitResource;
+  diffEntries: DiffEntry[];
 }) {
-  const resolvedPromises = useResolvePromises(owner, repo, requests, promises);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // we keep track of what direction the user is "scrolling in" to determine how to compute which sidebar element is active
+  // - if user scrolls down, then the last element on the page is considered active
+  // - if user scrolls up, then the first element on the page is considered active
+  //
+  // we do this so that as the user scrolls up / down, the active rows hits the top & bottom of the list.
+  // i.e., if we use a heuristic to pick top, middle, or bottom, then we will always have some cut off
+  const directionRef = useRef<ScrollDirection>("up");
+  const bufferRef = useRef(0);
+  const lastProxyRef = useRef<number | null>(null);
+  const suppressUntilRef = useRef(0);
+
+  useEffect(() => {
+    if (diffEntries.length === 0) return;
+
+    const update = () => {
+      const files = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-diff-file]"),
+      );
+      if (files.length === 0) return;
+
+      const viewportHeight = window.innerHeight;
+      const proxy = files[0].getBoundingClientRect().top;
+      const delta =
+        lastProxyRef.current === null ? 0 : lastProxyRef.current - proxy;
+      lastProxyRef.current = proxy;
+
+      if (Date.now() < suppressUntilRef.current) return;
+
+      const threshold = viewportHeight / 2;
+      if (directionRef.current === "up" && delta > 0) {
+        bufferRef.current += delta;
+        if (bufferRef.current >= threshold) {
+          directionRef.current = "down";
+          bufferRef.current = 0;
+        }
+      } else if (directionRef.current === "down" && delta < 0) {
+        bufferRef.current -= delta;
+        if (bufferRef.current >= threshold) {
+          directionRef.current = "up";
+          bufferRef.current = 0;
+        }
+      } else if (delta !== 0) {
+        bufferRef.current = 0;
+      }
+
+      const next = computeActiveIndex(
+        files,
+        directionRef.current,
+        viewportHeight,
+      );
+      setSelectedIndex((prev) => (prev === next ? prev : next));
+    };
+
+    update();
+    window.addEventListener("scroll", update, { capture: true, passive: true });
+    window.addEventListener("wheel", update, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("scroll", update, { capture: true });
+      window.removeEventListener("wheel", update, { capture: true });
+    };
+  }, [diffEntries.length]);
+
+  // user jumps to a file (j, k) pin the highlight and suppress scroll updates for a bit to avoid jitter.
+  const handleSelect = useCallback((index: number) => {
+    setSelectedIndex(index);
+    directionRef.current = "up";
+    bufferRef.current = 0;
+    suppressUntilRef.current = Date.now() + 400;
+  }, []);
 
   return (
     <OverlayScroll>
-      <Suspense fallback={<Loading />}>
-        <PageContent
-          owner={owner}
-          repo={repo}
-          promises={resolvedPromises}
-          diffEntriesPromise={diffEntriesPromise}
+      <div
+        data-diff-top
+        className="grid grid-cols-[1fr_minmax(0,64rem)_1fr] w-full"
+      >
+        <aside className="hidden xl:flex xl:flex-col sticky top-0 self-start max-h-screen overflow-y-auto py-5 pl-4 w-72 gap-6 justify-self-end">
+          <CommitHeader commit={commit} owner={owner} repo={repo} />
+          <CommitSidebar
+            entries={diffEntries}
+            selectedIndex={selectedIndex}
+            onSelect={handleSelect}
+          />
+        </aside>
+        <div className="w-full px-4 py-4 flex flex-col gap-6 min-w-0">
+          <CommitBody entries={diffEntries} />
+        </div>
+        <div />
+        <CommitShortcuts
+          selectedIndex={selectedIndex}
+          setSelectedIndex={handleSelect}
         />
-      </Suspense>
+      </div>
     </OverlayScroll>
   );
 }
 
-function PageContent({
-  owner,
-  repo,
-  promises,
-  diffEntriesPromise,
-}: {
-  owner: string;
-  repo: string;
-  promises: ResourcePromises;
-  diffEntriesPromise: Promise<DiffEntry[]>;
-}) {
-  const commit = use(promises.commit);
-  if (!commit) return null;
+function computeActiveIndex(
+  files: HTMLElement[],
+  direction: ScrollDirection,
+  viewportHeight: number,
+): number {
+  if (direction === "down") {
+    for (let i = files.length - 1; i >= 0; i--) {
+      const rect = files[i].getBoundingClientRect();
+      if (rect.bottom > 0 && rect.top < viewportHeight) return i;
+    }
+  } else {
+    for (let i = 0; i < files.length; i++) {
+      const rect = files[i].getBoundingClientRect();
+      if (rect.bottom > 0 && rect.top < viewportHeight) return i;
+    }
+  }
 
-  return (
-    <div
-      data-diff-top
-      className="grid grid-cols-[1fr_minmax(0,64rem)_1fr] w-full"
-    >
-      <aside className="hidden xl:flex xl:flex-col sticky top-0 self-start max-h-screen overflow-y-auto py-5 pl-4 w-72 gap-6 justify-self-end">
-        <CommitHeader commit={commit} owner={owner} repo={repo} />
-        <Suspense fallback={null}>
-          <CommitSidebar diffEntriesPromise={diffEntriesPromise} />
-        </Suspense>
-      </aside>
-      <div className="w-full px-4 py-4 flex flex-col gap-6 min-w-0">
-        <Suspense fallback={<Loading />}>
-          <CommitBody diffEntriesPromise={diffEntriesPromise} />
-        </Suspense>
-      </div>
-      <div />
-      <CommitShortcuts />
-    </div>
-  );
+  return files[0].getBoundingClientRect().top >= viewportHeight
+    ? 0
+    : files.length - 1;
 }

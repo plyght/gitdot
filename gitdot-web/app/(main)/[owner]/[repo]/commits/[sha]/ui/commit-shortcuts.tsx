@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { useShortcuts } from "@/(main)/context/shortcuts";
 
-export function CommitShortcuts() {
-  const indexRef = useRef(0);
-
-  // when the user scrolls with their mouse, update the index
-  useEffect(() => {
-    const handler = () => {
-      indexRef.current = getIndexFromScroll(getDiffFiles());
-    };
-    window.addEventListener("wheel", handler, { capture: true, passive: true });
-    return () =>
-      window.removeEventListener("wheel", handler, { capture: true });
-  }, []);
-
+export function CommitShortcuts({
+  selectedIndex,
+  setSelectedIndex,
+}: {
+  selectedIndex: number;
+  setSelectedIndex: (index: number) => void;
+}) {
   const shortcuts = useMemo(
     () => [
       {
@@ -25,10 +19,12 @@ export function CommitShortcuts() {
         execute: () => {
           const files = getDiffFiles();
           if (!files.length) return;
-
-          const next = Math.min(indexRef.current + 1, files.length);
-          indexRef.current = next;
-          navigateTo(next, files);
+          const next = Math.min(selectedIndex + 1, files.length - 1);
+          setSelectedIndex(next);
+          const target = files[next];
+          if (!target) return;
+          target.scrollIntoView();
+          flashHeader(target);
         },
       },
       {
@@ -38,14 +34,16 @@ export function CommitShortcuts() {
         execute: () => {
           const files = getDiffFiles();
           if (!files.length) return;
-
-          const prev = Math.max(indexRef.current - 1, 0);
-          indexRef.current = prev;
-          navigateTo(prev, files);
+          const prev = Math.max(selectedIndex - 1, 0);
+          setSelectedIndex(prev);
+          const target = files[prev];
+          if (!target) return;
+          target.scrollIntoView();
+          flashHeader(target);
         },
       },
     ],
-    [],
+    [selectedIndex, setSelectedIndex],
   );
 
   useShortcuts(shortcuts);
@@ -56,22 +54,16 @@ function getDiffFiles() {
   return Array.from(document.querySelectorAll<HTMLElement>("[data-diff-file]"));
 }
 
-function navigateTo(index: number, files: HTMLElement[]) {
-  if (index === 0) {
-    document.querySelector<HTMLElement>("[data-diff-top]")?.scrollIntoView();
-  } else {
-    const target = files[index - 1];
-    if (!target) return;
-    target.scrollIntoView();
-  }
-}
+function flashHeader(file: HTMLElement) {
+  const path = file.querySelector<HTMLElement>("[data-diff-path]");
+  if (!path) return;
+  path.removeAttribute("data-diff-path-flash");
 
-function getIndexFromScroll(files: HTMLElement[]) {
-  let current = 0;
-  for (let i = 0; i < files.length; i++) {
-    if (files[i].getBoundingClientRect().top < 0) {
-      current = i + 1;
-    }
-  }
-  return current;
+  void path.offsetWidth;
+  path.setAttribute("data-diff-path-flash", "");
+  path.addEventListener(
+    "animationend",
+    () => path.removeAttribute("data-diff-path-flash"),
+    { once: true },
+  );
 }
