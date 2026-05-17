@@ -4,9 +4,9 @@ import type { DiffHunkResource, RepositoryDiffFileResource } from "gitdot-api";
 import type { Element } from "hast";
 import {
   createChangeMaps,
+  diffFiles,
   fileToHast,
   inferLanguage,
-  mergeHunks,
   renderSpans,
 } from "@/(main)/[owner]/[repo]/util";
 import {
@@ -101,28 +101,27 @@ async function renderDiff(
   const right = file.right_content ?? null;
 
   const lang = inferLanguage(file.path);
-  const processedHunks = mergeHunks(file.hunks);
+  const hunks = left != null && right != null ? diffFiles(left, right) : [];
 
-  if (left && right && file.hunks.length > 0) {
-    const isAllAdditions = processedHunks.every((h) => h.every((p) => !p.lhs));
-    const isAllRemovals = processedHunks.every((h) => h.every((p) => !p.rhs));
+  if (left && right && hunks.length > 0) {
+    const isAllAdditions = hunks.every((h) => h.every((p) => !p.lhs));
+    const isAllRemovals = hunks.every((h) => h.every((p) => !p.rhs));
 
     if (isAllAdditions || isAllRemovals) {
       const side = isAllAdditions ? ("right" as const) : ("left" as const);
       const content = isAllAdditions ? right : left;
-      const { leftChangeMap, rightChangeMap } =
-        createChangeMaps(processedHunks);
+      const { leftChangeMap, rightChangeMap } = createChangeMaps(hunks);
       const changeMap = isAllAdditions ? rightChangeMap : leftChangeMap;
       const spans = await renderSpans(side, content, lang, changeMap);
       return {
         kind: "unilateral" as const,
         spans,
-        hunks: processedHunks,
+        hunks,
         side,
       };
     }
 
-    const { leftChangeMap, rightChangeMap } = createChangeMaps(processedHunks);
+    const { leftChangeMap, rightChangeMap } = createChangeMaps(hunks);
     const [leftSpans, rightSpans] = await Promise.all([
       renderSpans("left", left, lang, leftChangeMap),
       renderSpans("right", right, lang, rightChangeMap),
@@ -131,7 +130,7 @@ async function renderDiff(
       kind: "split" as const,
       leftSpans,
       rightSpans,
-      hunks: processedHunks,
+      hunks,
     };
   } else if (left != null || right != null) {
     // biome-ignore lint/style/noNonNullAssertion: guaranteed non-null by the `left != null || right != null` condition

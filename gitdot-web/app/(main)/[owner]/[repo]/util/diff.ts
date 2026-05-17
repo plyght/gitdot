@@ -1,6 +1,8 @@
+import { structuredPatch } from "diff";
 import type {
   DiffChangeResource,
   DiffHunkResource,
+  DiffLineResource,
   DiffPairResource,
 } from "gitdot-api";
 import type { Element } from "hast";
@@ -8,115 +10,68 @@ import type { Element } from "hast";
 export type LinePair = [number | null, number | null];
 export const CONTEXT_LINES = 4;
 
-// ============================================================================
-// diffing utils
-// ============================================================================
-
 /**
- * there's a bug in difftastic where lhs removals can be placed after rhs additions
- * which leads to lines showing in weird sequential order
+ * builds DiffHunkResource[] from raw file contents using jsdiff's structuredPatch
  *
- * so to avoid that, and enable consistent processing in mergeHunks and downstream, sort hunks here
+ * we use context: CONTEXT_LINES so jsdiff already bundles adjacent changes
+ * within CONTEXT_LINES * 2 of each other into one hunk
+ *
+ * within a hunk we collect removed and added lines in order, then zip them:
+ *  - first min(removed, added) lines pair lhs <-> rhs
+ *  - remainder is one-sided
+ *
+ * changes is left empty for now — the line gets highlighted whole-line rather than at token level
  */
-export function sortHunks(hunks: DiffHunkResource[]): DiffHunkResource[] {
-  const getStartingLine = (hunk: DiffHunkResource): number => {
-    const firstLine = hunk[0];
-    return firstLine.lhs
-      ? firstLine.lhs.line_number
-      : // biome-ignore lint/style/noNonNullAssertion: rhs is non-null when lhs is absent
-        firstLine.rhs!.line_number;
-  };
-
-  const sortedHunks = [...hunks].sort((a, b) => {
-    return getStartingLine(a) - getStartingLine(b);
-  });
-
-  return sortedHunks;
-}
-
-/**
- * the set of hunks that difftastic returns is the minimal set
- * e.g., if line 4 was modified, then only line 4 will be returned in that chunk.
- *
- * difftastic does some chunk grouping as well (based off a line number of 4), but we need to do additional merging
- * as that does not account for the context lines we inject around each chunk
- * e.g., difftastic will return lines 4 and lines 9 as two hunk, if we expand each to include 4 lines around it, they now overlap and should be merged
- *
- * note that this occurs prior to any pairing of lines, as if we were to try and merge lines after they were paired,
- * we _may_ find logically conflicting pairs (e.g., we accounted for gaps in one hunk, but are unaware in the second)
- */
-export function mergeHunks(hunks: DiffHunkResource[]): DiffHunkResource[] {
-  if (hunks.length <= 1) return hunks;
-
-  const sortedHunks = sortHunks(hunks);
-  const result: DiffHunkResource[] = [];
-  let current = [...sortedHunks[0]];
-
-  for (let i = 1; i < sortedHunks.length; i++) {
-    const next = sortedHunks[i];
-
-    if (hunksOverlap(current, next)) {
-      current = [...current, ...next];
-    } else {
-      result.push(current);
-      current = [...next];
-    }
-  }
-
-  result.push(current);
-  return result;
-}
-
-function hunksOverlap(
-  left: DiffHunkResource,
-  right: DiffHunkResource,
-): boolean {
-  const lastLine = left[left.length - 1];
-  const firstLine = right[0];
-
-  const [lastLhs, lastRhs] = getEffectivePosition(
-    lastLine,
-    left,
-    left.length - 1,
+export function diffFiles(
+  leftContent: string,
+  rightContent: string,
+): DiffHunkResource[] {
+  const patch = structuredPatch(
+    "left",
+    "right",
+    leftContent,
+    rightContent,
+    undefined,
+    undefined,
+    { context: CONTEXT_LINES },
   );
-  const [firstLhs, firstRhs] = getEffectivePosition(firstLine, right, 0);
 
-  // Overlap if either side's difference is within CONTEXT_LINES * 2
-  const lhsDiff = firstLhs - lastLhs;
-  const rhsDiff = firstRhs - lastRhs;
+  const result: DiffHunkResource[] = [];
+  for (const hunk of patch.hunks) {
+    // structuredPatch returns 1-indexed line numbers (standard unified diff), but we 0-index elsewhere
+    let oldLine = hunk.oldStart - 1;
+    let newLine = hunk.newStart - 1;
+    const removed: DiffLineResource[] = [];
+    const added: DiffLineResource[] = [];
 
-  return lhsDiff <= CONTEXT_LINES * 2 || rhsDiff <= CONTEXT_LINES * 2;
-}
-
-// todo: rename this
-function getEffectivePosition(
-  line: DiffPairResource,
-  hunk: DiffHunkResource,
-  lineIndex: number,
-): [number, number] {
-  if (line.lhs && line.rhs) {
-    return [line.lhs.line_number, line.rhs.line_number];
-  }
-
-  // look for an anchor (a line with both lhs and rhs above) and if found, use that
-  for (let i = lineIndex - 1; i >= 0; i--) {
-    const anchor = hunk[i];
-    if (anchor.lhs && anchor.rhs) {
-      return [anchor.lhs.line_number, anchor.rhs.line_number];
+    for (const raw of hunk.lines) {
+      const marker = raw[0];
+      if (marker === "-") {
+        removed.push({ line_number: oldLine, changes: [] });
+        oldLine++;
+      } else if (marker === "+") {
+        added.push({ line_number: newLine, changes: [] });
+        newLine++;
+      } else if (marker === " ") {
+        oldLine++;
+        newLine++;
+      }
     }
+
+    const max = Math.max(removed.length, added.length);
+    if (max === 0) continue;
+
+    const pairs: DiffPairResource[] = [];
+    for (let i = 0; i < max; i++) {
+      pairs.push({
+        lhs: i < removed.length ? removed[i] : undefined,
+        rhs: i < added.length ? added[i] : undefined,
+      });
+    }
+    result.push(pairs);
   }
 
-  // else there is no anchor, must be a lhs only or a rhs only line
-  const firstLine = hunk[0];
-  if (line.lhs) {
-    const firstLhs = firstLine.lhs?.line_number ?? line.lhs.line_number;
-    return [line.lhs.line_number, firstLhs - 1];
-  } else {
-    // biome-ignore lint/style/noNonNullAssertion: rhs-only line is guaranteed by the else branch
-    const firstRhs = firstLine.rhs?.line_number ?? line.rhs!.line_number;
-    // biome-ignore lint/style/noNonNullAssertion: rhs-only line is guaranteed by the else branch
-    return [firstRhs - 1, line.rhs!.line_number];
-  }
+  return result;
 }
 
 /**
@@ -447,45 +402,10 @@ export function createChangeMaps(hunks: DiffHunkResource[]): {
 // unified vs split diff view heuristics
 // ============================================================================
 
-const SPLIT_MAX_LINE_LENGTH = 80;
-const SPLIT_MIN_MATCH_RATIO = 0.25;
-
 export function preferSplit(
-  leftSpans: Element[],
-  rightSpans: Element[],
-  hunks: DiffHunkResource[],
+  _leftSpans: Element[],
+  _rightSpans: Element[],
+  _hunks: DiffHunkResource[],
 ): boolean {
-  let maxLen = 0;
-  let matched = 0;
-  let total = 0;
-
-  for (const hunk of hunks) {
-    for (const pair of hunk) {
-      if (pair.lhs) {
-        const span = leftSpans[pair.lhs.line_number - 1];
-        if (span) maxLen = Math.max(maxLen, spanTextLength(span));
-      }
-      if (pair.rhs) {
-        const span = rightSpans[pair.rhs.line_number - 1];
-        if (span) maxLen = Math.max(maxLen, spanTextLength(span));
-      }
-      if (pair.lhs && pair.rhs) matched++;
-      total++;
-    }
-  }
-
-  return (
-    maxLen <= SPLIT_MAX_LINE_LENGTH &&
-    total > 0 &&
-    matched / total >= SPLIT_MIN_MATCH_RATIO
-  );
-}
-
-function spanTextLength(span: Element): number {
-  let len = 0;
-  for (const child of span.children) {
-    if (child.type === "text") len += child.value.length;
-    else if (child.type === "element") len += spanTextLength(child);
-  }
-  return len;
+  return true;
 }
