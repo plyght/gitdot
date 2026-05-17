@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
 import { cn } from "@/util";
-import { ALL_COMMITS_FILTER } from "../util";
+import { ALL_COMMITS_FILTER, computePathOptions } from "../util";
 import { SaveFilterDialog } from "./save-filter-dialog";
 
 const TAG_OPTIONS = [
@@ -60,10 +60,7 @@ export function CommitsFilterDetail({
     new Set(commits.map((c) => c.author.name)),
   ).sort();
 
-  const pathOptions =
-    paths?.entries.map((e) =>
-      e.path_type === "tree" ? `${e.path}/` : e.path,
-    ) ?? [];
+  const pathOptions = computePathOptions(paths?.entries ?? [], commits);
 
   const toggleAuthor = (a: string) => {
     const next = authors.includes(a)
@@ -238,7 +235,7 @@ function PathsCriteria({
   onAdd,
   onRemove,
 }: {
-  options: string[];
+  options: Array<{ path: string; count: number }>;
   selected: string[];
   onAdd: (path: string) => void;
   onRemove: (path: string) => void;
@@ -255,8 +252,9 @@ function PathsCriteria({
 
   const suggestions = options.filter(
     (o) =>
-      (query.length === 0 || o.toLowerCase().includes(query.toLowerCase())) &&
-      !selected.includes(o),
+      (query.length === 0 ||
+        o.path.toLowerCase().includes(query.toLowerCase())) &&
+      !selected.includes(o.path),
   );
 
   const showSuggestions = focused && suggestions.length > 0;
@@ -288,7 +286,7 @@ function PathsCriteria({
         onBlur={() => setFocused(false)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && suggestions.length > 0) {
-            addPath(suggestions[0]);
+            addPath(suggestions[0].path);
           }
         }}
         placeholder="Search paths..."
@@ -298,15 +296,18 @@ function PathsCriteria({
         <div className="absolute left-0 right-0 top-full z-10 bg-popover border border-border shadow-md max-h-48 overflow-y-auto">
           {suggestions.map((s) => (
             <button
-              key={s}
+              key={s.path}
               type="button"
               onMouseDown={(e) => {
                 e.preventDefault();
-                addPath(s);
+                addPath(s.path);
               }}
-              className="flex items-center px-2 h-6 w-full text-left font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 border-b border-border last:border-b-0"
+              className="flex items-center gap-1 px-2 h-6 w-full text-left font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 border-b border-border last:border-b-0"
             >
-              {s}
+              <span className="truncate">{s.path}</span>
+              <span className="text-muted-foreground/60 shrink-0 ml-auto">
+                ({s.count})
+              </span>
             </button>
           ))}
         </div>

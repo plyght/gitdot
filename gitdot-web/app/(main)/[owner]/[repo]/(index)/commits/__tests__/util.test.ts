@@ -1,5 +1,9 @@
-import type { RepositoryDiffStatResource } from "gitdot-api";
-import { computePrimaryPaths } from "../util";
+import type {
+  RepositoryCommitResource,
+  RepositoryDiffStatResource,
+  RepositoryPathResource,
+} from "gitdot-api";
+import { computePathOptions, computePrimaryPaths } from "../util";
 
 function d(path: string, added = 10, removed = 0): RepositoryDiffStatResource {
   return { path, lines_added: added, lines_removed: removed };
@@ -180,5 +184,102 @@ describe("computePrimaryPaths", () => {
   test("n=5 returns all groups when fewer than 5 files", () => {
     const diffs = [d("a/x.ts"), d("b/y.ts")];
     expect(paths(diffs, 5)).toHaveLength(2);
+  });
+});
+
+function blob(path: string): RepositoryPathResource {
+  const name = path.split("/").pop() ?? path;
+  return { path, name, path_type: "blob", sha: "deadbeef" };
+}
+
+function tree(path: string): RepositoryPathResource {
+  const name = path.split("/").pop() ?? path;
+  return { path, name, path_type: "tree", sha: "deadbeef" };
+}
+
+function commit(sha: string, diffPaths: string[]): RepositoryCommitResource {
+  return {
+    owner_name: "o",
+    repo_name: "r",
+    sha,
+    parent_sha: "",
+    message: "msg",
+    date: new Date(0).toISOString(),
+    author: { name: "a", email: "a@a" },
+    diffs: diffPaths.map((p) => d(p)),
+  };
+}
+
+describe("computePathOptions", () => {
+  test("empty entries returns empty", () => {
+    expect(computePathOptions([], [commit("s1", ["a.ts"])])).toEqual([]);
+  });
+
+  test("blob entry counts exact-path commit matches", () => {
+    const entries = [blob("src/a.ts"), blob("src/b.ts")];
+    const commits = [
+      commit("s1", ["src/a.ts"]),
+      commit("s2", ["src/a.ts", "src/b.ts"]),
+      commit("s3", ["src/b.ts"]),
+    ];
+    expect(computePathOptions(entries, commits)).toEqual([
+      { path: "src/a.ts", count: 2 },
+      { path: "src/b.ts", count: 2 },
+    ]);
+  });
+
+  test("tree entry rolls up descendant file changes", () => {
+    const entries = [tree("src"), blob("src/a.ts")];
+    const commits = [
+      commit("s1", ["src/a.ts"]),
+      commit("s2", ["src/nested/x.ts"]),
+    ];
+    const result = computePathOptions(entries, commits);
+    expect(result.find((r) => r.path === "src/")?.count).toBe(2);
+    expect(result.find((r) => r.path === "src/a.ts")?.count).toBe(1);
+  });
+
+  test("a single commit touching two files under one dir counts the dir once", () => {
+    const entries = [tree("src")];
+    const commits = [commit("s1", ["src/a.ts", "src/b.ts"])];
+    expect(computePathOptions(entries, commits)).toEqual([
+      { path: "src/", count: 1 },
+    ]);
+  });
+
+  test("paths with zero commits sort to the bottom", () => {
+    const entries = [blob("cold.ts"), blob("hot.ts"), blob("warm.ts")];
+    const commits = [
+      commit("s1", ["hot.ts"]),
+      commit("s2", ["hot.ts"]),
+      commit("s3", ["warm.ts"]),
+    ];
+    expect(computePathOptions(entries, commits)).toEqual([
+      { path: "hot.ts", count: 2 },
+      { path: "warm.ts", count: 1 },
+      { path: "cold.ts", count: 0 },
+    ]);
+  });
+
+  test("equal counts preserve original entry order (stable sort)", () => {
+    const entries = [blob("a.ts"), blob("b.ts"), blob("c.ts")];
+    const commits = [
+      commit("s1", ["a.ts"]),
+      commit("s2", ["b.ts"]),
+      commit("s3", ["c.ts"]),
+    ];
+    expect(computePathOptions(entries, commits).map((r) => r.path)).toEqual([
+      "a.ts",
+      "b.ts",
+      "c.ts",
+    ]);
+  });
+
+  test("diff paths under no tracked entry contribute nothing", () => {
+    const entries = [blob("src/a.ts")];
+    const commits = [commit("s1", ["unrelated/x.ts"])];
+    expect(computePathOptions(entries, commits)).toEqual([
+      { path: "src/a.ts", count: 0 },
+    ]);
   });
 });

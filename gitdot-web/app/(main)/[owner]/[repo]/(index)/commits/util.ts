@@ -2,6 +2,7 @@ import type {
   RepositoryCommitFilterResource,
   RepositoryCommitResource,
   RepositoryDiffStatResource,
+  RepositoryPathResource,
 } from "gitdot-api";
 import { addDays, dateOnly, subtractDays } from "@/util";
 
@@ -41,6 +42,36 @@ export function isFilterModified(
     !sameSet(active.tags, original.tags) ||
     !sameSet(active.paths, original.paths)
   );
+}
+
+export function computePathOptions(
+  entries: RepositoryPathResource[],
+  commits: RepositoryCommitResource[],
+): Array<{ path: string; count: number }> {
+  const optionSet = new Set(
+    entries.map((e) => (e.path_type === "tree" ? `${e.path}/` : e.path)),
+  );
+  const countMap = new Map<string, number>();
+
+  for (const commit of commits) {
+    const touched = new Set<string>();
+    for (const diff of commit.diffs) {
+      if (optionSet.has(diff.path)) touched.add(diff.path);
+      const segs = diff.path.split("/");
+      for (let i = 1; i < segs.length; i++) {
+        const dir = `${segs.slice(0, i).join("/")}/`;
+        if (optionSet.has(dir)) touched.add(dir);
+      }
+    }
+    for (const p of touched) countMap.set(p, (countMap.get(p) ?? 0) + 1);
+  }
+
+  return entries
+    .map((e) => {
+      const path = e.path_type === "tree" ? `${e.path}/` : e.path;
+      return { path, count: countMap.get(path) ?? 0 };
+    })
+    .sort((a, b) => b.count - a.count);
 }
 
 function filterCommit(
