@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { MigrationResource } from "../../resource";
+import { MigrationResource, page } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
-export const ListMigrationsRequest = z.object({});
+export const ListMigrationsRequest = z.object({
+  cursor: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+});
 export type ListMigrationsRequest = z.infer<typeof ListMigrationsRequest>;
 
-export const ListMigrationsResponse = z.array(MigrationResource);
+export const ListMigrationsResponse = page(MigrationResource);
 export type ListMigrationsResponse = z.infer<typeof ListMigrationsResponse>;
 
 export const ListMigrations = {
