@@ -7,7 +7,7 @@ use crate::{
         CommitResponse, GetCurrentUserRequest, GetCurrentUserResponse, GetUserRequest,
         HasUserRequest, ListUserCommitsRequest, ListUserOrganizationsRequest,
         ListUserRepositoriesRequest, ListUserReviewsRequest, ListUserStarsRequest,
-        OrganizationMemberResponse, RepositoryResponse, ReviewResponse,
+        OrganizationMemberResponse, Page, RepositoryResponse, ReviewResponse,
         UpdateCurrentUserImageRequest, UpdateCurrentUserRequest, UserResponse,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, UserError},
@@ -16,7 +16,7 @@ use crate::{
         RepositoryRepository, RepositoryRepositoryImpl, ReviewRepository, ReviewRepositoryImpl,
         UserRepository, UserRepositoryImpl,
     },
-    util::auth::is_reserved_name,
+    util::{auth::is_reserved_name, cursor},
 };
 
 #[async_trait]
@@ -43,7 +43,7 @@ pub trait UserService: Send + Sync + 'static {
     async fn list_repositories(
         &self,
         request: ListUserRepositoriesRequest,
-    ) -> Result<Vec<RepositoryResponse>, UserError>;
+    ) -> Result<Page<RepositoryResponse>, UserError>;
 
     async fn list_stars(
         &self,
@@ -222,7 +222,7 @@ where
     async fn list_repositories(
         &self,
         request: ListUserRepositoriesRequest,
-    ) -> Result<Vec<RepositoryResponse>, UserError> {
+    ) -> Result<Page<RepositoryResponse>, UserError> {
         let user_name = request.user_name.to_string();
         let user = self
             .user_repo
@@ -230,7 +230,10 @@ where
             .await?
             .or_not_found("user", &user_name)?;
 
-        let repositories = self.repo_repo.list_by_owner(&user_name).await?;
+        let (repositories, next_cursor) = self
+            .repo_repo
+            .list_by_owner(&user_name, request.cursor, request.limit as i64)
+            .await?;
 
         let is_owner = request.viewer_id.map(|id| id == user.id).unwrap_or(false);
         let repositories = if is_owner {
@@ -239,7 +242,10 @@ where
             repositories.into_iter().filter(|r| r.is_public()).collect()
         };
 
-        Ok(repositories.into_iter().map(|r| r.into()).collect())
+        Ok(Page {
+            data: repositories.into_iter().map(|r| r.into()).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
     }
 
     async fn list_stars(

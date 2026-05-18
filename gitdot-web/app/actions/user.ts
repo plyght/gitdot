@@ -101,8 +101,9 @@ export async function getCurrentUserAction(): Promise<CurrentUserResource | null
 
 export async function listUserRepositoriesAction(
   username: string,
-): Promise<RepositoryResource[] | null> {
-  return await listUserRepositories(username);
+): Promise<RepositoryResource[]> {
+  const result = await listUserRepositories(username);
+  return result?.data ?? [];
 }
 
 export async function listUserOrganizationsAction(

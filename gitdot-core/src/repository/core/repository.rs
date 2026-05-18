@@ -4,7 +4,7 @@ use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use crate::{
-    dto::UserResponse,
+    dto::{Cursor, UserResponse},
     error::DatabaseError,
     model::{CommitFilter, Repository, RepositoryOwnerType, RepositoryStar, RepositoryVisibility},
 };
@@ -26,7 +26,12 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
 
     async fn get_by_id(&self, id: Uuid) -> Result<Option<Repository>, DatabaseError>;
 
-    async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Repository>, DatabaseError>;
+    async fn list_by_owner(
+        &self,
+        owner_name: &str,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError>;
 
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError>;
 
@@ -167,8 +172,16 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         Ok(repository)
     }
 
-    async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Repository>, DatabaseError> {
-        let repositories = sqlx::query_as::<_, Repository>(
+    async fn list_by_owner(
+        &self,
+        owner_name: &str,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError> {
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut repositories = sqlx::query_as::<_, Repository>(
             r#"
             SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
                    r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
@@ -182,14 +195,29 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
                 UNION ALL
                 SELECT id FROM core.organizations WHERE name = $1
             )
-            ORDER BY r.created_at DESC
+              AND ($2::timestamptz IS NULL OR (r.created_at, r.id) < ($2, $3))
+            ORDER BY r.created_at DESC, r.id DESC
+            LIMIT $4
             "#,
         )
         .bind(owner_name)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(repositories)
+        let next_cursor = if repositories.len() as i64 > limit {
+            repositories.pop();
+            repositories.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((repositories, next_cursor))
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError> {

@@ -1,13 +1,16 @@
 import { z } from "zod";
-import { RepositoryResource } from "../../resource";
+import { page, RepositoryResource } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
-export const ListUserRepositoriesRequest = z.object({});
+export const ListUserRepositoriesRequest = z.object({
+  cursor: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+});
 export type ListUserRepositoriesRequest = z.infer<
   typeof ListUserRepositoriesRequest
 >;
 
-export const ListUserRepositoriesResponse = z.array(RepositoryResource);
+export const ListUserRepositoriesResponse = page(RepositoryResource);
 export type ListUserRepositoriesResponse = z.infer<
   typeof ListUserRepositoriesResponse
 >;

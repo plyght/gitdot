@@ -1,11 +1,12 @@
 import "server-only";
 
 import {
+  ListOrganizationRepositoriesResponse,
   OrganizationMemberResource,
   OrganizationResource,
-  RepositoryResource,
 } from "gitdot-api";
 import { z } from "zod";
+import { toQueryString } from "@/util";
 import {
   authFetch,
   authPatch,
@@ -59,11 +60,12 @@ export async function updateOrganizationMember(
 
 export async function listOrganizationRepositories(
   name: string,
-): Promise<RepositoryResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/organization/${name}/repositories`,
-  );
-  return await handleResponse(response, z.array(RepositoryResource));
+  opts?: { cursor?: string; limit?: number },
+): Promise<ListOrganizationRepositoriesResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/organization/${name}/repositories${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListOrganizationRepositoriesResponse);
 }
 
 export async function createOrganization(

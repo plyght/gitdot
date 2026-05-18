@@ -16,14 +16,15 @@ import { UserRepos } from "./user-repos";
 import { UserStars } from "./user-stars";
 
 export default async function UserPage({ user }: { user: UserResource }) {
-  const [commits, repos, memberships, stars, current] = await Promise.all([
-    listUserCommits(user.name),
-    listUserRepositories(user.name),
-    listUserOrganizations(user.name),
-    listUserStars(user.name),
-    getCurrentUser(false),
-  ]);
-
+  const [commits, reposResponse, memberships, stars, current] =
+    await Promise.all([
+      listUserCommits(user.name),
+      listUserRepositories(user.name),
+      listUserOrganizations(user.name),
+      listUserStars(user.name),
+      getCurrentUser(false),
+    ]);
+  const repos = reposResponse?.data ?? null;
   const isOwner = current?.user.name === user.name;
 
   return (

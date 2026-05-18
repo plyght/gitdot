@@ -5,7 +5,7 @@ use crate::{
     dto::{
         AddMemberRequest, CreateOrganizationRequest, GetOrganizationRequest, ListMembersRequest,
         ListOrganizationRepositoriesRequest, OrganizationMemberResponse, OrganizationResponse,
-        RepositoryResponse, UpdateOrganizationImageRequest, UpdateOrganizationMemberRequest,
+        Page, RepositoryResponse, UpdateOrganizationImageRequest, UpdateOrganizationMemberRequest,
         UpdateOrganizationRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, OrganizationError},
@@ -13,6 +13,7 @@ use crate::{
         OrganizationRepository, OrganizationRepositoryImpl, RepositoryRepository,
         RepositoryRepositoryImpl, UserRepository, UserRepositoryImpl,
     },
+    util::cursor,
 };
 
 #[async_trait]
@@ -50,7 +51,7 @@ pub trait OrganizationService: Send + Sync + 'static {
     async fn list_repositories(
         &self,
         request: ListOrganizationRepositoriesRequest,
-    ) -> Result<Vec<RepositoryResponse>, OrganizationError>;
+    ) -> Result<Page<RepositoryResponse>, OrganizationError>;
 
     async fn list_organizations(&self) -> Result<Vec<OrganizationResponse>, OrganizationError>;
 
@@ -242,7 +243,7 @@ where
     async fn list_repositories(
         &self,
         request: ListOrganizationRepositoriesRequest,
-    ) -> Result<Vec<RepositoryResponse>, OrganizationError> {
+    ) -> Result<Page<RepositoryResponse>, OrganizationError> {
         let org_name = request.org_name.to_string();
         let org = self
             .org_repo
@@ -250,7 +251,10 @@ where
             .await?
             .or_not_found("organization", &org_name)?;
 
-        let repositories = self.repo_repo.list_by_owner(&org_name).await?;
+        let (repositories, next_cursor) = self
+            .repo_repo
+            .list_by_owner(&org_name, request.cursor, request.limit as i64)
+            .await?;
 
         let is_member = match request.viewer_id {
             Some(viewer_id) => self.org_repo.is_member(org.id, viewer_id).await?,
@@ -262,7 +266,10 @@ where
             repositories.into_iter().filter(|r| r.is_public()).collect()
         };
 
-        Ok(repositories.into_iter().map(|r| r.into()).collect())
+        Ok(Page {
+            data: repositories.into_iter().map(|r| r.into()).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
     }
 
     async fn list_members(

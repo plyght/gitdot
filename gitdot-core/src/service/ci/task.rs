@@ -5,7 +5,7 @@ use tokio::time::{Instant, sleep};
 use uuid::Uuid;
 
 use crate::{
-    dto::{TaskResponse, UpdateTaskRequest},
+    dto::{MAX_PER_PAGE_LIMIT, TaskResponse, UpdateTaskRequest},
     error::{NotFoundExt, OptionNotFoundExt, TaskError},
     model::TaskStatus,
     repository::{
@@ -86,9 +86,9 @@ where
             .await?
             .or_not_found("runner", runner_id)?;
 
-        let repos = self
+        let (repos, _) = self
             .repository_repo
-            .list_by_owner(&runner.owner_name)
+            .list_by_owner(&runner.owner_name, None, MAX_PER_PAGE_LIMIT as i64)
             .await?;
 
         let repository_ids: Vec<Uuid> = repos.iter().map(|r| r.id).collect();

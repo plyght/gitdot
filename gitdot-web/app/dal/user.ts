@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   CurrentUserResource,
+  ListUserRepositoriesResponse,
   OrganizationMemberResource,
   RepositoryCommitResource,
   RepositoryResource,
@@ -10,6 +11,7 @@ import {
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
+import { toQueryString } from "@/util";
 import {
   authFetch,
   authHead,
@@ -107,12 +109,12 @@ export async function getUser(username: string): Promise<UserResource | null> {
 
 export async function listUserRepositories(
   username: string,
-): Promise<RepositoryResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/user/${username}/repositories`,
-  );
-
-  return await handleResponse(response, z.array(RepositoryResource));
+  opts?: { cursor?: string; limit?: number },
+): Promise<ListUserRepositoriesResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/user/${username}/repositories${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListUserRepositoriesResponse);
 }
 
 export async function listUserOrganizations(

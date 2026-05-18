@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{endpoint::Endpoint, resource::RepositoryResource};
+use crate::{
+    endpoint::Endpoint,
+    resource::{RepositoryResource, common::Page},
+};
 
 pub struct ListOrganizationRepositories;
 
@@ -12,7 +15,12 @@ impl Endpoint for ListOrganizationRepositories {
     type Response = ListOrganizationRepositoriesResponse;
 }
 
-#[derive(ApiRequest, Debug, Serialize, Deserialize)]
-pub struct ListOrganizationRepositoriesRequest {}
+#[derive(ApiRequest, Debug, Default, Serialize, Deserialize)]
+pub struct ListOrganizationRepositoriesRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+}
 
-pub type ListOrganizationRepositoriesResponse = Vec<RepositoryResource>;
+pub type ListOrganizationRepositoriesResponse = Page<RepositoryResource>;
