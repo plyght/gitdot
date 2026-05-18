@@ -12,11 +12,12 @@ import { OrgReadme } from "./org-readme";
 import { OrgRepositories } from "./org-repositories";
 
 export default async function OrgPage({ org }: { org: OrganizationResource }) {
-  const [members, reposResponse, current] = await Promise.all([
+  const [membersResponse, reposResponse, current] = await Promise.all([
     listOrganizationMembers(org.name),
     listOrganizationRepositories(org.name),
     getCurrentUser(false),
   ]);
+  const members = membersResponse?.data ?? null;
   const repos = reposResponse?.data ?? null;
   const membership =
     current?.memberships.find((m) => m.org_name === org.name) ?? null;

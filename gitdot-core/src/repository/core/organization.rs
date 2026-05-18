@@ -69,7 +69,9 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         &self,
         org_name: &str,
         role: Option<OrganizationRole>,
-    ) -> Result<Vec<OrganizationMember>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<OrganizationMember>, Option<Cursor>), DatabaseError>;
 
     async fn list_memberships_by_user_id(
         &self,
@@ -350,24 +352,44 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         &self,
         org_name: &str,
         role: Option<OrganizationRole>,
-    ) -> Result<Vec<OrganizationMember>, DatabaseError> {
-        let members = sqlx::query_as::<_, OrganizationMember>(
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<OrganizationMember>, Option<Cursor>), DatabaseError> {
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut members = sqlx::query_as::<_, OrganizationMember>(
             r#"
             SELECT om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at, u.name AS user_name, o.name AS org_name
             FROM core.organization_members om
             JOIN core.organizations o ON om.organization_id = o.id
             JOIN core.users u ON om.user_id = u.id
             WHERE o.name = $1
-            AND ($2::core.organization_role IS NULL OR om.role = $2)
-            ORDER BY om.created_at DESC
+              AND ($2::core.organization_role IS NULL OR om.role = $2)
+              AND ($3::timestamptz IS NULL OR (om.created_at, om.id) < ($3, $4))
+            ORDER BY om.created_at DESC, om.id DESC
+            LIMIT $5
             "#,
         )
         .bind(org_name)
         .bind(role)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(members)
+        let next_cursor = if members.len() as i64 > limit {
+            members.pop();
+            members.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((members, next_cursor))
     }
 
     async fn list_memberships_by_user_id(

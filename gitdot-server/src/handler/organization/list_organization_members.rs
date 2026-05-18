@@ -17,11 +17,16 @@ pub async fn list_organization_members(
     Path(org_name): Path<String>,
     Query(params): Query<api::ListOrganizationMembersRequest>,
 ) -> Result<AppResponse<api::ListOrganizationMembersResponse>, AppError> {
-    let request = ListMembersRequest::new(&org_name, params.role.as_deref())?;
+    let request = ListMembersRequest::new(
+        &org_name,
+        params.role.as_deref(),
+        params.cursor.as_deref(),
+        params.limit,
+    )?;
     state
         .org_service
         .list_members(request)
         .await
         .map_err(AppError::from)
-        .map(|members| AppResponse::new(StatusCode::OK, members.into_api()))
+        .map(|page| AppResponse::new(StatusCode::OK, page.into_api()))
 }

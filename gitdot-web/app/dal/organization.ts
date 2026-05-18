@@ -1,11 +1,11 @@
 import "server-only";
 
 import {
+  ListOrganizationMembersResponse,
   ListOrganizationRepositoriesResponse,
   OrganizationMemberResource,
   OrganizationResource,
 } from "gitdot-api";
-import { z } from "zod";
 import { toQueryString } from "@/util";
 import {
   authFetch,
@@ -24,11 +24,16 @@ export async function getOrganization(
 
 export async function listOrganizationMembers(
   name: string,
-): Promise<OrganizationMemberResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/organization/${name}/members`,
-  );
-  return await handleResponse(response, z.array(OrganizationMemberResource));
+  opts?: { role?: string; cursor?: string; limit?: number },
+): Promise<ListOrganizationMembersResponse | null> {
+  const qs = toQueryString({
+    role: opts?.role,
+    cursor: opts?.cursor,
+    limit: opts?.limit,
+  });
+  const url = `${GITDOT_SERVER_URL}/organization/${name}/members${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListOrganizationMembersResponse);
 }
 
 export async function addOrganizationMember(
