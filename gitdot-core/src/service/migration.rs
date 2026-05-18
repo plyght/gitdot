@@ -8,9 +8,8 @@ use crate::{
         CreateGitHubInstallationRequest, CreateGitHubMigrationRequest,
         CreateGitHubMigrationResponse, GetMigrationRequest, GitHubInstallationResponse,
         ListGitHubInstallationRepositoriesResponse, ListGitHubInstallationsRequest,
-        ListGitHubInstallationsResponse, ListMigrationsRequest, ListMigrationsResponse,
-        MigrateGitHubRepositoriesRequest, MigrateGitHubRepositoriesResponse,
-        MigratedRepositoryInfo, MigrationResponse,
+        ListGitHubInstallationsResponse, ListMigrationsRequest, MigrateGitHubRepositoriesRequest,
+        MigrateGitHubRepositoriesResponse, MigratedRepositoryInfo, MigrationResponse, Page,
     },
     error::{ConflictError, InputError, MigrationError, OptionNotFoundExt},
     model::{
@@ -23,6 +22,7 @@ use crate::{
         RepositoryRepositoryImpl,
     },
     util::{
+        cursor,
         git::{GitHookType, POST_RECEIVE_SCRIPT, PRE_RECEIVE_SCRIPT, PROC_RECEIVE_SCRIPT},
         github::get_github_clone_url,
     },
@@ -38,7 +38,7 @@ pub trait MigrationService: Send + Sync + 'static {
     async fn list_migrations(
         &self,
         request: ListMigrationsRequest,
-    ) -> Result<ListMigrationsResponse, MigrationError>;
+    ) -> Result<Page<MigrationResponse>, MigrationError>;
 
     async fn create_github_installation(
         &self,
@@ -248,10 +248,16 @@ where
     async fn list_migrations(
         &self,
         request: ListMigrationsRequest,
-    ) -> Result<ListMigrationsResponse, MigrationError> {
-        let migrations = self.migration_repo.list(request.user_id).await?;
+    ) -> Result<Page<MigrationResponse>, MigrationError> {
+        let (rows, next) = self
+            .migration_repo
+            .list(request.user_id, request.cursor, request.limit as i64)
+            .await?;
 
-        Ok(migrations.into_iter().map(Into::into).collect())
+        Ok(Page {
+            data: rows.into_iter().map(MigrationResponse::from).collect(),
+            next_cursor: next.as_ref().map(cursor::encode),
+        })
     }
 
     async fn create_github_installation(

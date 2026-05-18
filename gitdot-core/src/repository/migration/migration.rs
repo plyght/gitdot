@@ -4,6 +4,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
+    dto::Cursor,
     error::DatabaseError,
     model::{
         Migration, MigrationOriginService, MigrationRepository as MigrationRepositoryModel,
@@ -25,7 +26,12 @@ pub trait MigrationRepository: Send + Sync + Clone + 'static {
 
     async fn get(&self, author_id: Uuid, number: i32) -> Result<Option<Migration>, DatabaseError>;
 
-    async fn list(&self, author_id: Uuid) -> Result<Vec<Migration>, DatabaseError>;
+    async fn list(
+        &self,
+        author_id: Uuid,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Migration>, Option<Cursor>), DatabaseError>;
 
     async fn update_status(
         &self,
@@ -142,8 +148,16 @@ impl MigrationRepository for MigrationRepositoryImpl {
         Ok(migration)
     }
 
-    async fn list(&self, author_id: Uuid) -> Result<Vec<Migration>, DatabaseError> {
-        let migrations = sqlx::query_as::<_, Migration>(
+    async fn list(
+        &self,
+        author_id: Uuid,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Migration>, Option<Cursor>), DatabaseError> {
+        let cursor_created_at = cursor.map(|c| c.created_at);
+        let cursor_id = cursor.map(|c| c.id);
+
+        let mut migrations = sqlx::query_as::<_, Migration>(
             r#"
             SELECT m.id, m.number, m.author_id, m.origin_service, m.origin, m.origin_type,
                    m.destination, m.destination_type, m.status, m.created_at, m.updated_at,
@@ -167,14 +181,29 @@ impl MigrationRepository for MigrationRepositoryImpl {
                    ) AS repositories
             FROM migration.migrations m
             WHERE m.author_id = $1
-            ORDER BY m.created_at DESC
+              AND ($2::timestamptz IS NULL OR (m.created_at, m.id) < ($2, $3))
+            ORDER BY m.created_at DESC, m.id DESC
+            LIMIT $4
             "#,
         )
         .bind(author_id)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(migrations)
+        let next_cursor = if migrations.len() as i64 > limit {
+            migrations.pop();
+            migrations.last().map(|m| Cursor {
+                created_at: m.created_at,
+                id: m.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((migrations, next_cursor))
     }
 
     async fn update_status(

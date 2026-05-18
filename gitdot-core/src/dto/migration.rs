@@ -18,7 +18,7 @@ pub use github::{
     ListGitHubInstallationsResponse, MigrateGitHubRepositoriesRequest,
     MigrateGitHubRepositoriesResponse, MigratedRepositoryInfo,
 };
-pub use list_migrations::{ListMigrationsRequest, ListMigrationsResponse};
+pub use list_migrations::ListMigrationsRequest;
 
 #[derive(Debug, Clone)]
 pub struct MigrationResponse {

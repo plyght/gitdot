@@ -1,4 +1,7 @@
-use axum::{extract::State, http::StatusCode};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+};
 
 use gitdot_api::endpoint::migration::list_migrations as api;
 use gitdot_core::dto::ListMigrationsRequest;
@@ -13,12 +16,13 @@ use crate::{
 pub async fn list_migrations(
     auth_user: Principal<User>,
     State(state): State<AppState>,
+    Query(query): Query<api::ListMigrationsRequest>,
 ) -> Result<AppResponse<api::ListMigrationsResponse>, AppError> {
-    let request = ListMigrationsRequest::new(auth_user.id);
+    let request = ListMigrationsRequest::new(auth_user.id, query.cursor.as_deref(), query.limit)?;
     state
         .migration_service
         .list_migrations(request)
         .await
         .map_err(AppError::from)
-        .map(|migrations| AppResponse::new(StatusCode::OK, migrations.into_api()))
+        .map(|page| AppResponse::new(StatusCode::OK, page.into_api()))
 }

@@ -39,3 +39,16 @@ where
         self.map(|item| item.into_api())
     }
 }
+
+impl<T> IntoApi for gitdot_core::dto::Page<T>
+where
+    T: IntoApi,
+{
+    type ApiType = gitdot_api::resource::Page<T::ApiType>;
+    fn into_api(self) -> Self::ApiType {
+        gitdot_api::resource::Page {
+            data: self.data.into_iter().map(IntoApi::into_api).collect(),
+            next_cursor: self.next_cursor,
+        }
+    }
+}

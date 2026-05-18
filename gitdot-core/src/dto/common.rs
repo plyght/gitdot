@@ -1,31 +1,35 @@
-//! Define newtype structs that can be shared across domains.
+//! Define common structs and constants that can be shared across domains.
 
+use chrono::{DateTime, Utc};
 use nutype::nutype;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-fn is_valid_slug(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() > 1
-        && s.len() <= 32
-        && s.chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
-        && !s.starts_with('-')
-        && !s.ends_with('-')
+/// TODO: decrease to smaller value
+pub const DEFAULT_PER_PAGE_LIMIT: u32 = 10_000;
+pub const MAX_PER_PAGE_LIMIT: u32 = 10_000;
+
+/// Keyset pagination cursor.
+///
+/// On the wire every paginated endpoint accepts/returns this opaque via
+/// `util::cursor::{encode, decode}` (base64url-JSON). Internally paginated
+/// queries use `ORDER BY created_at DESC, id DESC` and filter rows by
+/// `(created_at, id) < (cursor.created_at, cursor.id)`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Cursor {
+    pub created_at: DateTime<Utc>,
+    pub id: Uuid,
 }
 
-fn strip_git_suffix(s: String) -> String {
-    s.strip_suffix(".git").map(|s| s.to_string()).unwrap_or(s)
-}
-
-fn is_valid_url(s: &str) -> bool {
-    url::Url::parse(s).is_ok()
-}
-
-fn is_valid_email(s: &str) -> bool {
-    !s.is_empty() && s.contains('@')
-}
-
-fn is_valid_filter_name(s: &str) -> bool {
-    !s.is_empty() && s.len() <= 100
+/// Shared envelope for list-endpoint responses.
+///
+/// `next_cursor` is `Some` iff more rows exist beyond the current page —
+/// the repository fetches `limit + 1` rows internally and emits the cursor
+/// derived from the last in-range row when the extra row was returned.
+#[derive(Debug, Clone)]
+pub struct Page<T> {
+    pub data: Vec<T>,
+    pub next_cursor: Option<String>,
 }
 
 #[nutype(
@@ -69,6 +73,32 @@ pub struct Email(String);
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
 pub struct FilterName(String);
+
+fn is_valid_slug(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() > 1
+        && s.len() <= 32
+        && s.chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
+        && !s.starts_with('-')
+        && !s.ends_with('-')
+}
+
+fn strip_git_suffix(s: String) -> String {
+    s.strip_suffix(".git").map(|s| s.to_string()).unwrap_or(s)
+}
+
+fn is_valid_url(s: &str) -> bool {
+    url::Url::parse(s).is_ok()
+}
+
+fn is_valid_email(s: &str) -> bool {
+    !s.is_empty() && s.contains('@')
+}
+
+fn is_valid_filter_name(s: &str) -> bool {
+    !s.is_empty() && s.len() <= 100
+}
 
 #[cfg(test)]
 mod tests {
