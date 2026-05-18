@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod crypto;
+pub mod cursor;
 pub mod git;
 pub mod github;
 pub mod image;
