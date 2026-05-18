@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
 };
 
-use gitdot_api::endpoint::add_member as api;
+use gitdot_api::endpoint::add_organization_member as api;
 use gitdot_core::dto::{AddMemberRequest, OrganizationAuthorizationRequest};
 
 use crate::{
@@ -18,8 +18,8 @@ pub async fn add_member(
     auth_user: Principal<User>,
     State(state): State<AppState>,
     Path(org_name): Path<String>,
-    Json(request): Json<api::AddMemberRequest>,
-) -> Result<AppResponse<api::AddMemberResponse>, AppError> {
+    Json(request): Json<api::AddOrganizationMemberRequest>,
+) -> Result<AppResponse<api::AddOrganizationMemberResponse>, AppError> {
     let auth_request = OrganizationAuthorizationRequest::new(auth_user.id, &org_name)?;
     state
         .authorization_service

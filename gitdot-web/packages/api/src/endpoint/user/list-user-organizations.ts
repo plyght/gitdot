@@ -1,15 +1,16 @@
 import { z } from "zod";
-import { OrganizationMemberResource } from "../../resource";
+import { OrganizationMemberResource, page } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
-export const ListUserOrganizationsRequest = z.object({});
+export const ListUserOrganizationsRequest = z.object({
+  cursor: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+});
 export type ListUserOrganizationsRequest = z.infer<
   typeof ListUserOrganizationsRequest
 >;
 
-export const ListUserOrganizationsResponse = z.array(
-  OrganizationMemberResource,
-);
+export const ListUserOrganizationsResponse = page(OrganizationMemberResource);
 export type ListUserOrganizationsResponse = z.infer<
   typeof ListUserOrganizationsResponse
 >;

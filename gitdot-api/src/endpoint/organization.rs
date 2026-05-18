@@ -1,4 +1,4 @@
-pub mod add_member;
+pub mod add_organization_member;
 pub mod create_organization;
 pub mod get_organization;
 pub mod list_organization_members;

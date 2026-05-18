@@ -4,9 +4,9 @@ use crate::{
     client::{ImageClient, ImageClientImpl, R2Client, R2ClientImpl},
     dto::{
         AddMemberRequest, CreateOrganizationRequest, GetOrganizationRequest, ListMembersRequest,
-        ListOrganizationRepositoriesRequest, OrganizationMemberResponse, OrganizationResponse,
-        Page, RepositoryResponse, UpdateOrganizationImageRequest, UpdateOrganizationMemberRequest,
-        UpdateOrganizationRequest,
+        ListOrganizationRepositoriesRequest, ListOrganizationsRequest, OrganizationMemberResponse,
+        OrganizationResponse, Page, RepositoryResponse, UpdateOrganizationImageRequest,
+        UpdateOrganizationMemberRequest, UpdateOrganizationRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, OrganizationError},
     repository::{
@@ -53,7 +53,10 @@ pub trait OrganizationService: Send + Sync + 'static {
         request: ListOrganizationRepositoriesRequest,
     ) -> Result<Page<RepositoryResponse>, OrganizationError>;
 
-    async fn list_organizations(&self) -> Result<Vec<OrganizationResponse>, OrganizationError>;
+    async fn list_organizations(
+        &self,
+        request: ListOrganizationsRequest,
+    ) -> Result<Page<OrganizationResponse>, OrganizationError>;
 
     async fn list_members(
         &self,
@@ -235,9 +238,18 @@ where
         Ok(member.into())
     }
 
-    async fn list_organizations(&self) -> Result<Vec<OrganizationResponse>, OrganizationError> {
-        let orgs = self.org_repo.list().await?;
-        Ok(orgs.into_iter().map(|o| o.into()).collect())
+    async fn list_organizations(
+        &self,
+        request: ListOrganizationsRequest,
+    ) -> Result<Page<OrganizationResponse>, OrganizationError> {
+        let (orgs, next_cursor) = self
+            .org_repo
+            .list(request.cursor, request.limit as i64)
+            .await?;
+        Ok(Page {
+            data: orgs.into_iter().map(|o| o.into()).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
     }
 
     async fn list_repositories(

@@ -2,8 +2,8 @@ import "server-only";
 
 import {
   CurrentUserResource,
+  ListUserOrganizationsResponse,
   ListUserRepositoriesResponse,
-  OrganizationMemberResource,
   RepositoryCommitResource,
   RepositoryResource,
   UserResource,
@@ -119,12 +119,12 @@ export async function listUserRepositories(
 
 export async function listUserOrganizations(
   username: string,
-): Promise<OrganizationMemberResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/user/${username}/organizations`,
-  );
-
-  return await handleResponse(response, z.array(OrganizationMemberResource));
+  opts?: { cursor?: string; limit?: number },
+): Promise<ListUserOrganizationsResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/user/${username}/organizations${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListUserOrganizationsResponse);
 }
 
 export async function listUserCommits(

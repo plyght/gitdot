@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
 };
 
@@ -15,12 +15,14 @@ use crate::{
 pub async fn list_user_organizations(
     State(state): State<AppState>,
     Path(user_name): Path<String>,
+    Query(query): Query<api::ListUserOrganizationsRequest>,
 ) -> Result<AppResponse<api::ListUserOrganizationsResponse>, AppError> {
-    let request = ListUserOrganizationsRequest::new(&user_name)?;
+    let request =
+        ListUserOrganizationsRequest::new(&user_name, query.cursor.as_deref(), query.limit)?;
     state
         .user_service
         .list_organizations(request)
         .await
         .map_err(AppError::from)
-        .map(|orgs| AppResponse::new(StatusCode::OK, orgs.into_api()))
+        .map(|page| AppResponse::new(StatusCode::OK, page.into_api()))
 }

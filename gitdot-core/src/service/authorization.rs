@@ -431,10 +431,10 @@ mod tests {
             async fn get_member(&self, org_name: &str, member_id: Uuid) -> Result<Option<OrganizationMember>, crate::error::DatabaseError>;
             async fn update(&self, org_name: &str, location: Option<String>, readme: Option<String>, links: Option<Vec<String>>, display_name: Option<String>) -> Result<Option<Organization>, crate::error::DatabaseError>;
             async fn update_member(&self, org_name: &str, member_id: Uuid, role_description: Option<String>) -> Result<Option<OrganizationMember>, crate::error::DatabaseError>;
-            async fn list(&self) -> Result<Vec<Organization>, crate::error::DatabaseError>;
+            async fn list(&self, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Organization>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
             async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, crate::error::DatabaseError>;
             async fn list_members(&self, org_name: &str, role: Option<OrganizationRole>) -> Result<Vec<OrganizationMember>, crate::error::DatabaseError>;
-            async fn list_memberships_by_user_id(&self, user_id: Uuid) -> Result<Vec<OrganizationMember>, crate::error::DatabaseError>;
+            async fn list_memberships_by_user_id(&self, user_id: Uuid, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<OrganizationMember>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
         }
     }
 

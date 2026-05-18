@@ -108,8 +108,9 @@ export async function listUserRepositoriesAction(
 
 export async function listUserOrganizationsAction(
   username: string,
-): Promise<OrganizationMemberResource[] | null> {
-  return await listUserOrganizations(username);
+): Promise<OrganizationMemberResource[]> {
+  const result = await listUserOrganizations(username);
+  return result?.data ?? [];
 }
 
 // ==============

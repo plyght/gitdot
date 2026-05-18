@@ -3,6 +3,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
+    dto::Cursor,
     error::DatabaseError,
     model::{Organization, OrganizationMember, OrganizationRole},
 };
@@ -56,7 +57,11 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         role_description: Option<String>,
     ) -> Result<Option<OrganizationMember>, DatabaseError>;
 
-    async fn list(&self) -> Result<Vec<Organization>, DatabaseError>;
+    async fn list(
+        &self,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Organization>, Option<Cursor>), DatabaseError>;
 
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, DatabaseError>;
 
@@ -69,7 +74,9 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
     async fn list_memberships_by_user_id(
         &self,
         user_id: Uuid,
-    ) -> Result<Vec<OrganizationMember>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<OrganizationMember>, Option<Cursor>), DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -286,14 +293,40 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         Ok(member)
     }
 
-    async fn list(&self) -> Result<Vec<Organization>, DatabaseError> {
-        let orgs = sqlx::query_as::<_, Organization>(
-            "SELECT id, name, created_at, location, readme, links, display_name FROM core.organizations ORDER BY created_at DESC",
+    async fn list(
+        &self,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Organization>, Option<Cursor>), DatabaseError> {
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut orgs = sqlx::query_as::<_, Organization>(
+            r#"
+            SELECT id, name, created_at, location, readme, links, display_name
+            FROM core.organizations
+            WHERE ($1::timestamptz IS NULL OR (created_at, id) < ($1, $2))
+            ORDER BY created_at DESC, id DESC
+            LIMIT $3
+            "#,
         )
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(orgs)
+        let next_cursor = if orgs.len() as i64 > limit {
+            orgs.pop();
+            orgs.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((orgs, next_cursor))
     }
 
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, DatabaseError> {
@@ -340,21 +373,41 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     async fn list_memberships_by_user_id(
         &self,
         user_id: Uuid,
-    ) -> Result<Vec<OrganizationMember>, DatabaseError> {
-        let members = sqlx::query_as::<_, OrganizationMember>(
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<OrganizationMember>, Option<Cursor>), DatabaseError> {
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut members = sqlx::query_as::<_, OrganizationMember>(
             r#"
             SELECT om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at, u.name AS user_name, o.name AS org_name
             FROM core.organization_members om
             JOIN core.organizations o ON om.organization_id = o.id
             JOIN core.users u ON om.user_id = u.id
             WHERE om.user_id = $1
-            ORDER BY om.created_at DESC
+              AND ($2::timestamptz IS NULL OR (om.created_at, om.id) < ($2, $3))
+            ORDER BY om.created_at DESC, om.id DESC
+            LIMIT $4
             "#,
         )
         .bind(user_id)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(members)
+        let next_cursor = if members.len() as i64 > limit {
+            members.pop();
+            members.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((members, next_cursor))
     }
 }

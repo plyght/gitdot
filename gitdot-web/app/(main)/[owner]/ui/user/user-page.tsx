@@ -16,7 +16,7 @@ import { UserRepos } from "./user-repos";
 import { UserStars } from "./user-stars";
 
 export default async function UserPage({ user }: { user: UserResource }) {
-  const [commits, reposResponse, memberships, stars, current] =
+  const [commits, reposResponse, membershipsResponse, stars, current] =
     await Promise.all([
       listUserCommits(user.name),
       listUserRepositories(user.name),
@@ -25,6 +25,7 @@ export default async function UserPage({ user }: { user: UserResource }) {
       getCurrentUser(false),
     ]);
   const repos = reposResponse?.data ?? null;
+  const memberships = membershipsResponse?.data ?? null;
   const isOwner = current?.user.name === user.name;
 
   return (

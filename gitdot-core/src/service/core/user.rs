@@ -7,7 +7,7 @@ use crate::{
         CommitResponse, GetCurrentUserRequest, GetCurrentUserResponse, GetUserRequest,
         HasUserRequest, ListUserCommitsRequest, ListUserOrganizationsRequest,
         ListUserRepositoriesRequest, ListUserReviewsRequest, ListUserStarsRequest,
-        OrganizationMemberResponse, Page, RepositoryResponse, ReviewResponse,
+        MAX_PER_PAGE_LIMIT, OrganizationMemberResponse, Page, RepositoryResponse, ReviewResponse,
         UpdateCurrentUserImageRequest, UpdateCurrentUserRequest, UserResponse,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, UserError},
@@ -53,7 +53,7 @@ pub trait UserService: Send + Sync + 'static {
     async fn list_organizations(
         &self,
         request: ListUserOrganizationsRequest,
-    ) -> Result<Vec<OrganizationMemberResponse>, UserError>;
+    ) -> Result<Page<OrganizationMemberResponse>, UserError>;
 
     async fn list_reviews(
         &self,
@@ -139,13 +139,11 @@ where
             .get_by_id(request.user_id)
             .await?
             .or_not_found("user", request.user_id)?;
-        let memberships = self
+        let (memberships, _) = self
             .org_repo
-            .list_memberships_by_user_id(user.id)
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect();
+            .list_memberships_by_user_id(user.id, None, MAX_PER_PAGE_LIMIT as i64)
+            .await?;
+        let memberships = memberships.into_iter().map(Into::into).collect();
         Ok(GetCurrentUserResponse {
             user: user.into(),
             memberships,
@@ -274,7 +272,7 @@ where
     async fn list_organizations(
         &self,
         request: ListUserOrganizationsRequest,
-    ) -> Result<Vec<OrganizationMemberResponse>, UserError> {
+    ) -> Result<Page<OrganizationMemberResponse>, UserError> {
         let user_name = request.user_name.to_string();
         let user = self
             .user_repo
@@ -282,8 +280,14 @@ where
             .await?
             .or_not_found("user", &user_name)?;
 
-        let memberships = self.org_repo.list_memberships_by_user_id(user.id).await?;
-        Ok(memberships.into_iter().map(|m| m.into()).collect())
+        let (memberships, next_cursor) = self
+            .org_repo
+            .list_memberships_by_user_id(user.id, request.cursor, request.limit as i64)
+            .await?;
+        Ok(Page {
+            data: memberships.into_iter().map(|m| m.into()).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
     }
 
     async fn list_reviews(
