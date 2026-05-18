@@ -1,18 +1,22 @@
 import "server-only";
 
-import { BuildResource, type CreateBuildRequest } from "gitdot-api";
-import { z } from "zod";
+import {
+  BuildResource,
+  type CreateBuildRequest,
+  ListBuildsResponse,
+} from "gitdot-api";
+import { toQueryString } from "@/util";
 import { authFetch, authPost, GITDOT_SERVER_URL, handleResponse } from "./util";
 
 export async function getBuilds(
   owner: string,
   repo: string,
-): Promise<BuildResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/repository/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/builds`,
-  );
-
-  return await handleResponse(response, z.array(BuildResource));
+  opts?: { cursor?: string; limit?: number },
+): Promise<ListBuildsResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/repository/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/builds${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListBuildsResponse);
 }
 
 export async function createBuild(

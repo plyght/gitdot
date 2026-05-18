@@ -3,6 +3,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
+    dto::Cursor,
     error::DatabaseError,
     model::{Runner, RunnerOwnerType},
 };
@@ -29,7 +30,12 @@ pub trait RunnerRepository: Send + Sync + Clone + 'static {
 
     async fn touch(&self, id: Uuid) -> Result<(), DatabaseError>;
 
-    async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Runner>, DatabaseError>;
+    async fn list_by_owner(
+        &self,
+        owner_name: &str,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Runner>, Option<Cursor>), DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -130,19 +136,42 @@ impl RunnerRepository for RunnerRepositoryImpl {
         Ok(())
     }
 
-    async fn list_by_owner(&self, owner_name: &str) -> Result<Vec<Runner>, DatabaseError> {
-        let runners = sqlx::query_as::<_, Runner>(
+    async fn list_by_owner(
+        &self,
+        owner_name: &str,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Runner>, Option<Cursor>), DatabaseError> {
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut runners = sqlx::query_as::<_, Runner>(
             r#"
             SELECT id, name, owner_id, owner_name, owner_type, last_active, created_at
             FROM ci.runners
             WHERE owner_name = $1
-            ORDER BY created_at DESC
+              AND ($2::timestamptz IS NULL OR (created_at, id) < ($2, $3))
+            ORDER BY created_at DESC, id DESC
+            LIMIT $4
             "#,
         )
         .bind(owner_name)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(runners)
+        let next_cursor = if runners.len() as i64 > limit {
+            runners.pop();
+            runners.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((runners, next_cursor))
     }
 }

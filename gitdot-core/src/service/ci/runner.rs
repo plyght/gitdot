@@ -5,7 +5,7 @@ use crate::{
     dto::{
         CreateRunnerRequest, CreateRunnerResponse, CreateRunnerTokenRequest,
         CreateRunnerTokenResponse, DeleteRunnerRequest, GetRunnerRequest, GetRunnerResponse,
-        ListRunnersRequest, ListRunnersResponse, VerifyRunnerRequest,
+        ListRunnersRequest, Page, RunnerResponse, VerifyRunnerRequest,
     },
     error::{NotFoundExt, OptionNotFoundExt, RunnerError},
     model::{RunnerOwnerType, TokenType},
@@ -13,6 +13,7 @@ use crate::{
         OrganizationRepository, OrganizationRepositoryImpl, RunnerRepository, RunnerRepositoryImpl,
         TokenRepository, TokenRepositoryImpl,
     },
+    util::cursor,
 };
 
 #[async_trait]
@@ -37,7 +38,7 @@ pub trait RunnerService: Send + Sync + 'static {
     async fn list_runners(
         &self,
         request: ListRunnersRequest,
-    ) -> Result<ListRunnersResponse, RunnerError>;
+    ) -> Result<Page<RunnerResponse>, RunnerError>;
 }
 
 #[derive(Debug, Clone)]
@@ -155,13 +156,20 @@ where
     async fn list_runners(
         &self,
         request: ListRunnersRequest,
-    ) -> Result<ListRunnersResponse, RunnerError> {
-        let runners = self
+    ) -> Result<Page<RunnerResponse>, RunnerError> {
+        let (runners, next_cursor) = self
             .runner_repo
-            .list_by_owner(request.owner_name.as_ref())
+            .list_by_owner(
+                request.owner_name.as_ref(),
+                request.cursor,
+                request.limit as i64,
+            )
             .await?;
 
-        Ok(runners.into_iter().map(Into::into).collect())
+        Ok(Page {
+            data: runners.into_iter().map(Into::into).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
     }
 
     async fn refresh_runner_token(

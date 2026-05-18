@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::{
     client::{Git2Client, GitClient, S2Client, S2ClientImpl},
     dto::{
-        BuildResponse, BuildsResponse, CiConfig, CreateBuildRequest, ListBuildsRequest,
+        BuildResponse, CiConfig, CreateBuildRequest, ListBuildsRequest, Page,
         RepositoryBlobResponse, TaskResponse,
     },
     error::{BuildError, GitError, NotFoundError, OptionNotFoundExt},
@@ -16,14 +16,17 @@ use crate::{
         BuildRepository, BuildRepositoryImpl, RepositoryRepository, RepositoryRepositoryImpl,
         TaskRepository, TaskRepositoryImpl,
     },
-    util::git::DEFAULT_BRANCH,
+    util::{cursor, git::DEFAULT_BRANCH},
 };
 
 #[async_trait]
 pub trait BuildService: Send + Sync + 'static {
     async fn create_build(&self, request: CreateBuildRequest) -> Result<BuildResponse, BuildError>;
 
-    async fn list_builds(&self, request: ListBuildsRequest) -> Result<BuildsResponse, BuildError>;
+    async fn list_builds(
+        &self,
+        request: ListBuildsRequest,
+    ) -> Result<Page<BuildResponse>, BuildError>;
 
     async fn get_build(
         &self,
@@ -223,7 +226,10 @@ where
         })
     }
 
-    async fn list_builds(&self, request: ListBuildsRequest) -> Result<BuildsResponse, BuildError> {
+    async fn list_builds(
+        &self,
+        request: ListBuildsRequest,
+    ) -> Result<Page<BuildResponse>, BuildError> {
         let owner = request.repo_owner.as_ref();
         let repo = request.repo_name.as_ref();
 
@@ -233,13 +239,14 @@ where
             .await?
             .or_not_found("repository", format!("{owner}/{repo}"))?;
 
-        let builds = self
+        let (builds, next_cursor) = self
             .build_repo
-            .list_by_repo(repository.id, request.from, request.to)
+            .list_by_repo(repository.id, request.cursor, request.limit as i64)
             .await?;
 
-        Ok(BuildsResponse {
-            builds: builds.into_iter().map(Into::into).collect(),
+        Ok(Page {
+            data: builds.into_iter().map(Into::into).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
     }
 

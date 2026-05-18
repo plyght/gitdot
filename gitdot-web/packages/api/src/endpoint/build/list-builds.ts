@@ -1,14 +1,14 @@
 import { z } from "zod";
-import { BuildResource } from "../../resource";
+import { BuildResource, page } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
 export const ListBuildsRequest = z.object({
-  from: z.iso.datetime().optional(),
-  to: z.iso.datetime().optional(),
+  cursor: z.string().optional(),
+  limit: z.number().int().positive().optional(),
 });
 export type ListBuildsRequest = z.infer<typeof ListBuildsRequest>;
 
-export const ListBuildsResponse = z.array(BuildResource);
+export const ListBuildsResponse = page(BuildResource);
 export type ListBuildsResponse = z.infer<typeof ListBuildsResponse>;
 
 export const ListBuilds = {

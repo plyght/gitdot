@@ -1,9 +1,9 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
+    dto::Cursor,
     error::DatabaseError,
     model::{Build, BuildTrigger, BuildWithStats},
 };
@@ -23,9 +23,9 @@ pub trait BuildRepository: Send + Sync + Clone + 'static {
     async fn list_by_repo(
         &self,
         repository_id: Uuid,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
-    ) -> Result<Vec<BuildWithStats>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<BuildWithStats>, Option<Cursor>), DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -84,10 +84,13 @@ impl BuildRepository for BuildRepositoryImpl {
     async fn list_by_repo(
         &self,
         repository_id: Uuid,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
-    ) -> Result<Vec<BuildWithStats>, DatabaseError> {
-        let builds = sqlx::query_as::<_, BuildWithStats>(
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<BuildWithStats>, Option<Cursor>), DatabaseError> {
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut builds = sqlx::query_as::<_, BuildWithStats>(
             r#"
             SELECT
                 b.id, b.number, b.repository_id, b.ref_name, b.trigger, b.commit_sha,
@@ -103,17 +106,30 @@ impl BuildRepository for BuildRepositoryImpl {
                 COALESCE(MAX(t.updated_at), b.created_at) AS updated_at
             FROM ci.builds b
             LEFT JOIN ci.tasks t ON t.build_id = b.id
-            WHERE b.repository_id = $1 AND b.created_at >= $2 AND b.created_at <= $3
+            WHERE b.repository_id = $1
+              AND ($2::timestamptz IS NULL OR (b.created_at, b.id) < ($2, $3))
             GROUP BY b.id, b.number, b.repository_id, b.ref_name, b.trigger, b.commit_sha, b.created_at
-            ORDER BY b.created_at DESC
+            ORDER BY b.created_at DESC, b.id DESC
+            LIMIT $4
             "#,
         )
         .bind(repository_id)
-        .bind(from)
-        .bind(to)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(builds)
+        let next_cursor = if builds.len() as i64 > limit {
+            builds.pop();
+            builds.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((builds, next_cursor))
     }
 }

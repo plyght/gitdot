@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { RunnerResource } from "../../resource";
+import { page, RunnerResource } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
-export const ListRunnersRequest = z.object({});
+export const ListRunnersRequest = z.object({
+  cursor: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+});
 export type ListRunnersRequest = z.infer<typeof ListRunnersRequest>;
 
-export const ListRunnersResponse = z.array(RunnerResource);
+export const ListRunnersResponse = page(RunnerResource);
 export type ListRunnersResponse = z.infer<typeof ListRunnersResponse>;
 
 export const ListRunners = {

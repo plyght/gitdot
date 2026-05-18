@@ -43,8 +43,3 @@ impl From<BuildWithStats> for BuildResponse {
         }
     }
 }
-
-#[derive(Debug, Clone)]
-pub struct BuildsResponse {
-    pub builds: Vec<BuildResponse>,
-}

@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
 };
 
@@ -17,13 +17,13 @@ pub async fn list_runners(
     State(state): State<AppState>,
     _auth_user: Principal<UserJwt>,
     Path(owner): Path<String>,
+    Query(query): Query<api::ListRunnersRequest>,
 ) -> Result<AppResponse<api::ListRunnersResponse>, AppError> {
-    let request = ListRunnersRequest::new(&owner)?;
-
+    let request = ListRunnersRequest::new(&owner, query.cursor.as_deref(), query.limit)?;
     state
         .runner_service
         .list_runners(request)
         .await
         .map_err(AppError::from)
-        .map(|runners| AppResponse::new(StatusCode::OK, runners.into_api()))
+        .map(|page| AppResponse::new(StatusCode::OK, page.into_api()))
 }

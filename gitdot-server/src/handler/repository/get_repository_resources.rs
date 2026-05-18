@@ -70,9 +70,6 @@ pub async fn get_repository_resources(
     let commits_from = params
         .last_updated
         .unwrap_or_else(|| now - chrono::Duration::days(365));
-    let resources_from = params
-        .last_updated
-        .unwrap_or_else(|| now - chrono::Duration::weeks(2));
 
     let commits_request =
         GetCommitsRequest::new(&owner, &repo, "HEAD".to_string(), commits_from, now)?;
@@ -81,7 +78,7 @@ pub async fn get_repository_resources(
 
     let reviews_request = ListReviewsRequest::new(&owner, &repo, user_id, None, None)?;
 
-    let builds_request = ListBuildsRequest::new(&owner, &repo, resources_from, now)?;
+    let builds_request = ListBuildsRequest::new(&owner, &repo, None, None)?;
 
     let (blobs, commits, questions, reviews, builds) = tokio::try_join!(
         async {
@@ -137,7 +134,9 @@ pub async fn get_repository_resources(
                 reviews: reviews.into_api().data,
             },
         ),
-        builds: Some(builds.into_api()),
+        builds: Some(gitdot_api::resource::repository::RepositoryBuildsResource {
+            builds: builds.into_api().data,
+        }),
     };
     Ok(AppResponse::new(StatusCode::OK, resource))
 }

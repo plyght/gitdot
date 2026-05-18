@@ -1,7 +1,11 @@
 import "server-only";
 
-import { RunnerResource, RunnerTokenResource } from "gitdot-api";
-import { z } from "zod";
+import {
+  ListRunnersResponse,
+  RunnerResource,
+  RunnerTokenResource,
+} from "gitdot-api";
+import { toQueryString } from "@/util";
 import {
   authDelete,
   authFetch,
@@ -40,12 +44,12 @@ export async function getRunner(
 
 export async function listRunners(
   ownerName: string,
-): Promise<RunnerResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/ci/runner/${ownerName}`,
-  );
-
-  return await handleResponse(response, z.array(RunnerResource));
+  opts?: { cursor?: string; limit?: number },
+): Promise<ListRunnersResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/ci/runner/${ownerName}${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListRunnersResponse);
 }
 
 export async function refreshRunnerToken(

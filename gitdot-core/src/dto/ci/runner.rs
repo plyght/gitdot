@@ -44,4 +44,3 @@ impl From<Runner> for RunnerResponse {
 
 pub type CreateRunnerResponse = RunnerResponse;
 pub type GetRunnerResponse = RunnerResponse;
-pub type ListRunnersResponse = Vec<RunnerResponse>;

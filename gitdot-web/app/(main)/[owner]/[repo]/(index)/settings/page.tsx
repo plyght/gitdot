@@ -20,10 +20,11 @@ export default async function Page({
     );
   if (!isAdmin) notFound();
 
-  const [runners, webhooksResponse] = await Promise.all([
+  const [runnersResponse, webhooksResponse] = await Promise.all([
     listRunners(owner),
     listWebhooks(owner, repo),
   ]);
+  const runners = runnersResponse?.data ?? null;
   const webhooks = webhooksResponse?.data ?? null;
 
   return (

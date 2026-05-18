@@ -95,7 +95,8 @@ export class ApiProvider extends ServerProvider {
   }
 
   async getBuilds(): Promise<BuildResource[] | null> {
-    return await dalGetBuilds(this.owner, this.repo);
+    const result = await dalGetBuilds(this.owner, this.repo);
+    return result?.data ?? null;
   }
 
   async getBuild(number: number): Promise<BuildResource | null> {
