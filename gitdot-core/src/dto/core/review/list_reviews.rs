@@ -1,17 +1,18 @@
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::error::{InputError, ReviewError};
-
-use crate::dto::common::{OwnerName, RepositoryName};
+use crate::{
+    dto::common::{Cursor, DEFAULT_PER_PAGE_LIMIT, MAX_PER_PAGE_LIMIT, OwnerName, RepositoryName},
+    error::{InputError, ReviewError},
+    util::cursor,
+};
 
 #[derive(Debug, Clone)]
 pub struct ListReviewsRequest {
     pub owner: OwnerName,
     pub repo: RepositoryName,
     pub viewer_id: Option<Uuid>,
-    pub from: DateTime<Utc>,
-    pub to: DateTime<Utc>,
+    pub cursor: Option<Cursor>,
+    pub limit: u32,
 }
 
 impl ListReviewsRequest {
@@ -19,16 +20,21 @@ impl ListReviewsRequest {
         owner: &str,
         repo: &str,
         viewer_id: Option<Uuid>,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
+        cursor: Option<&str>,
+        limit: Option<u32>,
     ) -> Result<Self, ReviewError> {
+        let owner = OwnerName::try_new(owner).map_err(|e| InputError::new("owner name", e))?;
+        let repo =
+            RepositoryName::try_new(repo).map_err(|e| InputError::new("repository name", e))?;
+        let cursor = cursor.map(cursor::decode).transpose()?;
         Ok(Self {
-            owner: OwnerName::try_new(owner).map_err(|e| InputError::new("owner name", e))?,
-            repo: RepositoryName::try_new(repo)
-                .map_err(|e| InputError::new("repository name", e))?,
+            owner,
+            repo,
             viewer_id,
-            from,
-            to,
+            cursor,
+            limit: limit
+                .unwrap_or(DEFAULT_PER_PAGE_LIMIT)
+                .clamp(1, MAX_PER_PAGE_LIMIT),
         })
     }
 }

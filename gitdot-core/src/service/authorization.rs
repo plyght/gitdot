@@ -513,8 +513,8 @@ mod tests {
         #[async_trait]
         impl ReviewRepository for ReviewRepo {
             async fn get_review_by_number(&self, owner: &str, repo: &str, number: i32) -> Result<Option<Review>, crate::error::DatabaseError>;
-            async fn list_reviews(&self, owner: &str, repo: &str, viewer_id: Option<Uuid>, from: chrono::DateTime<chrono::Utc>, to: chrono::DateTime<chrono::Utc>) -> Result<Vec<Review>, crate::error::DatabaseError>;
-            async fn get_reviews_by_user(&self, user_name: &str, viewer_id: Option<Uuid>, status: Option<String>, owner: Option<String>, repo: Option<String>) -> Result<Vec<Review>, crate::error::DatabaseError>;
+            async fn list_reviews(&self, owner: &str, repo: &str, viewer_id: Option<Uuid>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Review>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
+            async fn list_reviews_by_user(&self, user_name: &str, viewer_id: Option<Uuid>, status: Option<String>, owner: Option<String>, repo: Option<String>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Review>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
             async fn create_review(&self, repository_id: Uuid, author_id: Uuid, target_branch: &str) -> Result<Review, crate::error::DatabaseError>;
             async fn update_review(&self, review_id: Uuid, status: Option<ReviewStatus>, title: Option<String>, description: Option<String>) -> Result<(), crate::error::DatabaseError>;
             async fn create_diff(&self, review_id: Uuid, position: i32, message: &str) -> Result<Diff, crate::error::DatabaseError>;

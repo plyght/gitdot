@@ -26,11 +26,13 @@ pub async fn list_user_reviews(
         params.status,
         params.owner,
         params.repo,
+        params.cursor.as_deref(),
+        params.limit,
     )?;
     state
         .user_service
         .list_reviews(request)
         .await
         .map_err(AppError::from)
-        .map(|reviews| AppResponse::new(StatusCode::OK, reviews.into_api()))
+        .map(|page| AppResponse::new(StatusCode::OK, page.into_api()))
 }

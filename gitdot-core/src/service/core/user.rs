@@ -58,7 +58,7 @@ pub trait UserService: Send + Sync + 'static {
     async fn list_reviews(
         &self,
         request: ListUserReviewsRequest,
-    ) -> Result<Vec<ReviewResponse>, UserError>;
+    ) -> Result<Page<ReviewResponse>, UserError>;
 
     async fn list_commits(
         &self,
@@ -289,19 +289,24 @@ where
     async fn list_reviews(
         &self,
         request: ListUserReviewsRequest,
-    ) -> Result<Vec<ReviewResponse>, UserError> {
-        let reviews = self
+    ) -> Result<Page<ReviewResponse>, UserError> {
+        let (reviews, next_cursor) = self
             .review_repo
-            .get_reviews_by_user(
+            .list_reviews_by_user(
                 request.user_name.as_ref(),
                 request.viewer_id,
                 request.status,
                 request.owner,
                 request.repo,
+                request.cursor,
+                request.limit as i64,
             )
             .await?;
 
-        Ok(reviews.into_iter().map(ReviewResponse::from).collect())
+        Ok(Page {
+            data: reviews.into_iter().map(ReviewResponse::from).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
     }
 
     async fn list_commits(

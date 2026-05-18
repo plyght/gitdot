@@ -4,11 +4,11 @@ use crate::{
     client::{Git2Client, GitClient},
     dto::{
         AddReviewReviewerReqeuest, GetReviewDiffRequest, GetReviewRequest, ListReviewsRequest,
-        MergeReviewDiffRequest, ProcessReviewRequest, PublishReviewDiffRequest,
+        MergeReviewDiffRequest, Page, ProcessReviewRequest, PublishReviewDiffRequest,
         PublishReviewRequest, RemoveReviewReviewerRequest, ReplyToReviewCommentRequest,
         ResolveReviewCommentRequest, ReviewAction, ReviewCommentResponse, ReviewDiffResponse,
-        ReviewResponse, ReviewReviewDiffRequest, ReviewerResponse, ReviewsResponse,
-        UpdateReviewCommentRequest, UpdateReviewDiffRequest, UpdateReviewRequest,
+        ReviewResponse, ReviewReviewDiffRequest, ReviewerResponse, UpdateReviewCommentRequest,
+        UpdateReviewDiffRequest, UpdateReviewRequest,
     },
     error::{ConflictError, InputError, NotFoundError, OptionNotFoundExt, ReviewError},
     model::{DiffStatus, Review, ReviewStatus, Verdict},
@@ -16,7 +16,10 @@ use crate::{
         RepositoryRepository, RepositoryRepositoryImpl, ReviewRepository, ReviewRepositoryImpl,
         UserRepository, UserRepositoryImpl,
     },
-    util::review::{get_current_ref, get_head_ref, get_revision_ref, get_target_ref},
+    util::{
+        cursor,
+        review::{get_current_ref, get_head_ref, get_revision_ref, get_target_ref},
+    },
 };
 
 #[async_trait]
@@ -26,7 +29,7 @@ pub trait ReviewService: Send + Sync + 'static {
     async fn list_reviews(
         &self,
         request: ListReviewsRequest,
-    ) -> Result<ReviewsResponse, ReviewError>;
+    ) -> Result<Page<ReviewResponse>, ReviewError>;
 
     /// Creates a new review from a push to `refs/for/<branch>`.
     ///
@@ -68,7 +71,6 @@ pub trait ReviewService: Send + Sync + 'static {
     ///      initial revision, same as in `create_review`.
     /// 4. Force-update `refs/reviews/<number>/head` to the pushed SHA.
     /// 5. Touch the review's `updated_at`.
-
     async fn process_review_update(
         &self,
         request: ProcessReviewRequest,
@@ -217,20 +219,21 @@ where
     async fn list_reviews(
         &self,
         request: ListReviewsRequest,
-    ) -> Result<ReviewsResponse, ReviewError> {
-        let reviews = self
+    ) -> Result<Page<ReviewResponse>, ReviewError> {
+        let (reviews, next_cursor) = self
             .review_repo
             .list_reviews(
                 request.owner.as_ref(),
                 request.repo.as_ref(),
                 request.viewer_id,
-                request.from,
-                request.to,
+                request.cursor,
+                request.limit as i64,
             )
             .await?;
 
-        Ok(ReviewsResponse {
-            reviews: reviews.into_iter().map(ReviewResponse::from).collect(),
+        Ok(Page {
+            data: reviews.into_iter().map(ReviewResponse::from).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
     }
 

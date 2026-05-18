@@ -1,9 +1,9 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
+    dto::Cursor,
     error::DatabaseError,
     model::{
         CommentSide, Diff, DiffStatus, Review, ReviewComment, ReviewStatus, Reviewer, Revision,
@@ -150,18 +150,20 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         owner: &str,
         repo: &str,
         viewer_id: Option<Uuid>,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
-    ) -> Result<Vec<Review>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Review>, Option<Cursor>), DatabaseError>;
 
-    async fn get_reviews_by_user(
+    async fn list_reviews_by_user(
         &self,
         user_name: &str,
         viewer_id: Option<Uuid>,
         status: Option<String>,
         owner: Option<String>,
         repo: Option<String>,
-    ) -> Result<Vec<Review>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Review>, Option<Cursor>), DatabaseError>;
 
     async fn create_review(
         &self,
@@ -301,9 +303,9 @@ impl ReviewRepository for ReviewRepositoryImpl {
         owner: &str,
         repo: &str,
         viewer_id: Option<Uuid>,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
-    ) -> Result<Vec<Review>, DatabaseError> {
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Review>, Option<Cursor>), DatabaseError> {
         let query = format!(
             "{} JOIN core.repositories repo ON r.repository_id = repo.id \
             WHERE repo.name = $2 \
@@ -313,31 +315,48 @@ impl ReviewRepository for ReviewRepositoryImpl {
                 SELECT id FROM core.organizations WHERE name = $1 \
               ) \
               AND (r.status != 'draft' OR r.author_id = $3) \
-              AND r.updated_at >= $4 AND r.updated_at <= $5 \
-            ORDER BY r.created_at DESC",
+              AND ($4::timestamptz IS NULL OR (r.created_at, r.id) < ($4, $5)) \
+            ORDER BY r.created_at DESC, r.id DESC \
+            LIMIT $6",
             REVIEW_DETAILS_QUERY
         );
 
-        let reviews = sqlx::query_as::<_, Review>(&query)
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut reviews = sqlx::query_as::<_, Review>(&query)
             .bind(owner)
             .bind(repo)
             .bind(viewer_id.unwrap_or(Uuid::nil()))
-            .bind(from)
-            .bind(to)
+            .bind(cursor_created_at)
+            .bind(cursor_id)
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await?;
 
-        Ok(reviews)
+        let next_cursor = if reviews.len() as i64 > limit {
+            reviews.pop();
+            reviews.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((reviews, next_cursor))
     }
 
-    async fn get_reviews_by_user(
+    async fn list_reviews_by_user(
         &self,
         user_name: &str,
         viewer_id: Option<Uuid>,
         status: Option<String>,
         owner: Option<String>,
         repo: Option<String>,
-    ) -> Result<Vec<Review>, DatabaseError> {
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Review>, Option<Cursor>), DatabaseError> {
         let mut query = String::from(
             r#"
             SELECT
@@ -349,10 +368,11 @@ impl ReviewRepository for ReviewRepositoryImpl {
             JOIN core.repositories repo ON r.repository_id = repo.id
             WHERE u.name = $1
               AND (r.author_id = $2 OR (r.status != 'draft' AND repo.visibility = 'public'))
+              AND ($3::timestamptz IS NULL OR (r.created_at, r.id) < ($3, $4))
             "#,
         );
 
-        let mut param_index = 3;
+        let mut param_index = 5;
         if status.is_some() {
             query.push_str(&format!(
                 " AND r.status = ${}::core.review_status",
@@ -373,12 +393,21 @@ impl ReviewRepository for ReviewRepositoryImpl {
         }
         if repo.is_some() {
             query.push_str(&format!(" AND repo.name = ${}", param_index));
+            param_index += 1;
         }
-        query.push_str(" ORDER BY r.created_at DESC");
+        query.push_str(&format!(
+            " ORDER BY r.created_at DESC, r.id DESC LIMIT ${}",
+            param_index
+        ));
+
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
 
         let mut q = sqlx::query_as::<_, Review>(&query)
             .bind(user_name)
-            .bind(viewer_id);
+            .bind(viewer_id)
+            .bind(cursor_created_at)
+            .bind(cursor_id);
         if let Some(s) = status {
             q = q.bind(s);
         }
@@ -388,9 +417,20 @@ impl ReviewRepository for ReviewRepositoryImpl {
         if let Some(r) = repo {
             q = q.bind(r);
         }
-        let reviews = q.fetch_all(&self.pool).await?;
+        q = q.bind(limit + 1);
+        let mut reviews = q.fetch_all(&self.pool).await?;
 
-        Ok(reviews)
+        let next_cursor = if reviews.len() as i64 > limit {
+            reviews.pop();
+            reviews.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((reviews, next_cursor))
     }
 
     async fn create_review(

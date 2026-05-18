@@ -10,6 +10,7 @@ import type {
 } from "gitdot-api";
 import {
   GetReviewDiffResponse,
+  ListReviewsResponse,
   ReviewCommentResource,
   ReviewerResource,
   ReviewResource,
@@ -29,12 +30,12 @@ import {
 export async function listReviews(
   owner: string,
   repo: string,
-): Promise<ReviewResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/reviews`,
-  );
-
-  return await handleResponse(response, z.array(ReviewResource));
+  opts?: { cursor?: string; limit?: number },
+): Promise<ListReviewsResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/reviews${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListReviewsResponse);
 }
 
 export async function getReview(

@@ -41,11 +41,6 @@ pub use update_review_comment::UpdateReviewCommentRequest;
 pub use update_review_diff::UpdateReviewDiffRequest;
 
 #[derive(Debug, Clone)]
-pub struct ReviewsResponse {
-    pub reviews: Vec<ReviewResponse>,
-}
-
-#[derive(Debug, Clone)]
 pub struct ReviewResponse {
     pub id: Uuid,
     pub number: i32,

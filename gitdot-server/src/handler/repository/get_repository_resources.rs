@@ -79,7 +79,7 @@ pub async fn get_repository_resources(
 
     let questions_request = ListQuestionsRequest::new(&owner, &repo, user_id, resources_from, now)?;
 
-    let reviews_request = ListReviewsRequest::new(&owner, &repo, user_id, resources_from, now)?;
+    let reviews_request = ListReviewsRequest::new(&owner, &repo, user_id, None, None)?;
 
     let builds_request = ListBuildsRequest::new(&owner, &repo, resources_from, now)?;
 
@@ -128,7 +128,11 @@ pub async fn get_repository_resources(
         commits: Some(commits.into_api()),
         blobs: Some(blobs.into_api()),
         questions: Some(questions.into_api()),
-        reviews: Some(reviews.into_api()),
+        reviews: Some(
+            gitdot_api::resource::repository::RepositoryReviewsResource {
+                reviews: reviews.into_api().data,
+            },
+        ),
         builds: Some(builds.into_api()),
     };
     Ok(AppResponse::new(StatusCode::OK, resource))
