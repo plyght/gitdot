@@ -81,7 +81,8 @@ export class ApiProvider extends ServerProvider {
   }
 
   async getQuestions(): Promise<QuestionResource[] | null> {
-    return await listQuestions(this.owner, this.repo);
+    const result = await listQuestions(this.owner, this.repo);
+    return result?.data ?? null;
   }
 
   async getReview(number: number): Promise<ReviewResource | null> {

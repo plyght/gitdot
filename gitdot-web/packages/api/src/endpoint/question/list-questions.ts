@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { QuestionResource } from "../../resource";
+import { page, QuestionResource } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
-export const ListQuestionsRequest = z.object({});
+export const ListQuestionsRequest = z.object({
+  cursor: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+});
 export type ListQuestionsRequest = z.infer<typeof ListQuestionsRequest>;
 
-export const ListQuestionsResponse = z.array(QuestionResource);
+export const ListQuestionsResponse = page(QuestionResource);
 export type ListQuestionsResponse = z.infer<typeof ListQuestionsResponse>;
 
 export const ListQuestions = {

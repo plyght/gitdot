@@ -1,9 +1,9 @@
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::{
-    dto::{OwnerName, RepositoryName},
+    dto::{Cursor, DEFAULT_PER_PAGE_LIMIT, MAX_PER_PAGE_LIMIT, OwnerName, RepositoryName},
     error::{InputError, QuestionError},
+    util::cursor,
 };
 
 #[derive(Debug, Clone)]
@@ -11,8 +11,8 @@ pub struct ListQuestionsRequest {
     pub owner: OwnerName,
     pub repo: RepositoryName,
     pub user_id: Option<Uuid>,
-    pub from: DateTime<Utc>,
-    pub to: DateTime<Utc>,
+    pub cursor: Option<Cursor>,
+    pub limit: u32,
 }
 
 impl ListQuestionsRequest {
@@ -20,15 +20,21 @@ impl ListQuestionsRequest {
         owner: &str,
         repo: &str,
         user_id: Option<Uuid>,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
+        cursor: Option<&str>,
+        limit: Option<u32>,
     ) -> Result<Self, QuestionError> {
+        let owner = OwnerName::try_new(owner).map_err(|e| InputError::new("owner name", e))?;
+        let repo =
+            RepositoryName::try_new(repo).map_err(|e| InputError::new("repository name", e))?;
+        let cursor = cursor.map(cursor::decode).transpose()?;
         Ok(Self {
-            owner: OwnerName::try_new(owner).map_err(|e| InputError::new("owner name", e))?,
-            repo: RepositoryName::try_new(repo).map_err(|e| InputError::new("owner name", e))?,
+            owner,
+            repo,
             user_id,
-            from,
-            to,
+            cursor,
+            limit: limit
+                .unwrap_or(DEFAULT_PER_PAGE_LIMIT)
+                .clamp(1, MAX_PER_PAGE_LIMIT),
         })
     }
 

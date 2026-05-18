@@ -472,7 +472,7 @@ mod tests {
             async fn update_question(&self, repository_id: Uuid, number: i32, title: &str, body: &str) -> Result<Option<Question>, crate::error::DatabaseError>;
             async fn get_question(&self, repository_id: Uuid, number: i32, user_id: Option<Uuid>) -> Result<Option<Question>, crate::error::DatabaseError>;
             async fn get_question_id(&self, owner: &str, repo: &str, question_number: i32) -> Result<Option<Uuid>, crate::error::DatabaseError>;
-            async fn list_questions(&self, repository_id: Uuid, user_id: Option<Uuid>, from: DateTime<Utc>, to: DateTime<Utc>) -> Result<Vec<Question>, crate::error::DatabaseError>;
+            async fn list_questions(&self, repository_id: Uuid, user_id: Option<Uuid>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Question>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
             async fn create_answer(&self, owner: &str, repo: &str, question_number: i32, author_id: Uuid, body: &str) -> Result<Option<Answer>, crate::error::DatabaseError>;
             async fn update_answer(&self, id: Uuid, body: &str) -> Result<Option<Answer>, crate::error::DatabaseError>;
             async fn create_comment(&self, parent_id: Uuid, author_id: Uuid, body: &str) -> Result<Comment, crate::error::DatabaseError>;

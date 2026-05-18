@@ -4,15 +4,16 @@ use crate::{
     dto::{
         AnswerResponse, CommentResponse, CreateAnswerCommentRequest, CreateAnswerRequest,
         CreateQuestionCommentRequest, CreateQuestionRequest, GetQuestionRequest,
-        ListQuestionsRequest, QuestionResponse, QuestionsResponse, UpdateAnswerRequest,
-        UpdateCommentRequest, UpdateQuestionRequest, VoteAnswerRequest, VoteCommentRequest,
-        VoteQuestionRequest, VoteResponse,
+        ListQuestionsRequest, Page, QuestionResponse, UpdateAnswerRequest, UpdateCommentRequest,
+        UpdateQuestionRequest, VoteAnswerRequest, VoteCommentRequest, VoteQuestionRequest,
+        VoteResponse,
     },
     error::{OptionNotFoundExt, QuestionError},
     model::VoteTarget,
     repository::{
         QuestionRepository, QuestionRepositoryImpl, RepositoryRepository, RepositoryRepositoryImpl,
     },
+    util::cursor,
 };
 
 #[async_trait]
@@ -35,7 +36,7 @@ pub trait QuestionService: Send + Sync + 'static {
     async fn list_questions(
         &self,
         request: ListQuestionsRequest,
-    ) -> Result<QuestionsResponse, QuestionError>;
+    ) -> Result<Page<QuestionResponse>, QuestionError>;
 
     async fn create_answer(
         &self,
@@ -165,20 +166,26 @@ where
     async fn list_questions(
         &self,
         request: ListQuestionsRequest,
-    ) -> Result<QuestionsResponse, QuestionError> {
+    ) -> Result<Page<QuestionResponse>, QuestionError> {
         let repository = self
             .repo_repo
             .get(request.owner.as_ref(), request.repo.as_ref())
             .await?
             .or_not_found("repository", request.get_repo_path())?;
 
-        let questions = self
+        let (questions, next_cursor) = self
             .question_repo
-            .list_questions(repository.id, request.user_id, request.from, request.to)
+            .list_questions(
+                repository.id,
+                request.user_id,
+                request.cursor,
+                request.limit as i64,
+            )
             .await?;
 
-        Ok(QuestionsResponse {
-            questions: questions.into_iter().map(QuestionResponse::from).collect(),
+        Ok(Page {
+            data: questions.into_iter().map(QuestionResponse::from).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
     }
 

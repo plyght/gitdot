@@ -77,7 +77,7 @@ pub async fn get_repository_resources(
     let commits_request =
         GetCommitsRequest::new(&owner, &repo, "HEAD".to_string(), commits_from, now)?;
 
-    let questions_request = ListQuestionsRequest::new(&owner, &repo, user_id, resources_from, now)?;
+    let questions_request = ListQuestionsRequest::new(&owner, &repo, user_id, None, None)?;
 
     let reviews_request = ListReviewsRequest::new(&owner, &repo, user_id, None, None)?;
 
@@ -127,7 +127,11 @@ pub async fn get_repository_resources(
         paths: Some(paths.into_api()),
         commits: Some(commits.into_api()),
         blobs: Some(blobs.into_api()),
-        questions: Some(questions.into_api()),
+        questions: Some(
+            gitdot_api::resource::repository::RepositoryQuestionsResource {
+                questions: questions.into_api().data,
+            },
+        ),
         reviews: Some(
             gitdot_api::resource::repository::RepositoryReviewsResource {
                 reviews: reviews.into_api().data,

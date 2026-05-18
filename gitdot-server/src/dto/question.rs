@@ -1,7 +1,6 @@
-use gitdot_api::resource::{question as api, repository::RepositoryQuestionsResource};
+use gitdot_api::resource::question as api;
 use gitdot_core::dto::{
-    AnswerResponse, AuthorResponse, CommentResponse, QuestionResponse, QuestionsResponse,
-    VoteResponse,
+    AnswerResponse, AuthorResponse, CommentResponse, QuestionResponse, VoteResponse,
 };
 
 use super::IntoApi;
@@ -69,15 +68,6 @@ impl IntoApi for AuthorResponse {
         api::AuthorResource {
             id: self.id,
             name: self.name,
-        }
-    }
-}
-
-impl IntoApi for QuestionsResponse {
-    type ApiType = RepositoryQuestionsResource;
-    fn into_api(self) -> Self::ApiType {
-        RepositoryQuestionsResource {
-            questions: self.questions.into_api(),
         }
     }
 }

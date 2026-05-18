@@ -1,9 +1,9 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
+    dto::Cursor,
     error::DatabaseError,
     model::{Answer, Comment, Question, VoteResult, VoteTarget},
 };
@@ -225,9 +225,9 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         &self,
         repository_id: Uuid,
         user_id: Option<Uuid>,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
-    ) -> Result<Vec<Question>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Question>, Option<Cursor>), DatabaseError>;
 
     async fn create_answer(
         &self,
@@ -402,23 +402,40 @@ impl QuestionRepository for QuestionRepositoryImpl {
         &self,
         repository_id: Uuid,
         user_id: Option<Uuid>,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
-    ) -> Result<Vec<Question>, DatabaseError> {
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Question>, Option<Cursor>), DatabaseError> {
         let query = format!(
-            "{} WHERE q.repository_id = $1 AND q.updated_at >= $2 AND q.updated_at <= $3 ORDER BY q.updated_at ASC",
+            "{} WHERE q.repository_id = $1 \
+              AND ($2::timestamptz IS NULL OR (q.created_at, q.id) < ($2, $3)) \
+            ORDER BY q.created_at DESC, q.id DESC \
+            LIMIT $5",
             QUESTION_LIST_QUERY
         );
 
-        let questions = sqlx::query_as::<_, Question>(&query)
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut questions = sqlx::query_as::<_, Question>(&query)
             .bind(repository_id)
-            .bind(from)
-            .bind(to)
+            .bind(cursor_created_at)
+            .bind(cursor_id)
             .bind(user_id)
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await?;
 
-        Ok(questions)
+        let next_cursor = if questions.len() as i64 > limit {
+            questions.pop();
+            questions.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((questions, next_cursor))
     }
 
     async fn create_answer(

@@ -7,6 +7,7 @@ import {
   type CreateAnswerRequest,
   type CreateQuestionCommentRequest,
   type CreateQuestionRequest,
+  ListQuestionsResponse,
   QuestionResource,
   type UpdateAnswerRequest,
   type UpdateCommentRequest,
@@ -16,7 +17,7 @@ import {
   type VoteQuestionRequest,
   VoteResource,
 } from "gitdot-api";
-import { z } from "zod";
+import { toQueryString } from "@/util";
 import {
   authFetch,
   authPatch,
@@ -67,12 +68,12 @@ export async function updateQuestion(
 export async function listQuestions(
   owner: string,
   repo: string,
-): Promise<QuestionResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/questions`,
-  );
-
-  return await handleResponse(response, z.array(QuestionResource));
+  opts?: { cursor?: string; limit?: number },
+): Promise<ListQuestionsResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/questions${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListQuestionsResponse);
 }
 
 export async function createAnswer(
