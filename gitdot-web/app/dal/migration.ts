@@ -3,9 +3,11 @@ import "server-only";
 import {
   GitHubInstallationResource,
   GitHubRepositoryResource,
+  ListMigrationsResponse,
   MigrationResource,
 } from "gitdot-api";
 import { z } from "zod";
+import { toQueryString } from "@/util";
 import { authFetch, authPost, GITDOT_SERVER_URL, handleResponse } from "./util";
 
 export async function listInstallations(): Promise<
@@ -47,10 +49,14 @@ export async function getMigration(
   return await handleResponse(response, MigrationResource);
 }
 
-export async function listMigrations(): Promise<MigrationResource[] | null> {
-  const response = await authFetch(`${GITDOT_SERVER_URL}/migrations`);
-
-  return await handleResponse(response, z.array(MigrationResource));
+export async function listMigrations(opts?: {
+  cursor?: string;
+  limit?: number;
+}): Promise<ListMigrationsResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/migrations${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListMigrationsResponse);
 }
 
 export async function migrateGitHubRepositories(

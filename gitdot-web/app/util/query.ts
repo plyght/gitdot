@@ -2,7 +2,9 @@
  * helper to serialize objects that have non-string values into url parameter queries
  */
 export function toQueryString(
-  params: Record<string, string | number | boolean> | undefined,
+  params:
+    | Record<string, string | number | boolean | undefined | null>
+    | undefined,
 ): string {
   if (!params) {
     return "";

@@ -139,7 +139,8 @@ export async function listInstallationsAction(): Promise<
 }
 
 export async function listMigrationsAction(): Promise<MigrationResource[]> {
-  return (await listMigrations()) ?? [];
+  const result = await listMigrations();
+  return result?.data ?? [];
 }
 
 export async function getMigrationAction(
