@@ -339,12 +339,15 @@ where
             .await?
             .or_not_found("user", &user_name)?;
 
-        let is_owner = request.viewer_id.map(|id| id == user.id).unwrap_or(false);
-
-        let (commits, next_cursor) = self
+        // Visibility is decided in SQL: each row carries a `viewer_has_access`
+        // boolean reflecting the same rules as `verify_authorized_for_repository`
+        // (public, user-owned by viewer, or org-owned with viewer as member).
+        // Rows the viewer cannot access are returned as redacted stubs.
+        let (rows, next_cursor) = self
             .commit_repo
             .list_by_user(
                 user.id,
+                request.viewer_id,
                 request.from,
                 request.to,
                 request.cursor,
@@ -352,17 +355,13 @@ where
             )
             .await?;
 
-        // Visible if the viewer is the listed user (their own profile) or the
-        // commit's repo is public. Otherwise the commit is returned as a
-        // redacted stub (timestamp + `redacted: true`) so heatmap-style surfaces
-        // still render without leaking content from private repos.
-        let data = commits
+        let data = rows
             .into_iter()
-            .map(|c| {
-                if is_owner || c.repository.visibility == "public" {
-                    UserCommitResponse::visible(c)
+            .map(|(commit, has_access)| {
+                if has_access {
+                    UserCommitResponse::visible(commit)
                 } else {
-                    UserCommitResponse::redacted(&c)
+                    UserCommitResponse::redacted(&commit)
                 }
             })
             .collect();

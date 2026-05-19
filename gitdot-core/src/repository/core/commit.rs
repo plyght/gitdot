@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::{
@@ -29,6 +29,13 @@ const COMMIT_JOINS: &str = "
       ON r.owner_id = o.id AND r.owner_type = 'organization'
 ";
 
+#[derive(FromRow)]
+struct UserCommitRow {
+    #[sqlx(flatten)]
+    commit: Commit,
+    viewer_has_access: bool,
+}
+
 #[async_trait]
 pub trait CommitRepository: Send + Sync + Clone + 'static {
     async fn get_commit(&self, repo_id: Uuid, sha: &str) -> Result<Option<Commit>, DatabaseError>;
@@ -46,11 +53,12 @@ pub trait CommitRepository: Send + Sync + Clone + 'static {
     async fn list_by_user(
         &self,
         author_id: Uuid,
+        viewer_id: Option<Uuid>,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
         cursor: Option<Cursor>,
         limit: i64,
-    ) -> Result<(Vec<Commit>, Option<Cursor>), DatabaseError>;
+    ) -> Result<(Vec<(Commit, bool)>, Option<Cursor>), DatabaseError>;
 
     async fn create_bulk(
         &self,
@@ -157,13 +165,25 @@ impl CommitRepository for CommitRepositoryImpl {
     async fn list_by_user(
         &self,
         author_id: Uuid,
+        viewer_id: Option<Uuid>,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
         cursor: Option<Cursor>,
         limit: i64,
-    ) -> Result<(Vec<Commit>, Option<Cursor>), DatabaseError> {
+    ) -> Result<(Vec<(Commit, bool)>, Option<Cursor>), DatabaseError> {
         let query = format!(
-            "SELECT {projection}
+            "WITH viewer_orgs AS (
+                SELECT organization_id FROM core.organization_members WHERE user_id = $7
+             )
+             SELECT
+                {projection},
+                COALESCE(
+                    r.visibility = 'public'
+                    OR (r.owner_type = 'user' AND r.owner_id = $7)
+                    OR (r.owner_type = 'organization'
+                        AND r.owner_id IN (SELECT organization_id FROM viewer_orgs)),
+                    false
+                ) AS viewer_has_access
              FROM core.commits c
              {joins}
              WHERE c.author_id = $1
@@ -178,27 +198,33 @@ impl CommitRepository for CommitRepositoryImpl {
         let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
         let cursor_id = cursor.as_ref().map(|c| c.id);
 
-        let mut commits = sqlx::query_as::<_, Commit>(&query)
+        let mut rows = sqlx::query_as::<_, UserCommitRow>(&query)
             .bind(author_id)
             .bind(from)
             .bind(to)
             .bind(cursor_created_at)
             .bind(cursor_id)
             .bind(limit + 1)
+            .bind(viewer_id)
             .fetch_all(&self.pool)
             .await?;
 
-        let next_cursor = if commits.len() as i64 > limit {
-            commits.pop();
-            commits.last().map(|last| Cursor {
-                created_at: last.created_at,
-                id: last.id,
+        let next_cursor = if rows.len() as i64 > limit {
+            rows.pop();
+            rows.last().map(|last| Cursor {
+                created_at: last.commit.created_at,
+                id: last.commit.id,
             })
         } else {
             None
         };
 
-        Ok((commits, next_cursor))
+        let data = rows
+            .into_iter()
+            .map(|r| (r.commit, r.viewer_has_access))
+            .collect();
+
+        Ok((data, next_cursor))
     }
 
     async fn create_bulk(
