@@ -230,7 +230,12 @@ where
 
         let (repositories, next_cursor) = self
             .repo_repo
-            .list_by_owner(&user_name, request.cursor, request.limit as i64)
+            .list_by_owner(
+                &user_name,
+                request.viewer_id,
+                request.cursor,
+                request.limit as i64,
+            )
             .await?;
 
         let is_owner = request.viewer_id.map(|id| id == user.id).unwrap_or(false);
@@ -259,7 +264,12 @@ where
 
         let (repositories, next_cursor) = self
             .user_repo
-            .list_starred_repositories(user.id, request.cursor, request.limit as i64)
+            .list_starred_repositories(
+                user.id,
+                request.viewer_id,
+                request.cursor,
+                request.limit as i64,
+            )
             .await?;
 
         let is_owner = request.viewer_id.map(|id| id == user.id).unwrap_or(false);

@@ -101,7 +101,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{owner}/{repo}"))?;
         let commit = self
@@ -235,7 +235,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{owner}/{repo}"))?;
 
@@ -258,7 +258,7 @@ where
     ) -> Result<BuildResponse, BuildError> {
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{owner}/{repo}"))?;
 
@@ -314,7 +314,7 @@ where
     ) -> Result<Vec<TaskResponse>, BuildError> {
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{owner}/{repo}"))?;
 

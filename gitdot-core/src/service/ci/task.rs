@@ -88,7 +88,7 @@ where
 
         let (repos, _) = self
             .repository_repo
-            .list_by_owner(&runner.owner_name, None, MAX_PER_PAGE_LIMIT as i64)
+            .list_by_owner(&runner.owner_name, None, None, MAX_PER_PAGE_LIMIT as i64)
             .await?;
 
         let repository_ids: Vec<Uuid> = repos.iter().map(|r| r.id).collect();

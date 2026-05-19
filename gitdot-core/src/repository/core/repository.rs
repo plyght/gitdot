@@ -22,13 +22,23 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         created_at: Option<DateTime<Utc>>,
     ) -> Result<Repository, DatabaseError>;
 
-    async fn get(&self, owner: &str, repo: &str) -> Result<Option<Repository>, DatabaseError>;
+    async fn get(
+        &self,
+        owner: &str,
+        repo: &str,
+        viewer_id: Option<Uuid>,
+    ) -> Result<Option<Repository>, DatabaseError>;
 
-    async fn get_by_id(&self, id: Uuid) -> Result<Option<Repository>, DatabaseError>;
+    async fn get_by_id(
+        &self,
+        id: Uuid,
+        viewer_id: Option<Uuid>,
+    ) -> Result<Option<Repository>, DatabaseError>;
 
     async fn list_by_owner(
         &self,
         owner_name: &str,
+        viewer_id: Option<Uuid>,
         cursor: Option<Cursor>,
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError>;
@@ -38,8 +48,6 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
     async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, DatabaseError>;
 
     async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError>;
-
-    async fn is_starred(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError>;
 
     async fn list_recent_stars(
         &self,
@@ -107,7 +115,8 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
                 RETURNING id, name, owner_id, owner_type, visibility, description, stars, readonly, created_at
             )
             SELECT i.id, i.name, i.owner_id, COALESCE(u.name, o.name) AS owner_name,
-                   i.owner_type, i.visibility, i.description, i.stars, i.readonly, i.created_at
+                   i.owner_type, i.visibility, i.description, i.stars, i.readonly, i.created_at,
+                   false AS user_star
             FROM inserted i
             LEFT JOIN core.users u
               ON i.owner_id = u.id AND i.owner_type = 'user'
@@ -128,11 +137,17 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         Ok(repository)
     }
 
-    async fn get(&self, owner: &str, repo: &str) -> Result<Option<Repository>, DatabaseError> {
+    async fn get(
+        &self,
+        owner: &str,
+        repo: &str,
+        viewer_id: Option<Uuid>,
+    ) -> Result<Option<Repository>, DatabaseError> {
         let repository = sqlx::query_as::<_, Repository>(
             r#"
             SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
-                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
+                   EXISTS(SELECT 1 FROM core.stars s WHERE s.repository_id = r.id AND s.user_id = $3) AS user_star
             FROM core.repositories r
             LEFT JOIN core.users u
               ON r.owner_id = u.id AND r.owner_type = 'user'
@@ -148,17 +163,23 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         )
         .bind(owner)
         .bind(repo)
+        .bind(viewer_id)
         .fetch_optional(&self.pool)
         .await?;
 
         Ok(repository)
     }
 
-    async fn get_by_id(&self, id: Uuid) -> Result<Option<Repository>, DatabaseError> {
+    async fn get_by_id(
+        &self,
+        id: Uuid,
+        viewer_id: Option<Uuid>,
+    ) -> Result<Option<Repository>, DatabaseError> {
         let repository = sqlx::query_as::<_, Repository>(
             r#"
             SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
-                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
+                   EXISTS(SELECT 1 FROM core.stars s WHERE s.repository_id = r.id AND s.user_id = $2) AS user_star
             FROM core.repositories r
             LEFT JOIN core.users u
               ON r.owner_id = u.id AND r.owner_type = 'user'
@@ -168,6 +189,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
             "#,
         )
         .bind(id)
+        .bind(viewer_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -177,6 +199,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     async fn list_by_owner(
         &self,
         owner_name: &str,
+        viewer_id: Option<Uuid>,
         cursor: Option<Cursor>,
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError> {
@@ -186,7 +209,8 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         let mut repositories = sqlx::query_as::<_, Repository>(
             r#"
             SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
-                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
+                   EXISTS(SELECT 1 FROM core.stars s WHERE s.repository_id = r.id AND s.user_id = $5) AS user_star
             FROM core.repositories r
             LEFT JOIN core.users u
               ON r.owner_id = u.id AND r.owner_type = 'user'
@@ -206,6 +230,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         .bind(cursor_created_at)
         .bind(cursor_id)
         .bind(limit + 1)
+        .bind(viewer_id)
         .fetch_all(&self.pool)
         .await?;
 
@@ -280,23 +305,6 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
 
         tx.commit().await?;
         Ok(deleted > 0)
-    }
-
-    async fn is_starred(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError> {
-        let row = sqlx::query(
-            r#"
-            SELECT EXISTS(
-                SELECT 1 FROM core.stars
-                WHERE repository_id = $1 AND user_id = $2
-            ) AS "starred"
-            "#,
-        )
-        .bind(id)
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(row.try_get("starred")?)
     }
 
     async fn list_recent_stars(

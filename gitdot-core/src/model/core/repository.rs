@@ -15,6 +15,7 @@ pub struct Repository {
     pub visibility: RepositoryVisibility,
     pub description: Option<String>,
     pub stars: i32,
+    pub user_star: bool,
     pub readonly: bool,
     pub created_at: DateTime<Utc>,
 }

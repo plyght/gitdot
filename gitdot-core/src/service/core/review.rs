@@ -259,7 +259,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
         let review = self

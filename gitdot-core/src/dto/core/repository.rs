@@ -58,13 +58,6 @@ pub struct RepositoryResponse {
     pub created_at: DateTime<Utc>,
 }
 
-impl RepositoryResponse {
-    pub fn with_user_star(mut self, user_star: bool) -> Self {
-        self.user_star = user_star;
-        self
-    }
-}
-
 impl From<Repository> for RepositoryResponse {
     fn from(repo: Repository) -> Self {
         Self {
@@ -74,7 +67,7 @@ impl From<Repository> for RepositoryResponse {
             visibility: repo.visibility.into(),
             description: repo.description,
             stars: repo.stars as u32,
-            user_star: false,
+            user_star: repo.user_star,
             readonly: repo.readonly,
             created_at: repo.created_at,
         }

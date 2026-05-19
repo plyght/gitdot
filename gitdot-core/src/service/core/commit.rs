@@ -78,7 +78,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(&owner, &repo_name)
+            .get(&owner, &repo_name, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo_name))?;
         let repo_id = repository.id;

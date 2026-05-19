@@ -264,16 +264,11 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, request.user_id)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
-        let user_star = match request.user_id {
-            Some(uid) => self.repo_repo.is_starred(repository.id, uid).await?,
-            None => false,
-        };
-
-        Ok(RepositoryResponse::from(repository).with_user_star(user_star))
+        Ok(RepositoryResponse::from(repository))
     }
 
     async fn get_repository_blob(
@@ -331,7 +326,7 @@ where
     async fn get_repository_by_id(&self, id: Uuid) -> Result<RepositoryResponse, RepositoryError> {
         let repository = self
             .repo_repo
-            .get_by_id(id)
+            .get_by_id(id, None)
             .await?
             .or_not_found("repository", id)?;
 
@@ -347,7 +342,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
@@ -412,7 +407,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(&owner, &repo_name)
+            .get(&owner, &repo_name, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo_name))?;
 
@@ -435,7 +430,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(&owner, &repo_name)
+            .get(&owner, &repo_name, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo_name))?;
 
@@ -475,7 +470,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(&owner, &repo_name)
+            .get(&owner, &repo_name, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo_name))?;
 
@@ -495,7 +490,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
@@ -518,7 +513,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
@@ -546,7 +541,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
@@ -570,7 +565,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
@@ -598,7 +593,7 @@ where
 
         let repository = self
             .repo_repo
-            .get(owner, repo)
+            .get(owner, repo, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 

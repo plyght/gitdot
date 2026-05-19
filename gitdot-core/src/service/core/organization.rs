@@ -265,7 +265,12 @@ where
 
         let (repositories, next_cursor) = self
             .repo_repo
-            .list_by_owner(&org_name, request.cursor, request.limit as i64)
+            .list_by_owner(
+                &org_name,
+                request.viewer_id,
+                request.cursor,
+                request.limit as i64,
+            )
             .await?;
 
         let is_member = match request.viewer_id {

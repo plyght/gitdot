@@ -105,7 +105,7 @@ where
             let Some(dest_id) = migration_repository.destination_repository_id else {
                 continue;
             };
-            let Some(dest) = self.repo_repo.get_by_id(dest_id).await? else {
+            let Some(dest) = self.repo_repo.get_by_id(dest_id, None).await? else {
                 continue;
             };
             if !dest.readonly {

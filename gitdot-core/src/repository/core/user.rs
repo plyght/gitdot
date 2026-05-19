@@ -54,6 +54,7 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
     async fn list_starred_repositories(
         &self,
         user_id: Uuid,
+        viewer_id: Option<Uuid>,
         cursor: Option<Cursor>,
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError>;
@@ -250,6 +251,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn list_starred_repositories(
         &self,
         user_id: Uuid,
+        viewer_id: Option<Uuid>,
         cursor: Option<Cursor>,
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError> {
@@ -260,6 +262,7 @@ impl UserRepository for UserRepositoryImpl {
             r#"
             SELECT r.id, r.name, r.owner_id, COALESCE(ru.name, ro.name) AS owner_name,
                    r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
+                   EXISTS(SELECT 1 FROM core.stars vs WHERE vs.repository_id = r.id AND vs.user_id = $5) AS user_star,
                    s.created_at AS starred_at, s.id AS star_id
             FROM core.stars s
             JOIN core.repositories r ON r.id = s.repository_id
@@ -277,6 +280,7 @@ impl UserRepository for UserRepositoryImpl {
         .bind(cursor_created_at)
         .bind(cursor_id)
         .bind(limit + 1)
+        .bind(viewer_id)
         .fetch_all(&self.pool)
         .await?;
 

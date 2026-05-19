@@ -138,7 +138,12 @@ where
             .nth(1)
             .ok_or_else(|| InputError::new("repository name", full_name))?;
 
-        if self.repo_repo.get(owner_name, repo_name).await?.is_some() {
+        if self
+            .repo_repo
+            .get(owner_name, repo_name, None)
+            .await?
+            .is_some()
+        {
             return Err(
                 ConflictError::new("repository", format!("{}/{}", owner_name, repo_name)).into(),
             );

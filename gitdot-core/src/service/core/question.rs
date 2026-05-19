@@ -108,7 +108,7 @@ where
     ) -> Result<QuestionResponse, QuestionError> {
         let repository = self
             .repo_repo
-            .get(request.owner.as_ref(), request.repo.as_ref())
+            .get(request.owner.as_ref(), request.repo.as_ref(), None)
             .await?
             .or_not_found("repository", request.get_repo_path())?;
 
@@ -131,7 +131,7 @@ where
     ) -> Result<QuestionResponse, QuestionError> {
         let repository = self
             .repo_repo
-            .get(request.owner.as_ref(), request.repo.as_ref())
+            .get(request.owner.as_ref(), request.repo.as_ref(), None)
             .await?
             .or_not_found("repository", request.get_repo_path())?;
 
@@ -150,7 +150,7 @@ where
     ) -> Result<QuestionResponse, QuestionError> {
         let repository = self
             .repo_repo
-            .get(request.owner.as_ref(), request.repo.as_ref())
+            .get(request.owner.as_ref(), request.repo.as_ref(), None)
             .await?
             .or_not_found("repository", request.get_repo_path())?;
 
@@ -169,7 +169,7 @@ where
     ) -> Result<Page<QuestionResponse>, QuestionError> {
         let repository = self
             .repo_repo
-            .get(request.owner.as_ref(), request.repo.as_ref())
+            .get(request.owner.as_ref(), request.repo.as_ref(), None)
             .await?
             .or_not_found("repository", request.get_repo_path())?;
 

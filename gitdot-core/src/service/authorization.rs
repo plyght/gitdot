@@ -165,7 +165,7 @@ where
     ) -> Result<(), AuthorizationError> {
         let repository = self
             .repo_repo
-            .get(request.owner.as_ref(), request.repo.as_ref())
+            .get(request.owner.as_ref(), request.repo.as_ref(), None)
             .await?
             .ok_or(AuthorizationError::Unauthorized)?;
 
@@ -446,13 +446,12 @@ mod tests {
         #[async_trait]
         impl RepositoryRepository for RepositoryRepo {
             async fn create(&self, name: &str, owner_id: Uuid, owner_type: &RepositoryOwnerType, visibility: &RepositoryVisibility, description: Option<String>, readonly: bool, created_at: Option<chrono::DateTime<chrono::Utc>>) -> Result<Repository, crate::error::DatabaseError>;
-            async fn get(&self, owner: &str, repo: &str) -> Result<Option<Repository>, crate::error::DatabaseError>;
-            async fn get_by_id(&self, id: Uuid) -> Result<Option<Repository>, crate::error::DatabaseError>;
-            async fn list_by_owner(&self, owner_name: &str, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Repository>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
+            async fn get(&self, owner: &str, repo: &str, viewer_id: Option<Uuid>) -> Result<Option<Repository>, crate::error::DatabaseError>;
+            async fn get_by_id(&self, id: Uuid, viewer_id: Option<Uuid>) -> Result<Option<Repository>, crate::error::DatabaseError>;
+            async fn list_by_owner(&self, owner_name: &str, viewer_id: Option<Uuid>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Repository>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
             async fn delete(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
             async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, crate::error::DatabaseError>;
             async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, crate::error::DatabaseError>;
-            async fn is_starred(&self, id: Uuid, user_id: Uuid) -> Result<bool, crate::error::DatabaseError>;
             async fn list_recent_stars(&self, repository_id: Uuid, limit: i64) -> Result<Vec<(UserResponse, DateTime<Utc>)>, crate::error::DatabaseError>;
             async fn list_commit_filters(&self, repository_id: Uuid, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<crate::model::CommitFilter>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
             async fn create_commit_filter(&self, repository_id: Uuid, name: &str, authors: Option<Vec<String>>, tags: Option<Vec<String>>, paths: Option<Vec<String>>) -> Result<crate::model::CommitFilter, crate::error::DatabaseError>;
@@ -501,7 +500,7 @@ mod tests {
             async fn verify_email(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
             async fn is_name_taken(&self, name: &str) -> Result<bool, crate::error::DatabaseError>;
             async fn is_email_taken(&self, email: &str) -> Result<bool, crate::error::DatabaseError>;
-            async fn list_starred_repositories(&self, user_id: Uuid, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Repository>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
+            async fn list_starred_repositories(&self, user_id: Uuid, viewer_id: Option<Uuid>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Repository>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
         }
     }
 
@@ -545,6 +544,7 @@ mod tests {
             visibility,
             description: None,
             stars: 0,
+            user_star: false,
             readonly: false,
             created_at: chrono::Utc::now(),
         }
@@ -579,7 +579,7 @@ mod tests {
     #[tokio::test]
     async fn repo_not_found() {
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(|_, _| Ok(None));
+        repo_repo.expect_get().returning(|_, _, _| Ok(None));
 
         let service = create_service(MockOrganizationRepo::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Read);
@@ -595,7 +595,7 @@ mod tests {
     async fn read_public_repo_allows_anonymous() {
         let mut repo_repo = MockRepositoryRepo::new();
         let owner_id = Uuid::new_v4();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -615,7 +615,7 @@ mod tests {
     async fn read_public_repo_allows_authenticated() {
         let mut repo_repo = MockRepositoryRepo::new();
         let owner_id = Uuid::new_v4();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -635,7 +635,7 @@ mod tests {
     async fn read_private_user_repo_by_owner() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -655,7 +655,7 @@ mod tests {
     async fn read_private_user_repo_by_other() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -677,7 +677,7 @@ mod tests {
     async fn read_private_user_repo_anonymous() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -700,7 +700,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -727,7 +727,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -752,7 +752,7 @@ mod tests {
     async fn read_private_org_repo_anonymous() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -774,7 +774,7 @@ mod tests {
     async fn write_user_repo_by_owner() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -794,7 +794,7 @@ mod tests {
     async fn write_user_repo_by_other() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -816,7 +816,7 @@ mod tests {
     async fn write_user_repo_anonymous() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -839,7 +839,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -866,7 +866,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -891,7 +891,7 @@ mod tests {
     async fn write_org_repo_anonymous() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -913,7 +913,7 @@ mod tests {
     async fn admin_user_repo_by_owner() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -933,7 +933,7 @@ mod tests {
     async fn admin_user_repo_by_other() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -955,7 +955,7 @@ mod tests {
     async fn admin_user_repo_anonymous() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -978,7 +978,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -1005,7 +1005,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -1033,7 +1033,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -1058,7 +1058,7 @@ mod tests {
     async fn admin_org_repo_anonymous() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -1081,7 +1081,7 @@ mod tests {
         let mut repo_repo = MockRepositoryRepo::new();
         repo_repo
             .expect_get()
-            .returning(|_, _| Err(crate::error::DatabaseError::RowNotFound));
+            .returning(|_, _, _| Err(crate::error::DatabaseError::RowNotFound));
 
         let service = create_service(MockOrganizationRepo::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Read);
@@ -1098,7 +1098,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -1126,7 +1126,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
                 RepositoryOwnerType::Organization,
@@ -1153,7 +1153,7 @@ mod tests {
     async fn write_readonly_repo_by_owner() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             let mut repo = create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -1177,7 +1177,7 @@ mod tests {
     async fn admin_readonly_repo_by_owner() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             let mut repo = create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
@@ -1201,7 +1201,7 @@ mod tests {
     async fn read_readonly_public_repo_anonymous() {
         let owner_id = Uuid::new_v4();
         let mut repo_repo = MockRepositoryRepo::new();
-        repo_repo.expect_get().returning(move |_, _| {
+        repo_repo.expect_get().returning(move |_, _, _| {
             let mut repo = create_repository(
                 owner_id,
                 RepositoryOwnerType::User,
