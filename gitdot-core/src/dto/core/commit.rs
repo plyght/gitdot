@@ -56,3 +56,68 @@ impl From<Commit> for CommitResponse {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct UserCommitResponse {
+    pub id: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub redacted: bool,
+
+    pub author_id: Option<Uuid>,
+    pub git_author_name: Option<String>,
+    pub git_author_email: Option<String>,
+    pub repo_id: Option<Uuid>,
+    pub owner_name: Option<String>,
+    pub repo_name: Option<String>,
+    pub ref_name: Option<String>,
+    pub sha: Option<String>,
+    pub parent_sha: Option<String>,
+    pub message: Option<String>,
+    pub review_number: Option<i32>,
+    pub diff_position: Option<i32>,
+    pub diffs: Vec<CommitDiff>,
+}
+
+impl UserCommitResponse {
+    pub fn visible(commit: Commit) -> Self {
+        Self {
+            id: commit.id,
+            created_at: commit.created_at,
+            redacted: false,
+            author_id: commit.author_id,
+            git_author_name: Some(commit.git_author_name),
+            git_author_email: Some(commit.git_author_email),
+            repo_id: Some(commit.repo_id),
+            owner_name: Some(commit.repository.owner_name),
+            repo_name: Some(commit.repository.name),
+            ref_name: Some(commit.ref_name),
+            sha: Some(commit.sha),
+            parent_sha: Some(commit.parent_sha),
+            message: Some(commit.message),
+            review_number: commit.review_number,
+            diff_position: commit.diff_position,
+            diffs: commit.diffs,
+        }
+    }
+
+    pub fn redacted(commit: &Commit) -> Self {
+        Self {
+            id: commit.id,
+            created_at: commit.created_at,
+            redacted: true,
+            author_id: None,
+            git_author_name: None,
+            git_author_email: None,
+            repo_id: None,
+            owner_name: None,
+            repo_name: None,
+            ref_name: None,
+            sha: None,
+            parent_sha: None,
+            message: None,
+            review_number: None,
+            diff_position: None,
+            diffs: Vec::new(),
+        }
+    }
+}

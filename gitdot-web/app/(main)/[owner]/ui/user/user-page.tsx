@@ -16,14 +16,20 @@ import { UserRepos } from "./user-repos";
 import { UserStars } from "./user-stars";
 
 export default async function UserPage({ user }: { user: UserResource }) {
-  const [commits, reposResponse, membershipsResponse, starsResponse, current] =
-    await Promise.all([
-      listUserCommits(user.name),
-      listUserRepositories(user.name),
-      listUserOrganizations(user.name),
-      listUserStars(user.name),
-      getCurrentUser(false),
-    ]);
+  const [
+    commitsResponse,
+    reposResponse,
+    membershipsResponse,
+    starsResponse,
+    current,
+  ] = await Promise.all([
+    listUserCommits(user.name),
+    listUserRepositories(user.name),
+    listUserOrganizations(user.name),
+    listUserStars(user.name),
+    getCurrentUser(false),
+  ]);
+  const commits = commitsResponse?.data ?? null;
   const repos = reposResponse?.data ?? null;
   const memberships = membershipsResponse?.data ?? null;
   const stars = starsResponse?.data ?? null;

@@ -48,7 +48,9 @@ pub trait CommitRepository: Send + Sync + Clone + 'static {
         author_id: Uuid,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<Vec<Commit>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Commit>, Option<Cursor>), DatabaseError>;
 
     async fn create_bulk(
         &self,
@@ -157,25 +159,46 @@ impl CommitRepository for CommitRepositoryImpl {
         author_id: Uuid,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<Vec<Commit>, DatabaseError> {
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Commit>, Option<Cursor>), DatabaseError> {
         let query = format!(
             "SELECT {projection}
              FROM core.commits c
              {joins}
-             WHERE c.author_id = $1 AND c.created_at >= $2 AND c.created_at <= $3
-             ORDER BY c.created_at DESC",
+             WHERE c.author_id = $1
+               AND c.created_at >= $2 AND c.created_at <= $3
+               AND ($4::timestamptz IS NULL OR (c.created_at, c.id) < ($4, $5))
+             ORDER BY c.created_at DESC, c.id DESC
+             LIMIT $6",
             projection = COMMIT_PROJECTION,
             joins = COMMIT_JOINS,
         );
 
-        let commits = sqlx::query_as::<_, Commit>(&query)
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut commits = sqlx::query_as::<_, Commit>(&query)
             .bind(author_id)
             .bind(from)
             .bind(to)
+            .bind(cursor_created_at)
+            .bind(cursor_id)
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await?;
 
-        Ok(commits)
+        let next_cursor = if commits.len() as i64 > limit {
+            commits.pop();
+            commits.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((commits, next_cursor))
     }
 
     async fn create_bulk(

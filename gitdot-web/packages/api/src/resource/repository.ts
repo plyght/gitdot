@@ -62,6 +62,22 @@ export type RepositoryCommitsResource = z.infer<
   typeof RepositoryCommitsResource
 >;
 
+export const UserCommitResource = z.object({
+  id: z.uuid(),
+  date: z.iso.datetime(),
+  redacted: z.boolean(),
+  owner_name: z.string().optional(),
+  repo_name: z.string().optional(),
+  sha: z.string().optional(),
+  parent_sha: z.string().optional(),
+  message: z.string().optional(),
+  author: CommitAuthorResource.optional(),
+  review_number: z.number().int().optional(),
+  diff_position: z.number().int().optional(),
+  diffs: z.array(RepositoryDiffStatResource).default([]),
+});
+export type UserCommitResource = z.infer<typeof UserCommitResource>;
+
 export const RepositoryCommitDiffResource = z.object({
   sha: z.string(),
   parent_sha: z.string(),

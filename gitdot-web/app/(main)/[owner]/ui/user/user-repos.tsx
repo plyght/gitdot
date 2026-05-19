@@ -1,6 +1,6 @@
 "use client";
 
-import type { RepositoryCommitResource, RepositoryResource } from "gitdot-api";
+import type { RepositoryResource, UserCommitResource } from "gitdot-api";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
@@ -36,7 +36,7 @@ export function UserRepos({
   isOwner,
 }: {
   repos: RepositoryResource[] | null;
-  commits: RepositoryCommitResource[];
+  commits: UserCommitResource[];
   isOwner: boolean;
 }) {
   const [sortBy, setSortBy] = useState<RepoSort>("recent");
@@ -168,10 +168,11 @@ function RepoRow({ repo }: { repo: Repository }) {
 
 function buildRepositories(
   repos: RepositoryResource[],
-  commits: RepositoryCommitResource[],
+  commits: UserCommitResource[],
 ): Repository[] {
   const stats = new Map<string, { count: number; lastDate: Date }>();
   for (const c of commits) {
+    if (c.redacted || !c.owner_name || !c.repo_name) continue;
     const key = `${c.owner_name}/${c.repo_name}`;
     const date = new Date(c.date);
     const existing = stats.get(key);

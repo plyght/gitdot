@@ -1,6 +1,6 @@
 "use client";
 
-import type { RepositoryCommitResource } from "gitdot-api";
+import type { UserCommitResource } from "gitdot-api";
 import { inRange } from "@/util/date";
 
 export function UserCommitsLog({
@@ -9,7 +9,7 @@ export function UserCommitsLog({
   endDate,
   selectedMonth,
 }: {
-  commits: Map<string, RepositoryCommitResource[]>;
+  commits: Map<string, UserCommitResource[]>;
   startDate: string;
   endDate: string;
   selectedMonth: string | null;
@@ -45,7 +45,7 @@ export function UserCommitsLog({
           ) : (
             <div className="flex flex-col">
               {dayCommits.map((c) => (
-                <CommitLogRow key={c.sha} c={c} />
+                <CommitLogRow key={c.id} c={c} />
               ))}
             </div>
           )}
@@ -55,7 +55,20 @@ export function UserCommitsLog({
   );
 }
 
-function CommitLogRow({ c }: { c: RepositoryCommitResource }) {
+function CommitLogRow({ c }: { c: UserCommitResource }) {
+  if (c.redacted) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-mono text-muted-foreground/50 shrink-0">
+          private
+        </span>
+        <span className="text-sm flex-1 truncate text-muted-foreground/50 italic">
+          commit in a private repository
+        </span>
+      </div>
+    );
+  }
+
   const added = c.diffs.reduce((s, d) => s + d.lines_added, 0);
   const removed = c.diffs.reduce((s, d) => s + d.lines_removed, 0);
   const url = `/${c.owner_name}/${c.repo_name}/commits/${c.sha}`;

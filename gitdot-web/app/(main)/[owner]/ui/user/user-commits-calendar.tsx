@@ -1,6 +1,6 @@
 "use client";
 
-import type { RepositoryCommitResource } from "gitdot-api";
+import type { UserCommitResource } from "gitdot-api";
 import { cn } from "@/util";
 import {
   cellColor,
@@ -14,7 +14,7 @@ export function UserCommitsCalendar({
   selectedMonth,
   setSelectedMonth,
 }: {
-  commits: Map<string, RepositoryCommitResource[]>;
+  commits: Map<string, UserCommitResource[]>;
   startDate: string;
   endDate: string;
   selectedMonth: string | null;

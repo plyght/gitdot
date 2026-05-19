@@ -1,14 +1,13 @@
 use async_trait::async_trait;
-use chrono::{Duration, Utc};
 
 use crate::{
     client::{ImageClient, ImageClientImpl, R2Client, R2ClientImpl},
     dto::{
-        CommitResponse, GetCurrentUserRequest, GetCurrentUserResponse, GetUserRequest,
-        HasUserRequest, ListUserCommitsRequest, ListUserOrganizationsRequest,
-        ListUserRepositoriesRequest, ListUserReviewsRequest, ListUserStarsRequest,
-        MAX_PER_PAGE_LIMIT, OrganizationMemberResponse, Page, RepositoryResponse, ReviewResponse,
-        UpdateCurrentUserImageRequest, UpdateCurrentUserRequest, UserResponse,
+        GetCurrentUserRequest, GetCurrentUserResponse, GetUserRequest, HasUserRequest,
+        ListUserCommitsRequest, ListUserOrganizationsRequest, ListUserRepositoriesRequest,
+        ListUserReviewsRequest, ListUserStarsRequest, MAX_PER_PAGE_LIMIT,
+        OrganizationMemberResponse, Page, RepositoryResponse, ReviewResponse,
+        UpdateCurrentUserImageRequest, UpdateCurrentUserRequest, UserCommitResponse, UserResponse,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, UserError},
     repository::{
@@ -63,7 +62,7 @@ pub trait UserService: Send + Sync + 'static {
     async fn list_commits(
         &self,
         request: ListUserCommitsRequest,
-    ) -> Result<Vec<CommitResponse>, UserError>;
+    ) -> Result<Page<UserCommitResponse>, UserError>;
 }
 
 #[derive(Debug, Clone)]
@@ -332,7 +331,7 @@ where
     async fn list_commits(
         &self,
         request: ListUserCommitsRequest,
-    ) -> Result<Vec<CommitResponse>, UserError> {
+    ) -> Result<Page<UserCommitResponse>, UserError> {
         let user_name = request.user_name.to_string();
         let user = self
             .user_repo
@@ -340,9 +339,37 @@ where
             .await?
             .or_not_found("user", &user_name)?;
 
-        let now = Utc::now();
-        let from = now - Duration::days(365);
-        let commits = self.commit_repo.list_by_user(user.id, from, now).await?;
-        Ok(commits.into_iter().map(CommitResponse::from).collect())
+        let is_owner = request.viewer_id.map(|id| id == user.id).unwrap_or(false);
+
+        let (commits, next_cursor) = self
+            .commit_repo
+            .list_by_user(
+                user.id,
+                request.from,
+                request.to,
+                request.cursor,
+                request.limit as i64,
+            )
+            .await?;
+
+        // Visible if the viewer is the listed user (their own profile) or the
+        // commit's repo is public. Otherwise the commit is returned as a
+        // redacted stub (timestamp + `redacted: true`) so heatmap-style surfaces
+        // still render without leaking content from private repos.
+        let data = commits
+            .into_iter()
+            .map(|c| {
+                if is_owner || c.repository.visibility == "public" {
+                    UserCommitResponse::visible(c)
+                } else {
+                    UserCommitResponse::redacted(&c)
+                }
+            })
+            .collect();
+
+        Ok(Page {
+            data,
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
     }
 }

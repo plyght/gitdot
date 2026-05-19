@@ -2,14 +2,13 @@ import "server-only";
 
 import {
   CurrentUserResource,
+  ListUserCommitsResponse,
   ListUserOrganizationsResponse,
   ListUserRepositoriesResponse,
   ListUserStarsResponse,
-  RepositoryCommitResource,
   UserResource,
 } from "gitdot-api";
 import { notFound } from "next/navigation";
-import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { toQueryString } from "@/util";
 import {
@@ -129,12 +128,17 @@ export async function listUserOrganizations(
 
 export async function listUserCommits(
   username: string,
-): Promise<RepositoryCommitResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/user/${username}/commits`,
-  );
-
-  return await handleResponse(response, z.array(RepositoryCommitResource));
+  opts?: { from?: string; to?: string; cursor?: string; limit?: number },
+): Promise<ListUserCommitsResponse | null> {
+  const qs = toQueryString({
+    from: opts?.from,
+    to: opts?.to,
+    cursor: opts?.cursor,
+    limit: opts?.limit,
+  });
+  const url = `${GITDOT_SERVER_URL}/user/${username}/commits${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListUserCommitsResponse);
 }
 
 export async function listUserStars(
