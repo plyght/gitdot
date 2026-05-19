@@ -36,7 +36,7 @@ WORKDIR /app
 
 # Install git and ca-certificates
 RUN apt-get update && \
-  apt-get install -y git ca-certificates && \
+  apt-get install -y git ca-certificates curl && \
   rm -rf /var/lib/apt/lists/*
 
 # Configure git globally
