@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    dto::OwnerName,
+    dto::{OwnerName, RepositoryName},
     error::{InputError, MigrationError},
     model::{Migration, RepositoryOwnerType},
 };
@@ -14,7 +14,13 @@ pub struct CreateGitHubMigrationRequest {
     pub origin_type: RepositoryOwnerType,
     pub destination: OwnerName,
     pub destination_type: RepositoryOwnerType,
-    pub repositories: Vec<(String, i64)>,
+    pub repositories: Vec<GitHubMigrationRepository>,
+}
+
+#[derive(Debug, Clone)]
+pub struct GitHubMigrationRepository {
+    pub name: RepositoryName,
+    pub id: i64,
 }
 
 impl CreateGitHubMigrationRequest {
@@ -27,6 +33,14 @@ impl CreateGitHubMigrationRequest {
         destination_type: &str,
         repositories: Vec<(String, i64)>,
     ) -> Result<Self, MigrationError> {
+        let repositories = repositories
+            .into_iter()
+            .map(|(name, id)| {
+                let name = RepositoryName::try_new(&name)
+                    .map_err(|e| InputError::new("repository name", e))?;
+                Ok(GitHubMigrationRepository { name, id })
+            })
+            .collect::<Result<Vec<_>, MigrationError>>()?;
         Ok(Self {
             author_id,
             installation_id,

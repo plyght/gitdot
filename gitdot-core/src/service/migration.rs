@@ -352,26 +352,27 @@ where
             .await?;
 
         let mut repositories = Vec::new();
-        for (name, origin_repository_id) in &request.repositories {
+        for repo in &request.repositories {
+            let name = repo.name.as_ref();
             let origin_full_name = format!("{}/{}", request.origin, name);
             let destination_full_name = format!("{}/{}", request.destination.as_ref(), name);
-            let github_repo = github_repos.repositories.iter().find(|r| &r.name == name);
-            let visibility = github_repo
-                .map(|r| {
-                    if r.private.unwrap_or(false) {
-                        RepositoryVisibility::Private
-                    } else {
-                        RepositoryVisibility::Public
-                    }
-                })
-                .unwrap_or(RepositoryVisibility::Public);
-            let origin_created_at = github_repo.and_then(|r| r.created_at);
+            let github_repo = github_repos
+                .repositories
+                .iter()
+                .find(|r| r.name == name)
+                .ok_or_else(|| InputError::new("repository", &origin_full_name))?;
+            let visibility = if github_repo.private.unwrap_or(false) {
+                RepositoryVisibility::Private
+            } else {
+                RepositoryVisibility::Public
+            };
+            let origin_created_at = github_repo.created_at;
             let migration_repository = self
                 .migration_repo
                 .create_migration_repository(
                     migration.id,
                     &origin_full_name,
-                    *origin_repository_id,
+                    repo.id,
                     origin_created_at,
                     &destination_full_name,
                     &visibility,
