@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use rdkafka::{ClientConfig, consumer::StreamConsumer};
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
 use gitdot_core::{
@@ -25,7 +26,7 @@ impl ConsumerState {
 
         let slack_bot_client = SlackBotClientImpl::new(
             settings.gitdot_slack_bot_server_url.clone(),
-            settings.gitdot_slack_secret.clone(),
+            settings.gitdot_slack_secret.expose_secret().to_string(),
         );
 
         let slack_webhook_service = Arc::new(SlackWebhookServiceImpl::new(

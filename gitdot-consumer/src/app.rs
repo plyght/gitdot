@@ -5,6 +5,7 @@ mod state;
 
 use anyhow::Context;
 use rdkafka::consumer::Consumer;
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
 pub use settings::Settings;
@@ -22,7 +23,7 @@ impl GitdotConsumer {
         bootstrap::bootstrap()?;
 
         let settings = Settings::new()?;
-        let pool = PgPool::connect(&settings.database_url).await?;
+        let pool = PgPool::connect(settings.database_url.expose_secret()).await?;
         let state = ConsumerState::new(settings, pool).await?;
         let kafka = state::build_consumer(&state.settings).await?;
         match &kafka {

@@ -16,6 +16,7 @@ futures = { workspace = true }
 gitdot-core = { workspace = true }
 rdkafka = { workspace = true }
 rustls = { workspace = true, features = ["aws-lc-rs"] }
+secrecy = { workspace = true, features = ["serde"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }

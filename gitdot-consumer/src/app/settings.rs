@@ -1,4 +1,5 @@
 use figment::{Figment, providers::Env};
+use secrecy::SecretString;
 use serde::{Deserialize, Deserializer};
 
 use gitdot_core::client::KafkaAuthMode;
@@ -6,10 +7,10 @@ use gitdot_core::client::KafkaAuthMode;
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
     // infra
-    pub database_url: String,
+    pub database_url: SecretString,
 
     // app secrets
-    pub gitdot_slack_secret: String,
+    pub gitdot_slack_secret: SecretString,
 
     // app URLs
     #[serde(default = "default_slack_bot_url")]
