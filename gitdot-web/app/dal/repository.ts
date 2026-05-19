@@ -9,6 +9,7 @@ import {
   type GetRepositoryBlobRequest,
   type GetRepositoryBlobsRequest,
   type ListRepositoryCommitsRequest,
+  ListRepositoryCommitsResponse,
   type GetRepositoryPathsRequest,
   type GetRepositoryResourcesRequest,
   ListRepositoryCommitFiltersResponse,
@@ -18,7 +19,6 @@ import {
   RepositoryCommitDiffResource,
   type RepositoryCommitFilterResource,
   RepositoryCommitResource,
-  RepositoryCommitsResource,
   RepositoryPathsResource,
   RepositoryResource,
   RepositoryResourcesResource,
@@ -66,13 +66,11 @@ export async function listRepositoryCommits(
   owner: string,
   repo: string,
   query?: ListRepositoryCommitsRequest,
-): Promise<RepositoryCommitsResource | null> {
+): Promise<ListRepositoryCommitsResponse | null> {
   const queryString = toQueryString(query);
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commits?${queryString}`,
-  );
-
-  return await handleResponse(response, RepositoryCommitsResource);
+  const url = `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commits${queryString ? `?${queryString}` : ""}`;
+  const response = await authFetch(url);
+  return await handleResponse(response, ListRepositoryCommitsResponse);
 }
 
 export async function getRepositoryCommit(

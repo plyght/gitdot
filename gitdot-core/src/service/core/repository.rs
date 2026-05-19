@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::{
     client::{Git2Client, GitClient},
     dto::{
-        CommitDiffResponse, CommitResponse, CommitsResponse, CreateRepositoryCommitFilterRequest,
+        CommitDiffResponse, CommitResponse, CreateRepositoryCommitFilterRequest,
         CreateRepositoryRequest, DeleteRepositoryCommitFilterRequest, DeleteRepositoryRequest,
         GetRepositoryActivityRequest, GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest,
         GetRepositoryBlobsRequest, GetRepositoryCommitDiffRequest, GetRepositoryCommitRequest,
@@ -88,7 +88,7 @@ pub trait RepositoryService: Send + Sync + 'static {
     async fn list_repository_commits(
         &self,
         request: ListRepositoryCommitsRequest,
-    ) -> Result<CommitsResponse, RepositoryError>;
+    ) -> Result<Page<CommitResponse>, RepositoryError>;
 
     async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError>;
 
@@ -464,7 +464,7 @@ where
     async fn list_repository_commits(
         &self,
         request: ListRepositoryCommitsRequest,
-    ) -> Result<CommitsResponse, RepositoryError> {
+    ) -> Result<Page<CommitResponse>, RepositoryError> {
         let owner = request.owner.to_string();
         let repo_name = request.repo.to_string();
 
@@ -474,13 +474,32 @@ where
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo_name))?;
 
-        let commits = self
+        let ref_name = if request.ref_name == "HEAD" {
+            self.git_client
+                .get_default_ref(&owner, &repo_name)
+                .await
+                .map_err(RepositoryError::from)?
+        } else if !request.ref_name.starts_with("refs/") {
+            format!("refs/heads/{}", request.ref_name)
+        } else {
+            request.ref_name
+        };
+
+        let (commits, next_cursor) = self
             .commit_repo
-            .get_commits(repository.id, request.from, request.to)
+            .list_by_repository(
+                repository.id,
+                &ref_name,
+                request.from,
+                request.to,
+                request.cursor,
+                request.limit as i64,
+            )
             .await?;
 
-        Ok(CommitsResponse {
-            commits: commits.into_iter().map(Into::into).collect(),
+        Ok(Page {
+            data: commits.into_iter().map(CommitResponse::from).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
     }
 

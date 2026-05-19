@@ -1,7 +1,7 @@
 use gitdot_api::resource::repository as api;
 use gitdot_core::{
     dto::{
-        CommitAuthorResponse, CommitDiffResponse, CommitResponse, CommitsResponse, PathType,
+        CommitAuthorResponse, CommitDiffResponse, CommitResponse, PathType,
         RepositoryActivityEvent, RepositoryBlobDiffsResponse, RepositoryBlobResponse,
         RepositoryBlobsResponse, RepositoryCommitFilterResponse, RepositoryCommitResponse,
         RepositoryCommitsResponse, RepositoryDiffFileResponse, RepositoryFileResponse,
@@ -34,15 +34,6 @@ impl IntoApi for RepositoryCommitsResponse {
     fn into_api(self) -> Self::ApiType {
         api::RepositoryCommitsResource {
             commits: self.commits.into_api(),
-        }
-    }
-}
-
-impl IntoApi for CommitsResponse {
-    type ApiType = api::RepositoryCommitsResource;
-    fn into_api(self) -> Self::ApiType {
-        api::RepositoryCommitsResource {
-            commits: self.commits.into_iter().map(|c| c.into_api()).collect(),
         }
     }
 }

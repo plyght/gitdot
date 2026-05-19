@@ -2,12 +2,10 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
 };
-use chrono::Utc;
 
 use gitdot_api::endpoint::list_repository_commits as api;
-use gitdot_core::{
-    dto::{ListRepositoryCommitsRequest, RepositoryAuthorizationRequest, RepositoryPermission},
-    error::{CommitError, InputError},
+use gitdot_core::dto::{
+    ListRepositoryCommitsRequest, RepositoryAuthorizationRequest, RepositoryPermission,
 };
 
 use crate::{
@@ -16,7 +14,6 @@ use crate::{
     extract::{Principal, User},
 };
 
-// TODO: this does not support ref in request as of now, service ignores it.
 #[axum::debug_handler]
 pub async fn list_repository_commits(
     auth_user: Option<Principal<User>>,
@@ -24,7 +21,7 @@ pub async fn list_repository_commits(
     Path((owner, repo)): Path<(String, String)>,
     Query(params): Query<api::ListRepositoryCommitsRequest>,
 ) -> Result<AppResponse<api::ListRepositoryCommitsResponse>, AppError> {
-    let request = RepositoryAuthorizationRequest::new(
+    let auth_request = RepositoryAuthorizationRequest::new(
         auth_user.map(|u| u.id),
         &owner,
         &repo,
@@ -32,26 +29,22 @@ pub async fn list_repository_commits(
     )?;
     state
         .authorization_service
-        .verify_authorized_for_repository(request)
+        .verify_authorized_for_repository(auth_request)
         .await?;
 
-    if params.to.is_some() && params.from.is_none() {
-        let err: CommitError =
-            InputError::new("date range", "`to` requires `from` to be set").into();
-        return Err(err.into());
-    }
-
-    let now = Utc::now();
-    let from = params
-        .from
-        .unwrap_or_else(|| now - chrono::Duration::days(30));
-    let to = params.to.unwrap_or(now);
-
-    let request = ListRepositoryCommitsRequest::new(&owner, &repo, params.ref_name, from, to)?;
+    let request = ListRepositoryCommitsRequest::new(
+        &owner,
+        &repo,
+        params.ref_name,
+        params.from,
+        params.to,
+        params.cursor.as_deref(),
+        params.limit,
+    )?;
     state
         .repo_service
         .list_repository_commits(request)
         .await
         .map_err(AppError::from)
-        .map(|commits| AppResponse::new(StatusCode::OK, commits.into_api()))
+        .map(|page| AppResponse::new(StatusCode::OK, page.into_api()))
 }

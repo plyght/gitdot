@@ -4,6 +4,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
+    dto::Cursor,
     error::DatabaseError,
     model::{Commit, CommitDiff},
 };
@@ -32,12 +33,15 @@ const COMMIT_JOINS: &str = "
 pub trait CommitRepository: Send + Sync + Clone + 'static {
     async fn get_commit(&self, repo_id: Uuid, sha: &str) -> Result<Option<Commit>, DatabaseError>;
 
-    async fn get_commits(
+    async fn list_by_repository(
         &self,
         repo_id: Uuid,
+        ref_name: &str,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<Vec<Commit>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Commit>, Option<Cursor>), DatabaseError>;
 
     async fn list_by_user(
         &self,
@@ -98,30 +102,54 @@ impl CommitRepository for CommitRepositoryImpl {
         Ok(commit)
     }
 
-    async fn get_commits(
+    async fn list_by_repository(
         &self,
         repo_id: Uuid,
+        ref_name: &str,
         from: DateTime<Utc>,
         to: DateTime<Utc>,
-    ) -> Result<Vec<Commit>, DatabaseError> {
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<Commit>, Option<Cursor>), DatabaseError> {
         let query = format!(
             "SELECT {projection}
              FROM core.commits c
              {joins}
-             WHERE c.repo_id = $1 AND c.created_at >= $2 AND c.created_at <= $3
-             ORDER BY c.created_at DESC",
+             WHERE c.repo_id = $1
+               AND c.ref_name = $2
+               AND c.created_at >= $3 AND c.created_at <= $4
+               AND ($5::timestamptz IS NULL OR (c.created_at, c.id) < ($5, $6))
+             ORDER BY c.created_at DESC, c.id DESC
+             LIMIT $7",
             projection = COMMIT_PROJECTION,
             joins = COMMIT_JOINS,
         );
 
-        let commits = sqlx::query_as::<_, Commit>(&query)
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut commits = sqlx::query_as::<_, Commit>(&query)
             .bind(repo_id)
+            .bind(ref_name)
             .bind(from)
             .bind(to)
+            .bind(cursor_created_at)
+            .bind(cursor_id)
+            .bind(limit + 1)
             .fetch_all(&self.pool)
             .await?;
 
-        Ok(commits)
+        let next_cursor = if commits.len() as i64 > limit {
+            commits.pop();
+            commits.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((commits, next_cursor))
     }
 
     async fn list_by_user(

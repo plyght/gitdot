@@ -26,7 +26,6 @@ import {
   listRepositoryCommitFilters,
 } from "@/dal/repository";
 import { getReview as dalGetReview, listReviews } from "@/dal/review";
-import { subtractDays } from "@/util/date";
 import type { ResourceDefinition } from "./types";
 import { ServerProvider } from "./types";
 
@@ -62,10 +61,8 @@ export class ApiProvider extends ServerProvider {
   }
 
   async getCommits(): Promise<RepositoryCommitResource[] | null> {
-    const result = await listRepositoryCommits(this.owner, this.repo, {
-      from: subtractDays(new Date(), 365).toISOString(),
-    });
-    return result ? result.commits : null;
+    const result = await listRepositoryCommits(this.owner, this.repo);
+    return result?.data ?? null;
   }
 
   async getCommitFilters(): Promise<RepositoryCommitFilterResource[] | null> {

@@ -72,8 +72,15 @@ pub async fn get_repository_resources(
         .last_updated
         .unwrap_or_else(|| now - chrono::Duration::days(365));
 
-    let commits_request =
-        ListRepositoryCommitsRequest::new(&owner, &repo, "HEAD".to_string(), commits_from, now)?;
+    let commits_request = ListRepositoryCommitsRequest::new(
+        &owner,
+        &repo,
+        "HEAD".to_string(),
+        Some(commits_from),
+        Some(now),
+        None,
+        None,
+    )?;
 
     let questions_request = ListQuestionsRequest::new(&owner, &repo, user_id, None, None)?;
 
@@ -123,7 +130,11 @@ pub async fn get_repository_resources(
         last_commit: head_sha,
         last_updated: Some(now),
         paths: Some(paths.into_api()),
-        commits: Some(commits.into_api()),
+        commits: Some(
+            gitdot_api::resource::repository::RepositoryCommitsResource {
+                commits: commits.into_api().data,
+            },
+        ),
         blobs: Some(blobs.into_api()),
         questions: Some(
             gitdot_api::resource::repository::RepositoryQuestionsResource {

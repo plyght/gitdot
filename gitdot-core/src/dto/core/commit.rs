@@ -29,11 +29,6 @@ pub struct CommitResponse {
 }
 
 #[derive(Debug, Clone)]
-pub struct CommitsResponse {
-    pub commits: Vec<CommitResponse>,
-}
-
-#[derive(Debug, Clone)]
 pub struct CommitDiffResponse {
     pub sha: String,
     pub parent_sha: String,

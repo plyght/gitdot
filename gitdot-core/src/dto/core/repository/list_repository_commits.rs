@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
 
 use crate::{
-    dto::{OwnerName, RepositoryName},
+    dto::{Cursor, DEFAULT_PER_PAGE_LIMIT, MAX_PER_PAGE_LIMIT, OwnerName, RepositoryName},
     error::{CommitError, InputError},
+    util::cursor,
 };
 
 #[derive(Debug, Clone)]
@@ -12,6 +13,8 @@ pub struct ListRepositoryCommitsRequest {
     pub ref_name: String,
     pub from: DateTime<Utc>,
     pub to: DateTime<Utc>,
+    pub cursor: Option<Cursor>,
+    pub limit: u32,
 }
 
 impl ListRepositoryCommitsRequest {
@@ -19,16 +22,28 @@ impl ListRepositoryCommitsRequest {
         owner: &str,
         repo: &str,
         ref_name: String,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
+        from: Option<DateTime<Utc>>,
+        to: Option<DateTime<Utc>>,
+        cursor: Option<&str>,
+        limit: Option<u32>,
     ) -> Result<Self, CommitError> {
+        if to.is_some() && from.is_none() {
+            return Err(InputError::new("date range", "`to` requires `from` to be set").into());
+        }
+        let owner = OwnerName::try_new(owner).map_err(|e| InputError::new("owner name", e))?;
+        let repo =
+            RepositoryName::try_new(repo).map_err(|e| InputError::new("repository name", e))?;
+        let cursor = cursor.map(cursor::decode).transpose()?;
         Ok(Self {
-            owner: OwnerName::try_new(owner).map_err(|e| InputError::new("owner name", e))?,
-            repo: RepositoryName::try_new(repo)
-                .map_err(|e| InputError::new("repository name", e))?,
+            owner,
+            repo,
             ref_name,
-            from,
-            to,
+            from: from.unwrap_or(DateTime::<Utc>::UNIX_EPOCH),
+            to: to.unwrap_or_else(Utc::now),
+            cursor,
+            limit: limit
+                .unwrap_or(DEFAULT_PER_PAGE_LIMIT)
+                .clamp(1, MAX_PER_PAGE_LIMIT),
         })
     }
 }
