@@ -7,7 +7,8 @@ mod migrate_github_repositories;
 pub use create_github_installation::{CreateGitHubInstallationRequest, GitHubInstallationResponse};
 pub use create_github_migration::{CreateGitHubMigrationRequest, CreateGitHubMigrationResponse};
 pub use list_github_installation_repositories::{
-    GitHubRepositoryResponse, ListGitHubInstallationRepositoriesResponse,
+    GitHubRepositoryResponse, ListGitHubInstallationRepositoriesRequest,
+    ListGitHubInstallationRepositoriesResponse,
 };
 pub use list_github_installations::ListGitHubInstallationsRequest;
 pub use migrate_github_repositories::{

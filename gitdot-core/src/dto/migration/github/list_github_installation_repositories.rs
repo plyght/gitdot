@@ -1,5 +1,12 @@
 use chrono::{DateTime, Utc};
 use octocrab::models::Repository;
+use uuid::Uuid;
+
+#[derive(Debug, Clone)]
+pub struct ListGitHubInstallationRepositoriesRequest {
+    pub owner_id: Uuid,
+    pub installation_id: i64,
+}
 
 #[derive(Debug, Clone)]
 pub struct GitHubRepositoryResponse {

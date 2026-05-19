@@ -7,9 +7,9 @@ use crate::{
     dto::{
         CreateGitHubInstallationRequest, CreateGitHubMigrationRequest,
         CreateGitHubMigrationResponse, GetMigrationRequest, GitHubInstallationResponse,
-        ListGitHubInstallationRepositoriesResponse, ListGitHubInstallationsRequest,
-        ListMigrationsRequest, MigrateGitHubRepositoriesRequest, MigrateGitHubRepositoriesResponse,
-        MigratedRepositoryInfo, MigrationResponse, Page,
+        ListGitHubInstallationRepositoriesRequest, ListGitHubInstallationRepositoriesResponse,
+        ListGitHubInstallationsRequest, ListMigrationsRequest, MigrateGitHubRepositoriesRequest,
+        MigrateGitHubRepositoriesResponse, MigratedRepositoryInfo, MigrationResponse, Page,
     },
     error::{ConflictError, InputError, MigrationError, OptionNotFoundExt},
     model::{
@@ -52,7 +52,7 @@ pub trait MigrationService: Send + Sync + 'static {
 
     async fn list_github_installation_repositories(
         &self,
-        installation_id: i64,
+        request: ListGitHubInstallationRepositoriesRequest,
     ) -> Result<ListGitHubInstallationRepositoriesResponse, MigrationError>;
 
     async fn create_github_migration(
@@ -308,11 +308,17 @@ where
 
     async fn list_github_installation_repositories(
         &self,
-        installation_id: i64,
+        request: ListGitHubInstallationRepositoriesRequest,
     ) -> Result<ListGitHubInstallationRepositoriesResponse, MigrationError> {
+        // validate that the installation is owned by the user
+        self.github_repo
+            .get(request.owner_id, request.installation_id)
+            .await?
+            .or_not_found("github installation", request.installation_id)?;
+
         let repos = self
             .github_client
-            .list_installation_repositories(installation_id as u64)
+            .list_installation_repositories(request.installation_id as u64)
             .await?;
 
         Ok(repos.repositories.into_iter().map(Into::into).collect())

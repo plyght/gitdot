@@ -18,6 +18,12 @@ pub trait GitHubRepository: Send + Sync + Clone + 'static {
         github_login: &str,
     ) -> Result<GitHubInstallation, DatabaseError>;
 
+    async fn get(
+        &self,
+        owner_id: Uuid,
+        installation_id: i64,
+    ) -> Result<Option<GitHubInstallation>, DatabaseError>;
+
     async fn list_by_owner(
         &self,
         owner_id: Uuid,
@@ -59,6 +65,26 @@ impl GitHubRepository for GitHubRepositoryImpl {
         .bind(installation_type)
         .bind(github_login)
         .fetch_one(&self.pool)
+        .await?;
+
+        Ok(installation)
+    }
+
+    async fn get(
+        &self,
+        owner_id: Uuid,
+        installation_id: i64,
+    ) -> Result<Option<GitHubInstallation>, DatabaseError> {
+        let installation = sqlx::query_as::<_, GitHubInstallation>(
+            r#"
+            SELECT id, installation_id, owner_id, type, github_login, created_at
+            FROM migration.github_installations
+            WHERE owner_id = $1 AND installation_id = $2
+            "#,
+        )
+        .bind(owner_id)
+        .bind(installation_id)
+        .fetch_optional(&self.pool)
         .await?;
 
         Ok(installation)
