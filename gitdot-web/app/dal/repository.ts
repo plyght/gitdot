@@ -102,10 +102,11 @@ export async function getRepositoryPaths(
 export async function listRepositoryCommitFilters(
   owner: string,
   repo: string,
-): Promise<RepositoryCommitFilterResource[] | null> {
-  const response = await authFetch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit_filters`,
-  );
+  opts?: { cursor?: string; limit?: number },
+): Promise<ListRepositoryCommitFiltersResponse | null> {
+  const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
+  const url = `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit_filters${qs ? `?${qs}` : ""}`;
+  const response = await authFetch(url);
   return await handleResponse(response, ListRepositoryCommitFiltersResponse);
 }
 

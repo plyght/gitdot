@@ -1,13 +1,16 @@
 import { z } from "zod";
-import { RepositoryCommitFilterResource } from "../../resource";
+import { page, RepositoryCommitFilterResource } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
-export const ListRepositoryCommitFiltersRequest = z.object({});
+export const ListRepositoryCommitFiltersRequest = z.object({
+  cursor: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+});
 export type ListRepositoryCommitFiltersRequest = z.infer<
   typeof ListRepositoryCommitFiltersRequest
 >;
 
-export const ListRepositoryCommitFiltersResponse = z.array(
+export const ListRepositoryCommitFiltersResponse = page(
   RepositoryCommitFilterResource,
 );
 export type ListRepositoryCommitFiltersResponse = z.infer<

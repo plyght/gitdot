@@ -50,7 +50,9 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
     async fn list_commit_filters(
         &self,
         repository_id: Uuid,
-    ) -> Result<Vec<CommitFilter>, DatabaseError>;
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<CommitFilter>, Option<Cursor>), DatabaseError>;
 
     async fn create_commit_filter(
         &self,
@@ -339,20 +341,40 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     async fn list_commit_filters(
         &self,
         repository_id: Uuid,
-    ) -> Result<Vec<CommitFilter>, DatabaseError> {
-        let filters = sqlx::query_as::<_, CommitFilter>(
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<CommitFilter>, Option<Cursor>), DatabaseError> {
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut filters = sqlx::query_as::<_, CommitFilter>(
             r#"
             SELECT id, repository_id, name, authors, tags, paths, created_at, updated_at
             FROM core.commit_filters
             WHERE repository_id = $1
-            ORDER BY created_at ASC
+              AND ($2::timestamptz IS NULL OR (created_at, id) < ($2, $3))
+            ORDER BY created_at DESC, id DESC
+            LIMIT $4
             "#,
         )
         .bind(repository_id)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(filters)
+        let next_cursor = if filters.len() as i64 > limit {
+            filters.pop();
+            filters.last().map(|last| Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((filters, next_cursor))
     }
 
     async fn create_commit_filter(

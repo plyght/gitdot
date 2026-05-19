@@ -69,7 +69,8 @@ export class ApiProvider extends ServerProvider {
   }
 
   async getCommitFilters(): Promise<RepositoryCommitFilterResource[] | null> {
-    return await listRepositoryCommitFilters(this.owner, this.repo);
+    const result = await listRepositoryCommitFilters(this.owner, this.repo);
+    return result?.data ?? null;
   }
 
   async getBlobs(): Promise<RepositoryBlobsResource | null> {

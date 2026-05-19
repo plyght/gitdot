@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{endpoint::Endpoint, resource::RepositoryCommitFilterResource};
+use crate::{
+    endpoint::Endpoint,
+    resource::{RepositoryCommitFilterResource, common::Page},
+};
 
 pub struct ListRepositoryCommitFilters;
 
@@ -12,7 +15,12 @@ impl Endpoint for ListRepositoryCommitFilters {
     type Response = ListRepositoryCommitFiltersResponse;
 }
 
-#[derive(ApiRequest, Debug, Serialize, Deserialize)]
-pub struct ListRepositoryCommitFiltersRequest {}
+#[derive(ApiRequest, Debug, Default, Serialize, Deserialize)]
+pub struct ListRepositoryCommitFiltersRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+}
 
-pub type ListRepositoryCommitFiltersResponse = Vec<RepositoryCommitFilterResource>;
+pub type ListRepositoryCommitFiltersResponse = Page<RepositoryCommitFilterResource>;

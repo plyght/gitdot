@@ -10,10 +10,11 @@ use crate::{
         DeleteRepositoryCommitFilterRequest, DeleteRepositoryRequest, GetRepositoryActivityRequest,
         GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest, GetRepositoryBlobsRequest,
         GetRepositoryPathsRequest, GetRepositoryRequest, ListRepositoryCommitFiltersRequest,
-        RepositoryActivityEvent, RepositoryBlobDiffsResponse, RepositoryBlobResponse,
-        RepositoryBlobsResponse, RepositoryCommitFilterResponse, RepositoryDiffFileResponse,
-        RepositoryFileResponse, RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest,
-        UnstarRepositoryRequest, UpdateRepositoryCommitFilterRequest,
+        MAX_PER_PAGE_LIMIT, Page, RepositoryActivityEvent, RepositoryBlobDiffsResponse,
+        RepositoryBlobResponse, RepositoryBlobsResponse, RepositoryCommitFilterResponse,
+        RepositoryDiffFileResponse, RepositoryFileResponse, RepositoryPathsResponse,
+        RepositoryResponse, StarRepositoryRequest, UnstarRepositoryRequest,
+        UpdateRepositoryCommitFilterRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, RepositoryError},
     model::RepositoryOwnerType,
@@ -21,7 +22,10 @@ use crate::{
         OrganizationRepository, OrganizationRepositoryImpl, RepositoryRepository,
         RepositoryRepositoryImpl,
     },
-    util::git::{GitHookType, POST_RECEIVE_SCRIPT, PRE_RECEIVE_SCRIPT, PROC_RECEIVE_SCRIPT},
+    util::{
+        cursor,
+        git::{GitHookType, POST_RECEIVE_SCRIPT, PRE_RECEIVE_SCRIPT, PROC_RECEIVE_SCRIPT},
+    },
 };
 
 #[async_trait]
@@ -85,7 +89,7 @@ pub trait RepositoryService: Send + Sync + 'static {
     async fn list_repository_commit_filters(
         &self,
         request: ListRepositoryCommitFiltersRequest,
-    ) -> Result<Vec<RepositoryCommitFilterResponse>, RepositoryError>;
+    ) -> Result<Page<RepositoryCommitFilterResponse>, RepositoryError>;
 
     async fn create_repository_commit_filter(
         &self,
@@ -446,7 +450,7 @@ where
     async fn list_repository_commit_filters(
         &self,
         request: ListRepositoryCommitFiltersRequest,
-    ) -> Result<Vec<RepositoryCommitFilterResponse>, RepositoryError> {
+    ) -> Result<Page<RepositoryCommitFilterResponse>, RepositoryError> {
         let owner = request.owner.as_ref();
         let repo = request.repo.as_ref();
 
@@ -456,11 +460,18 @@ where
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
-        let filters = self.repo_repo.list_commit_filters(repository.id).await?;
-        Ok(filters
-            .into_iter()
-            .map(RepositoryCommitFilterResponse::from)
-            .collect())
+        let (filters, next_cursor) = self
+            .repo_repo
+            .list_commit_filters(repository.id, request.cursor, request.limit as i64)
+            .await?;
+
+        Ok(Page {
+            data: filters
+                .into_iter()
+                .map(RepositoryCommitFilterResponse::from)
+                .collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
     }
 
     async fn create_repository_commit_filter(
@@ -477,7 +488,10 @@ where
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo))?;
 
-        let existing = self.repo_repo.list_commit_filters(repository.id).await?;
+        let (existing, _) = self
+            .repo_repo
+            .list_commit_filters(repository.id, None, MAX_PER_PAGE_LIMIT as i64)
+            .await?;
         if existing.iter().any(|f| f.name == name) {
             return Err(RepositoryError::Conflict(ConflictError::new(
                 "commit filter",
