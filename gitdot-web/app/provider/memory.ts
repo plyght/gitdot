@@ -104,20 +104,33 @@ export class InMemoryProvider extends ClientProvider {
   }
 
   async initialize(): Promise<void> {
+    const t0 = performance.now();
+    const time = async <T>(label: string, p: Promise<T>): Promise<T> => {
+      const start = performance.now();
+      const v = await p;
+      const ms = performance.now() - start;
+      const size =
+        Array.isArray(v) ? v.length
+        : v instanceof Map ? v.size
+        : v && typeof v === "object" && "blobs" in v && Array.isArray((v as { blobs: unknown[] }).blobs) ? (v as { blobs: unknown[] }).blobs.length
+        : v == null ? 0 : 1;
+      console.log(`[InMemoryProvider] ${label}: ${ms.toFixed(1)}ms (n=${size})`);
+      return v;
+    };
+
     const db = openIdb();
-    const metadata = await db.getMetadata(this.owner, this.repo);
+    const metadata = await time("getMetadata", db.getMetadata(this.owner, this.repo));
     if (!metadata) return;
     const { last_commit: commit } = metadata;
-    const [paths, blobs, commits, hasts, questions, reviews, builds] =
-      await Promise.all([
-        db.getPaths(this.owner, this.repo),
-        db.getBlobs(this.owner, this.repo, commit),
-        db.getCommits(this.owner, this.repo),
-        db.getHasts(this.owner, this.repo, commit),
-        db.getQuestions(this.owner, this.repo),
-        db.getReviews(this.owner, this.repo),
-        db.getBuilds(this.owner, this.repo),
-      ]);
+    const paths = await time("getPaths", db.getPaths(this.owner, this.repo));
+    const blobs = await time("getBlobs", db.getBlobs(this.owner, this.repo, commit));
+    const commits = await time("getCommits", db.getCommits(this.owner, this.repo));
+    const hasts = await time("getHasts", db.getHasts(this.owner, this.repo, commit));
+    const questions = await time("getQuestions", db.getQuestions(this.owner, this.repo));
+    const reviews = await time("getReviews", db.getReviews(this.owner, this.repo));
+    const builds = await time("getBuilds", db.getBuilds(this.owner, this.repo));
+
+    const tPost = performance.now();
     if (paths) this.store.paths = paths;
     if (blobs) {
       this.store.blobs = blobs;
@@ -136,5 +149,8 @@ export class InMemoryProvider extends ClientProvider {
       this.store.builds = builds;
       for (const b of builds) this.store.build.set(b.number, b);
     }
+    console.log(
+      `[InMemoryProvider] post-process: ${(performance.now() - tPost).toFixed(1)}ms, total: ${(performance.now() - t0).toFixed(1)}ms`,
+    );
   }
 }

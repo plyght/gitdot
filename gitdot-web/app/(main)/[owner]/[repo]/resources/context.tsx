@@ -26,10 +26,6 @@ export function RepoResources({
   const provider = useRef(new InMemoryProvider(owner, repo)).current;
 
   useEffect(() => {
-    provider.initialize();
-  }, [provider]);
-
-  useEffect(() => {
     if (resourcesReady) provider.initialize();
   }, [resourcesReady, provider]);
 
