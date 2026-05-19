@@ -1,4 +1,5 @@
 use figment::{Figment, providers::Env};
+use secrecy::SecretString;
 use serde::{Deserialize, Deserializer};
 
 use gitdot_core::client::KafkaAuthMode;
@@ -10,7 +11,7 @@ pub struct Settings {
     pub port: u16,
     #[serde(default = "default_git_project_root")]
     pub git_project_root: String,
-    pub database_url: String,
+    pub database_url: SecretString,
 
     // external services (non-secret)
     pub s2_server_url: String,
@@ -18,9 +19,9 @@ pub struct Settings {
 
     // app secrets
     pub gitdot_public_key: String,
-    pub gitdot_private_key: String,
-    pub gitdot_slack_secret: String,
-    pub gitdot_github_secret: String,
+    pub gitdot_private_key: SecretString,
+    pub gitdot_slack_secret: SecretString,
+    pub gitdot_github_secret: SecretString,
 
     // app URLs
     #[serde(default = "default_web_url")]
@@ -36,15 +37,15 @@ pub struct Settings {
 
     // github
     pub github_app_id: u64,
-    pub github_app_private_key: String,
+    pub github_app_private_key: SecretString,
     pub github_client_id: String,
-    pub github_client_secret: String,
+    pub github_client_secret: SecretString,
 
     // cloudflare
     pub cloudflare_account_id: String,
     pub cloudflare_r2_bucket_name: String,
     pub cloudflare_r2_access_key_id: String,
-    pub cloudflare_r2_secret_access_key: String,
+    pub cloudflare_r2_secret_access_key: SecretString,
 }
 
 impl Settings {

@@ -35,14 +35,14 @@ reqwest = { workspace = true }
 resend-rs = "0.21.1"
 resvg = { workspace = true }
 s2-sdk = { workspace = true }
-tiny-skia = { workspace = true }
-secrecy = "0.10.3"
+secrecy = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 sqlx = { workspace = true, features = ["ipnetwork"] }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
+tiny-skia = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }
 tracing = { workspace = true }

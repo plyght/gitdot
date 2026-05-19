@@ -103,6 +103,7 @@ s2-api = { path = "s2-api", version = "0.27" }
 s2-common = { path = "s2-common", version = "0.28" }
 s2-sdk = { path = "s2-sdk", version = "0.24" }
 schemars = "0.8"
+secrecy = "0.10.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.149"
 sha2 = "0.10.9"
