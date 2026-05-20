@@ -10,6 +10,7 @@ import { OrgImage } from "@/(main)/[owner]/ui/org/org-image";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { useUserContext } from "@/(main)/context/user";
 import {
+  getGithubAppInstallUrlAction,
   getMigrationAction,
   listInstallationRepositoriesAction,
   migrateGitHubRepositoriesAction,
@@ -24,7 +25,6 @@ import {
 } from "@/ui/dropdown-menu";
 import { cn } from "@/util";
 import { timeAgo } from "@/util/date";
-import { githubAppInstallUrl } from "@/util/github";
 
 type MigrationType = "read-only" | "read-write";
 
@@ -227,12 +227,19 @@ function NewMigration({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <a
-                href={githubAppInstallUrl("migration")}
+              <button
+                type="button"
+                onClick={async () => {
+                  const result =
+                    await getGithubAppInstallUrlAction("migration");
+                  if ("url" in result) {
+                    window.location.href = result.url;
+                  }
+                }}
                 className="underline hover:text-muted-foreground transition-colors cursor-pointer"
               >
                 Install GitHub app
-              </a>
+              </button>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <span className="text-muted-foreground w-8 shrink-0">To:</span>
@@ -293,7 +300,7 @@ function NewMigration({
                   >
                     <div
                       className={cn(
-                        "mt-[3px] shrink-0 w-3 h-3 rounded-xs border border-border transition-colors duration-150",
+                        "mt-0.75 shrink-0 w-3 h-3 rounded-xs border border-border transition-colors duration-150",
                         checked ? "bg-foreground" : "bg-background",
                       )}
                     />

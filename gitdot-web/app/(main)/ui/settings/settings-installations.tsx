@@ -1,11 +1,17 @@
 "use client";
 
-import Image from "next/image";
+import { getGithubAppInstallUrlAction } from "@/actions/repository";
 import { useUserContext } from "@/(main)/context/user";
-import { githubAppInstallUrl } from "@/util";
 
 export function SettingsInstallations() {
   const { installations } = useUserContext();
+
+  async function handleAddAccount() {
+    const result = await getGithubAppInstallUrlAction("migration");
+    if ("url" in result) {
+      window.location.href = result.url;
+    }
+  }
 
   return (
     <div className="p-3">
@@ -49,12 +55,13 @@ export function SettingsInstallations() {
             )}
           </div>
           <div className="flex justify-start mt-2">
-            <a
-              href={githubAppInstallUrl("migration")}
+            <button
+              type="button"
+              onClick={handleAddAccount}
               className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 cursor-pointer transition-colors"
             >
               Add account
-            </a>
+            </button>
           </div>
         </>
       )}

@@ -20,6 +20,7 @@ import {
   createRepositoryCommitFilter,
   deleteRepository,
   deleteRepositoryCommitFilter,
+  getGithubAppInstallUrl,
   getMigration,
   getRepositoryBlob,
   getRepositoryBlobs,
@@ -137,6 +138,16 @@ export async function listInstallationsAction(): Promise<
 > {
   const result = await listInstallations();
   return result?.data ?? [];
+}
+
+export async function getGithubAppInstallUrlAction(
+  action: "migration" | "onboarding",
+): Promise<{ url: string } | { error: string }> {
+  const result = await getGithubAppInstallUrl(action);
+  if (!result) {
+    return { error: "failed to get github app install url" };
+  }
+  return { url: result.install_url };
 }
 
 export async function listMigrationsAction(): Promise<MigrationResource[]> {

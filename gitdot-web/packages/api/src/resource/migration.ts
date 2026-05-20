@@ -12,6 +12,13 @@ export type GitHubInstallationResource = z.infer<
   typeof GitHubInstallationResource
 >;
 
+export const GitHubAppInstallUrlResource = z.object({
+  install_url: z.string(),
+});
+export type GitHubAppInstallUrlResource = z.infer<
+  typeof GitHubAppInstallUrlResource
+>;
+
 export const GitHubRepositoryResource = z.object({
   id: z.number(),
   name: z.string(),
