@@ -27,6 +27,7 @@ pub struct Settings {
 
     // github
     pub github_app_id: u64,
+    pub github_app_slug: String,
     pub github_app_private_key: SecretString,
     pub github_client_id: String,
     pub github_client_secret: SecretString,

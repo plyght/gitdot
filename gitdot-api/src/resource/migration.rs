@@ -3,6 +3,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GitHubAppInstallUrlResource {
+    pub install_url: String,
+}
+
+#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GitHubInstallationResource {
     pub id: Uuid,
     pub installation_id: i64,

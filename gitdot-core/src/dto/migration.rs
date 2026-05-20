@@ -11,13 +11,7 @@ use crate::model::{
 };
 
 pub use get_migration::GetMigrationRequest;
-pub use github::{
-    CreateGitHubInstallationRequest, CreateGitHubMigrationRequest, CreateGitHubMigrationResponse,
-    GitHubInstallationResponse, GitHubRepositoryResponse,
-    ListGitHubInstallationRepositoriesRequest, ListGitHubInstallationRepositoriesResponse,
-    ListGitHubInstallationsRequest, MigrateGitHubRepositoriesRequest,
-    MigrateGitHubRepositoriesResponse, MigratedRepositoryInfo,
-};
+pub use github::*;
 pub use list_migrations::ListMigrationsRequest;
 
 #[derive(Debug, Clone)]

@@ -46,6 +46,7 @@ impl AppState {
         );
         let github_client = OctocrabClient::new(
             settings.github_app_id,
+            settings.github_app_slug.clone(),
             settings.github_app_private_key.expose_secret().to_string(),
             settings.github_client_id.clone(),
             settings.github_client_secret.expose_secret().to_string(),

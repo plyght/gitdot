@@ -6,7 +6,8 @@ use crate::{
     client::{Git2Client, GitClient, GitHubClient, OctocrabClient},
     dto::{
         CreateGitHubInstallationRequest, CreateGitHubMigrationRequest,
-        CreateGitHubMigrationResponse, GetMigrationRequest, GitHubInstallationResponse,
+        CreateGitHubMigrationResponse, GetGitHubAppInstallUrlRequest,
+        GetGitHubAppInstallUrlResponse, GetMigrationRequest, GitHubInstallationResponse,
         ListGitHubInstallationRepositoriesRequest, ListGitHubInstallationRepositoriesResponse,
         ListGitHubInstallationsRequest, ListMigrationsRequest, MigrateGitHubRepositoriesRequest,
         MigrateGitHubRepositoriesResponse, MigratedRepositoryInfo, MigrationResponse, Page,
@@ -44,6 +45,11 @@ pub trait MigrationService: Send + Sync + 'static {
         &self,
         request: CreateGitHubInstallationRequest,
     ) -> Result<GitHubInstallationResponse, MigrationError>;
+
+    async fn get_github_app_install_url(
+        &self,
+        request: GetGitHubAppInstallUrlRequest,
+    ) -> Result<GetGitHubAppInstallUrlResponse, MigrationError>;
 
     async fn list_github_installations(
         &self,
@@ -290,6 +296,16 @@ where
             .await?;
 
         Ok(installation.into())
+    }
+
+    async fn get_github_app_install_url(
+        &self,
+        request: GetGitHubAppInstallUrlRequest,
+    ) -> Result<GetGitHubAppInstallUrlResponse, MigrationError> {
+        let install_url = self
+            .github_client
+            .get_github_app_install_url(request.owner_id, request.action)?;
+        Ok(GetGitHubAppInstallUrlResponse { install_url })
     }
 
     async fn list_github_installations(
