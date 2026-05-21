@@ -5,7 +5,7 @@ use crate::{endpoint::Endpoint, resource::RepositoryCommitFilterResource};
 pub struct UpdateRepositoryCommitFilter;
 
 impl Endpoint for UpdateRepositoryCommitFilter {
-    const PATH: &'static str = "/repository/{owner}/{repo}/commit_filters/{filter_id}";
+    const PATH: &'static str = "/repository/{owner}/{repo}/commit-filters/{filter_id}";
     const METHOD: http::Method = http::Method::PATCH;
 
     type Request = UpdateRepositoryCommitFilterRequest;

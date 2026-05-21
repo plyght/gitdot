@@ -104,7 +104,7 @@ export async function listRepositoryCommitFilters(
   opts?: { cursor?: string; limit?: number },
 ): Promise<ListRepositoryCommitFiltersResponse | null> {
   const qs = toQueryString({ cursor: opts?.cursor, limit: opts?.limit });
-  const url = `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit_filters${qs ? `?${qs}` : ""}`;
+  const url = `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit-filters${qs ? `?${qs}` : ""}`;
   const response = await authFetch(url);
   return await handleResponse(response, ListRepositoryCommitFiltersResponse);
 }
@@ -115,7 +115,7 @@ export async function createRepositoryCommitFilter(
   request: CreateRepositoryCommitFilterRequest,
 ): Promise<RepositoryCommitFilterResource | null> {
   const response = await authPost(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit_filters`,
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit-filters`,
     request,
   );
   return await handleResponse(response, CreateRepositoryCommitFilterResponse);
@@ -128,7 +128,7 @@ export async function updateRepositoryCommitFilter(
   request: UpdateRepositoryCommitFilterRequest,
 ): Promise<RepositoryCommitFilterResource | null> {
   const response = await authPatch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit_filters/${filterId}`,
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit-filters/${filterId}`,
     request,
   );
   return await handleResponse(response, UpdateRepositoryCommitFilterResponse);
@@ -140,7 +140,7 @@ export async function deleteRepositoryCommitFilter(
   filterId: string,
 ): Promise<void> {
   const response = await authDelete(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit_filters/${filterId}`,
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commit-filters/${filterId}`,
   );
   await handleEmptyResponse(response);
 }

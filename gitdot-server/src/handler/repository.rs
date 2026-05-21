@@ -93,11 +93,11 @@ pub fn create_repository_router() -> Router<AppState> {
             post(convert_readonly_repository),
         )
         .route(
-            "/repository/{owner}/{repo}/commit_filters",
+            "/repository/{owner}/{repo}/commit-filters",
             post(create_repository_commit_filter).get(list_repository_commit_filters),
         )
         .route(
-            "/repository/{owner}/{repo}/commit_filters/{filter_id}",
+            "/repository/{owner}/{repo}/commit-filters/{filter_id}",
             patch(update_repository_commit_filter).delete(delete_repository_commit_filter),
         )
 }

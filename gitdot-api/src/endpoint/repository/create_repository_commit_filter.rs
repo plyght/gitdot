@@ -5,7 +5,7 @@ use crate::{endpoint::Endpoint, resource::RepositoryCommitFilterResource};
 pub struct CreateRepositoryCommitFilter;
 
 impl Endpoint for CreateRepositoryCommitFilter {
-    const PATH: &'static str = "/repository/{owner}/{repo}/commit_filters";
+    const PATH: &'static str = "/repository/{owner}/{repo}/commit-filters";
     const METHOD: http::Method = http::Method::POST;
 
     type Request = CreateRepositoryCommitFilterRequest;

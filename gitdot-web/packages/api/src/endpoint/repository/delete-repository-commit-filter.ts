@@ -12,7 +12,7 @@ export type DeleteRepositoryCommitFilterResponse = z.infer<
 >;
 
 export const DeleteRepositoryCommitFilter = {
-  path: "/repository/{owner}/{repo}/commit_filters/{filter_id}",
+  path: "/repository/{owner}/{repo}/commit-filters/{filter_id}",
   method: "DELETE",
   request: DeleteRepositoryCommitFilterRequest,
   response: DeleteRepositoryCommitFilterResponse,

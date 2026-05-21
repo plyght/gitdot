@@ -19,7 +19,7 @@ export type CreateRepositoryCommitFilterResponse = z.infer<
 >;
 
 export const CreateRepositoryCommitFilter = {
-  path: "/repository/{owner}/{repo}/commit_filters",
+  path: "/repository/{owner}/{repo}/commit-filters",
   method: "POST",
   request: CreateRepositoryCommitFilterRequest,
   response: CreateRepositoryCommitFilterResponse,

@@ -18,7 +18,7 @@ export type ListRepositoryCommitFiltersResponse = z.infer<
 >;
 
 export const ListRepositoryCommitFilters = {
-  path: "/repository/{owner}/{repo}/commit_filters",
+  path: "/repository/{owner}/{repo}/commit-filters",
   method: "GET",
   request: ListRepositoryCommitFiltersRequest,
   response: ListRepositoryCommitFiltersResponse,

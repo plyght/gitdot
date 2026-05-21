@@ -19,7 +19,7 @@ export type UpdateRepositoryCommitFilterResponse = z.infer<
 >;
 
 export const UpdateRepositoryCommitFilter = {
-  path: "/repository/{owner}/{repo}/commit_filters/{filter_id}",
+  path: "/repository/{owner}/{repo}/commit-filters/{filter_id}",
   method: "PATCH",
   request: UpdateRepositoryCommitFilterRequest,
   response: UpdateRepositoryCommitFilterResponse,

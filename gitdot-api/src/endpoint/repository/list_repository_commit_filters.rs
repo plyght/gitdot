@@ -8,7 +8,7 @@ use crate::{
 pub struct ListRepositoryCommitFilters;
 
 impl Endpoint for ListRepositoryCommitFilters {
-    const PATH: &'static str = "/repository/{owner}/{repo}/commit_filters";
+    const PATH: &'static str = "/repository/{owner}/{repo}/commit-filters";
     const METHOD: http::Method = http::Method::GET;
 
     type Request = ListRepositoryCommitFiltersRequest;
