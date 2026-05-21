@@ -1,5 +1,7 @@
 use std::io::IsTerminal as _;
 
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing_subscriber::{Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 pub fn bootstrap() -> anyhow::Result<()> {
@@ -42,23 +44,17 @@ fn init_tracing() -> anyhow::Result<()> {
             .boxed()
     };
 
-    let registry = tracing_subscriber::registry()
+    let provider = SdkTracerProvider::builder()
+        .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
+        .build();
+    let tracer = provider.tracer("gitdot");
+    opentelemetry::global::set_tracer_provider(provider);
+
+    tracing_subscriber::registry()
         .with(env_filter)
-        .with(fmt_layer);
+        .with(fmt_layer)
+        .with(tracing_opentelemetry::layer().with_tracer(tracer))
+        .init();
 
-    #[cfg(feature = "otel")]
-    let registry = {
-        use opentelemetry::trace::TracerProvider as _;
-        use opentelemetry_sdk::trace::SdkTracerProvider;
-
-        let provider = SdkTracerProvider::builder()
-            .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
-            .build();
-        let tracer = provider.tracer("gitdot");
-        opentelemetry::global::set_tracer_provider(provider);
-        registry.with(tracing_opentelemetry::layer().with_tracer(tracer))
-    };
-
-    registry.init();
     Ok(())
 }
