@@ -3,7 +3,7 @@
 import type { OrganizationResource } from "gitdot-api";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "@/(main)/context/toaster";
+import { toast } from "@/(main)/provider/toaster";
 import {
   updateOrganizationAction,
   uploadOrganizationImageAction,

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { useWorkerContext } from "@/(main)/context/worker";
+import { useWorkerContext } from "@/(main)/provider/worker";
 import { LocalProvider } from "@/provider/local";
 
 type RepoContext = {

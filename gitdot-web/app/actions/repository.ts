@@ -156,8 +156,7 @@ export async function convertReadonlyRepositoryAction(
     return { repository };
   } catch (e) {
     return {
-      error:
-        e instanceof ApiError ? e.message : "Failed to convert repository",
+      error: e instanceof ApiError ? e.message : "Failed to convert repository",
     };
   }
 }

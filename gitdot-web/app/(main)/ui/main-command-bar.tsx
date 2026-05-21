@@ -9,9 +9,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { useShortcuts } from "@/(main)/context/shortcuts";
-import { useUserContext } from "@/(main)/context/user";
 import { useCommands } from "@/(main)/hooks/use-commands";
+import { useShortcuts } from "@/(main)/provider/shortcuts";
+import { useUserContext } from "@/(main)/provider/user";
 import Link from "@/ui/link";
 
 export function MainCommandBar() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useShortcuts } from "@/(main)/context/shortcuts";
+import { useShortcuts } from "@/(main)/provider/shortcuts";
 
 export function CommitShortcuts({
   selectedIndex,

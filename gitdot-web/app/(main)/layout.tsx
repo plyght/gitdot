@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import { DatabaseProvider } from "./context/database";
-import { MigrateRepoProvider } from "./context/migrate-repo";
-import { NewOrgProvider } from "./context/new-org";
-import { NewRepoProvider } from "./context/new-repo";
-import { SettingsProvider } from "./context/settings";
-import { ShortcutsProvider } from "./context/shortcuts";
-import { ToasterProvider } from "./context/toaster";
-import { UserProvider } from "./context/user";
-import { WorkerProvider } from "./context/worker";
+import { DatabaseProvider } from "./provider/database";
+import { DialogsProvider } from "./provider/dialogs";
+import { ShortcutsProvider } from "./provider/shortcuts";
+import { ToasterProvider } from "./provider/toaster";
+import { UserProvider } from "./provider/user";
+import { WorkerProvider } from "./provider/worker";
 import { MainFooter } from "./ui/main-footer";
 
 export const metadata: Metadata = {
@@ -27,20 +24,14 @@ export default function RootLayout({
         <WorkerProvider>
           <UserProvider>
             <ShortcutsProvider>
-              <SettingsProvider>
-                <NewRepoProvider>
-                  <MigrateRepoProvider>
-                    <NewOrgProvider>
-                      <div className="flex flex-col h-screen w-full max-w-screen overflow-hidden">
-                        <main className="flex-1 min-h-0 overflow-hidden">
-                          {children}
-                        </main>
-                        <MainFooter />
-                      </div>
-                    </NewOrgProvider>
-                  </MigrateRepoProvider>
-                </NewRepoProvider>
-              </SettingsProvider>
+              <DialogsProvider>
+                <div className="flex flex-col h-screen w-full max-w-screen overflow-hidden">
+                  <main className="flex-1 min-h-0 overflow-hidden">
+                    {children}
+                  </main>
+                  <MainFooter />
+                </div>
+              </DialogsProvider>
             </ShortcutsProvider>
           </UserProvider>
         </WorkerProvider>

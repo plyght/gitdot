@@ -1,6 +1,6 @@
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { useUserContext } from "@/(main)/context/user";
+import { useUserContext } from "@/(main)/provider/user";
 import { signout } from "@/actions";
 
 export type Command = {

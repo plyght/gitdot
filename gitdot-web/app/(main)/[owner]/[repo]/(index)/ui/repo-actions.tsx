@@ -3,8 +3,8 @@
 import type { RepositoryResource } from "gitdot-api";
 import { Bell, Copy, Download, Star } from "lucide-react";
 import { useOptimistic, useState, useTransition } from "react";
-import { toast } from "@/(main)/context/toaster";
-import { useUserContext } from "@/(main)/context/user";
+import { toast } from "@/(main)/provider/toaster";
+import { useUserContext } from "@/(main)/provider/user";
 import {
   starRepositoryAction,
   unstarRepositoryAction,

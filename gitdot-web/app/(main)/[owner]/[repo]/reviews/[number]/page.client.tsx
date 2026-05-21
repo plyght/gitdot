@@ -6,7 +6,7 @@ import {
   type ResourceRequestsType,
   useResolvePromises,
 } from "@/(main)/[owner]/[repo]/resources";
-import { useShortcuts } from "@/(main)/context/shortcuts";
+import { useShortcuts } from "@/(main)/provider/shortcuts";
 import type { DiffEntry } from "@/actions";
 import { Loading } from "@/ui/loading";
 import { cn } from "@/util";
