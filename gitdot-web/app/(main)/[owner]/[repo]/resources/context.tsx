@@ -2,12 +2,11 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useWorkerContext } from "@/(main)/context/worker";
-import { InMemoryProvider } from "@/provider/memory";
+import { LocalProvider } from "@/provider/local";
 
 type RepoContext = {
   resourcesReady: boolean;
   hastsReady: boolean;
-  provider: InMemoryProvider;
 };
 const RepoContext = createContext<RepoContext | null>(null);
 
@@ -23,7 +22,7 @@ export function RepoResources({
   const { syncRepo } = useWorkerContext();
   const [resourcesReady, setResourcesReady] = useState(false);
   const [hastsReady, setHastsReady] = useState(false);
-  const provider = useRef(new InMemoryProvider(owner, repo)).current;
+  const provider = useRef(new LocalProvider(owner, repo)).current;
 
   useEffect(() => {
     if (resourcesReady) provider.initialize();
@@ -40,7 +39,6 @@ export function RepoResources({
       value={{
         resourcesReady,
         hastsReady,
-        provider,
       }}
     >
       {children}

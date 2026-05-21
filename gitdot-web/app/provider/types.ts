@@ -29,7 +29,7 @@ export type ResourceResult<S> = {
   requests: ResourceRequestsType<S>;
 };
 
-type ShapeFromDefinition<T extends ResourceDefinition> = {
+export type ShapeFromDefinition<T extends ResourceDefinition> = {
   [K in keyof T]: Awaited<ReturnType<T[K]>>;
 };
 
@@ -43,13 +43,13 @@ export abstract class RepoProvider {
   }
 
   abstract getPaths(): Promise<RepositoryPathsResource | null>;
+  abstract getCommits(): Promise<RepositoryCommitResource[] | null>;
   abstract getBlob(
     path: string,
     ref?: string,
   ): Promise<RepositoryBlobResource | null>;
   abstract getHast(path: string, ref?: string): Promise<Root | null>;
   abstract getCommit(sha: string): Promise<RepositoryCommitResource | null>;
-  abstract getCommits(): Promise<RepositoryCommitResource[] | null>;
   abstract getCommitFilters(): Promise<RepositoryCommitFilterResource[] | null>;
   abstract getBlobs(): Promise<RepositoryBlobsResource | null>;
   abstract getQuestions(): Promise<QuestionResource[] | null>;
@@ -57,61 +57,4 @@ export abstract class RepoProvider {
   abstract getReviews(): Promise<ReviewResource[] | null>;
   abstract getBuilds(): Promise<BuildResource[] | null>;
   abstract getBuild(number: number): Promise<BuildResource | null>;
-}
-
-export abstract class ServerProvider extends RepoProvider {
-  fetch<T extends ResourceDefinition>(
-    def: T,
-  ): ResourceResult<ShapeFromDefinition<T>> {
-    const promises: Record<string, Promise<unknown>> = {};
-    const requests: Record<string, ResourceRequestType> = {};
-
-    for (const [key, factory] of Object.entries(def)) {
-      let request: ResourceRequestType | null = null;
-
-      const proxy = new Proxy(this, {
-        get(target, prop: string) {
-          const func = target[prop as keyof typeof target];
-          if (typeof func !== "function") {
-            throw new Error("Provider.fetch should only invoke methods");
-          } else if (request) {
-            throw new Error(
-              "Provider.fetch should only invoke a single method",
-            );
-          }
-
-          return (...args: unknown[]) => {
-            request = { method: prop, args };
-            return func.apply(target, args);
-          };
-        },
-      });
-
-      const promise = factory(proxy);
-      if (!request) {
-        throw new Error("Provider.fetch did not invoke any methods");
-      }
-
-      promises[key] = promise;
-      requests[key] = request;
-    }
-
-    return { promises, requests } as ResourceResult<ShapeFromDefinition<T>>;
-  }
-}
-
-export abstract class ClientProvider extends RepoProvider {
-  replay(
-    requests: Record<string, ResourceRequestType>,
-  ): Record<string, Promise<unknown>> {
-    const results: Record<string, Promise<unknown>> = {};
-    for (const [key, { method, args }] of Object.entries(requests)) {
-      const func = this[method as keyof this];
-      if (typeof func !== "function") {
-        throw new Error(`ClientProvider has no method "${method}"`);
-      }
-      results[key] = func.apply(this, args);
-    }
-    return results;
-  }
 }

@@ -50,7 +50,6 @@ export interface Database {
     owner: string,
     repo: string,
     path: string,
-    commit: string,
     blob: RepositoryBlobResource,
   ): Promise<void>;
 
@@ -58,13 +57,11 @@ export interface Database {
     owner: string,
     repo: string,
     path: string,
-    commit: string,
   ): Promise<RepositoryBlobResource | null>;
 
   getBlobs(
     owner: string,
     repo: string,
-    commit: string,
   ): Promise<RepositoryBlobsResource | null>;
 
   putBlobs(
@@ -73,20 +70,9 @@ export interface Database {
     blobs: RepositoryBlobsResource,
   ): Promise<void>;
 
-  getHast(
-    owner: string,
-    repo: string,
-    path: string,
-    commit: string,
-  ): Promise<Root | null>;
+  getHast(owner: string, repo: string, path: string): Promise<Root | null>;
 
-  putHast(
-    owner: string,
-    repo: string,
-    path: string,
-    hast: Root,
-    commit: string,
-  ): Promise<void>;
+  putHast(owner: string, repo: string, path: string, hast: Root): Promise<void>;
 
   getQuestions(owner: string, repo: string): Promise<QuestionResource[] | null>;
 

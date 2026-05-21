@@ -4,7 +4,7 @@ import type { RepositoryPathsResource } from "gitdot-api";
 import type { Root } from "hast";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { DatabaseProvider } from "@/provider/database";
+import { LocalProvider } from "@/provider/local";
 import { FolderPathPreview } from "./folder-path-preview";
 import { FolderTree } from "./folder-tree";
 import { FolderViewerProvider } from "./folder-viewer-context";
@@ -19,7 +19,7 @@ export function FolderViewer({
   pinFiles?: boolean;
 }) {
   const { owner, repo } = useParams<{ owner: string; repo: string }>();
-  const db = useMemo(() => new DatabaseProvider(owner, repo), [owner, repo]);
+  const db = useMemo(() => new LocalProvider(owner, repo), [owner, repo]);
 
   const getHast = (p: string): Promise<Root | null> => db.getHast(p);
 

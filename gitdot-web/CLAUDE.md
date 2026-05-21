@@ -49,8 +49,8 @@ For data-heavy pages (e.g. repo browser), we race IndexedDB against the server A
 
 `app/provider/` has two entry points:
 
-- **`app/provider/server.ts`** — server-only. Exports `fetchResources(owner, repo, resources)`, which runs `ApiProvider` to kick off API fetches.
-- **`app/provider/client.ts`** — client-only. Exports `resolveResources(owner, repo, requests, promises)`, which races the server promises against `DatabaseProvider` (IndexedDB) and writes API results back to IDB.
+- **`app/provider/server.ts`** — server-only. Exports `fetchResources(owner, repo, resources)`, which runs `ServerProvider` to kick off API fetches.
+- **`app/provider/local.ts`** — client-only. Exports `LocalProvider` (IndexedDB-backed) which `useResolvePromises` races against the server promises.
 
 ### page.tsx / page.client.tsx and layout.tsx / layout.client.tsx Pattern
 
@@ -123,7 +123,7 @@ The backend can use this header to return only what changed since that SHA — m
 1. page.tsx (server):     fetchResources(owner, repo, defs)    → { requests, promises }
 2. page.client.tsx:       resolveResources(owner, repo, ...)   → races IDB vs API
 3. PageContent:           use(promises.x)                      → renders first non-null result
-4. DatabaseProvider:      writes API result back to IDB        → next visit IDB wins
+4. LocalProvider:         worker writes IDB in background      → next visit IDB wins
 5. Next visit:            IDB wins race; cookie enables incremental server fetch
 ```
 

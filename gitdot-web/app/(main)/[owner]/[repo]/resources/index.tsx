@@ -5,14 +5,12 @@ export type {
   ResourceRequestsType,
 } from "@/provider/types";
 
-import { DatabaseProvider } from "@/provider/database";
+import { LocalProvider } from "@/provider/local";
 import type {
-  ClientProvider,
   ResourcePromisesType,
   ResourceRequestsType,
 } from "@/provider/types";
 import { racePromises } from "@/util";
-import { useRepoContext } from "./context";
 
 export function useResolvePromises<S>(
   owner: string,
@@ -20,24 +18,12 @@ export function useResolvePromises<S>(
   requests: ResourceRequestsType<S>,
   promises: ResourcePromisesType<S>,
 ): ResourcePromisesType<S> {
-  const { provider: memoryProvider } = useRepoContext();
-  const dbProvider = new DatabaseProvider(owner, repo);
-
-  for (const key of Object.keys(requests)) {
-    promises[key as keyof S].then((value) =>
-      dbProvider.write(
-        requests[key as keyof S].method,
-        requests[key as keyof S].args,
-        value,
-      ),
-    );
-  }
-
-  return raceRequests([memoryProvider, dbProvider], requests, promises);
+  const local = new LocalProvider(owner, repo);
+  return raceRequests([local], requests, promises);
 }
 
 function raceRequests<S>(
-  providers: ClientProvider[],
+  providers: LocalProvider[],
   requests: ResourceRequestsType<S>,
   promises: ResourcePromisesType<S>,
 ): ResourcePromisesType<S> {

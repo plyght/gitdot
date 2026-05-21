@@ -7,7 +7,7 @@ import type { JSX } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
 import { openIdb } from "@/db";
-import { DatabaseProvider } from "@/provider/database";
+import { LocalProvider } from "@/provider/local";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import Link from "@/ui/link";
 import { Loading } from "@/ui/loading";
@@ -23,7 +23,7 @@ export function RepoFileDialog({
 }) {
   const { resourcesReady } = useRepoContext();
   const idb = useMemo(() => openIdb(), []);
-  const db = useMemo(() => new DatabaseProvider(owner, repo), [owner, repo]);
+  const db = useMemo(() => new LocalProvider(owner, repo), [owner, repo]);
   const [paths, setPaths] = useState<RepositoryPathsResource | null>(null);
   const [hast, setHast] = useState<Root | null>(null);
   const [open, setOpen] = useState(false);

@@ -110,7 +110,7 @@ async function process({ id, owner, repo }: SyncRequest, port: MessagePort) {
         lang,
         theme: "vitesse-light",
       });
-      return db.putHast(owner, repo, blob.path, hast, blob.commit_sha);
+      return db.putHast(owner, repo, blob.path, hast);
     }),
   );
   console.log(

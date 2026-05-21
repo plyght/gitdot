@@ -21,23 +21,76 @@ import {
   getRepositoryBlob,
   getRepositoryBlobs,
   getRepositoryCommit,
-  listRepositoryCommits,
   getRepositoryPaths,
   listRepositoryCommitFilters,
+  listRepositoryCommits,
 } from "@/dal/repository";
 import { getReview as dalGetReview, listReviews } from "@/dal/review";
-import type { ResourceDefinition } from "./types";
-import { ServerProvider } from "./types";
+import {
+  RepoProvider,
+  type ResourceDefinition,
+  type ResourceRequestType,
+  type ResourceResult,
+  type ShapeFromDefinition,
+} from "./types";
 
 export function fetchResources<T extends ResourceDefinition>(
   owner: string,
   repo: string,
   resources: T,
 ) {
-  return new ApiProvider(owner, repo).fetch(resources);
+  return new ServerProvider(owner, repo).fetch(resources);
 }
 
-export class ApiProvider extends ServerProvider {
+export class ServerProvider extends RepoProvider {
+  fetch<T extends ResourceDefinition>(
+    def: T,
+  ): ResourceResult<ShapeFromDefinition<T>> {
+    const promises: Record<string, Promise<unknown>> = {};
+    const requests: Record<string, ResourceRequestType> = {};
+
+    for (const [key, factory] of Object.entries(def)) {
+      let request: ResourceRequestType | null = null;
+
+      const proxy = new Proxy(this, {
+        get(target, prop: string) {
+          const func = target[prop as keyof typeof target];
+          if (typeof func !== "function") {
+            throw new Error("Provider.fetch should only invoke methods");
+          } else if (request) {
+            throw new Error(
+              "Provider.fetch should only invoke a single method",
+            );
+          }
+
+          return (...args: unknown[]) => {
+            request = { method: prop, args };
+            return func.apply(target, args);
+          };
+        },
+      });
+
+      const promise = factory(proxy);
+      if (!request) {
+        throw new Error("Provider.fetch did not invoke any methods");
+      }
+
+      promises[key] = promise;
+      requests[key] = request;
+    }
+
+    return { promises, requests } as ResourceResult<ShapeFromDefinition<T>>;
+  }
+
+  async getPaths(): Promise<RepositoryPathsResource | null> {
+    return await getRepositoryPaths(this.owner, this.repo);
+  }
+
+  async getCommits(): Promise<RepositoryCommitResource[] | null> {
+    const result = await listRepositoryCommits(this.owner, this.repo);
+    return result?.data ?? null;
+  }
+
   async getBlob(
     path: string,
     ref?: string,
@@ -54,15 +107,6 @@ export class ApiProvider extends ServerProvider {
 
   async getCommit(sha: string): Promise<RepositoryCommitResource | null> {
     return await getRepositoryCommit(this.owner, this.repo, sha);
-  }
-
-  async getPaths(): Promise<RepositoryPathsResource | null> {
-    return await getRepositoryPaths(this.owner, this.repo);
-  }
-
-  async getCommits(): Promise<RepositoryCommitResource[] | null> {
-    const result = await listRepositoryCommits(this.owner, this.repo);
-    return result?.data ?? null;
   }
 
   async getCommitFilters(): Promise<RepositoryCommitFilterResource[] | null> {
