@@ -3,12 +3,14 @@
 import type {
   OrganizationMemberResource,
   OrganizationResource,
+  RepositoryResource,
 } from "gitdot-api";
 import { refresh } from "next/cache";
 import { ApiError } from "@/dal";
 import {
   addOrganizationMember,
   createOrganization,
+  listOrganizationRepositories,
   updateOrganization,
   updateOrganizationMember,
   uploadOrganizationImage,
@@ -140,6 +142,13 @@ export async function updateOrganizationMemberAction(
       error: e instanceof ApiError ? e.message : "Failed to update member",
     };
   }
+}
+
+export async function listOrganizationRepositoriesAction(
+  orgName: string,
+): Promise<RepositoryResource[]> {
+  const result = await listOrganizationRepositories(orgName);
+  return result?.data ?? [];
 }
 
 export async function uploadOrganizationImageAction(

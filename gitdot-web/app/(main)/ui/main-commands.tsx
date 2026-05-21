@@ -101,6 +101,11 @@ export function MainCommands() {
       },
       {
         type: "cmd",
+        label: "repos",
+        execute: () => window.dispatchEvent(new CustomEvent("openRepos")),
+      },
+      {
+        type: "cmd",
         label: "new repo",
         execute: () => window.dispatchEvent(new CustomEvent("openNewRepo")),
       },

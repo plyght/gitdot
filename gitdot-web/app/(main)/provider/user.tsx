@@ -3,7 +3,6 @@
 import type {
   GitHubInstallationResource,
   OrganizationMemberResource,
-  RepositoryResource,
   UserResource,
 } from "gitdot-api";
 import {
@@ -13,16 +12,11 @@ import {
   useEffect,
   useState,
 } from "react";
-import {
-  getCurrentUserAction,
-  listInstallationsAction,
-  listUserRepositoriesAction,
-} from "@/actions";
+import { getCurrentUserAction, listInstallationsAction } from "@/actions";
 import { AuthDialog } from "../ui/auth-dialog";
 
 interface UserContext {
   user: UserResource | null | undefined;
-  repositories: RepositoryResource[] | null | undefined;
   memberships: OrganizationMemberResource[] | null | undefined;
   installations: GitHubInstallationResource[] | null | undefined;
   refreshUser: () => Promise<void>;
@@ -41,9 +35,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserResource | null | undefined>(undefined);
   const [memberships, setMemberships] = useState<
     OrganizationMemberResource[] | null | undefined
-  >(undefined);
-  const [repositories, setRepositories] = useState<
-    RepositoryResource[] | null | undefined
   >(undefined);
   const [installations, setInstallations] = useState<
     GitHubInstallationResource[] | null | undefined
@@ -67,16 +58,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setMemberships(current?.memberships ?? null);
 
     if (!current?.user) {
-      setRepositories(null);
       setInstallations(null);
       return;
     }
 
-    const [repos, installs] = await Promise.all([
-      listUserRepositoriesAction(current.user.name),
-      listInstallationsAction(),
-    ]);
-    setRepositories(repos);
+    const installs = await listInstallationsAction();
     setInstallations(installs);
   }, []);
 
@@ -88,7 +74,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     <UserContext
       value={{
         user,
-        repositories,
         memberships,
         installations,
         refreshUser,
