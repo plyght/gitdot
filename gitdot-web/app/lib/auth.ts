@@ -11,6 +11,7 @@ import {
 } from "gitdot-api";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import { authFetch } from "@/dal/util";
 
 export const GITDOT_AUTH_SERVER_URL =
   process.env.GITDOT_AUTH_SERVER_URL ?? "http://localhost:8082";
@@ -72,7 +73,7 @@ export async function refreshSession(): Promise<{
   if (!refresh_token) return null;
 
   const body: RefreshSessionRequest = { refresh_token };
-  const res = await fetch(`${GITDOT_AUTH_SERVER_URL}/auth/refresh`, {
+  const res = await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -102,7 +103,7 @@ export async function updateSession(_request: NextRequest) {
 
 export async function sendAuthEmail(email: string) {
   const body: SendAuthEmailRequest = { email };
-  await fetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/send`, {
+  await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/send`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -111,7 +112,7 @@ export async function sendAuthEmail(email: string) {
 
 export async function verifyAuthCode(code: string) {
   const body: VerifyAuthCodeRequest = { code };
-  const res = await fetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/verify`, {
+  const res = await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/verify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -131,7 +132,7 @@ export async function verifyAuthCode(code: string) {
 // --- GitHub OAuth ---
 
 export async function getGitHubRedirectUrl(): Promise<string | null> {
-  const res = await fetch(`${GITDOT_AUTH_SERVER_URL}/auth/github/redirect`);
+  const res = await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/github/redirect`);
   if (!res.ok) return null;
   const data = GitHubAuthRedirectResource.parse(await res.json());
   return data.authorize_url;
@@ -139,11 +140,14 @@ export async function getGitHubRedirectUrl(): Promise<string | null> {
 
 export async function exchangeGitHubCode(code: string, state: string) {
   const body: ExchangeGitHubCodeRequest = { code, state };
-  const res = await fetch(`${GITDOT_AUTH_SERVER_URL}/auth/github/exchange`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const res = await authFetch(
+    `${GITDOT_AUTH_SERVER_URL}/auth/github/exchange`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
 
   if (!res.ok) return null;
 
@@ -165,7 +169,7 @@ export async function logout() {
 
   if (refresh_token && access_token) {
     const body: LogoutRequest = { refresh_token };
-    await fetch(`${GITDOT_AUTH_SERVER_URL}/auth/logout`, {
+    await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
