@@ -95,6 +95,36 @@
 }
 
 .dark {
+  --background: oklch(0.205 0 0); /* #1a1a1a */
+  --foreground: oklch(0.96 0 0);
+  --popover: oklch(0.245 0 0);
+  --popover-foreground: oklch(0.96 0 0);
+  --primary: oklch(0.929 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.275 0 0);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.275 0 0);
+  --muted-foreground: oklch(0.704 0 0);
+  --accent: oklch(0.275 0 0);
+  --accent-foreground: oklch(0.96 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.551 0 0);
+  --sidebar: oklch(0.205 0 0); /* matches background */
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-primary: oklch(0.245 0 0);
+  --sidebar-primary-foreground: oklch(0.96 0 0);
+  --sidebar-accent: oklch(0.275 0 0);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.551 0 0);
+  --diff-red: oklch(0.22 0.04 17.38);
+  --diff-green: oklch(0.22 0.04 155.826);
+  --diff-orange: oklch(0.25 0.05 62);
+  --upvote: oklch(72.75% 0.198 51.769);
+  --downvote: oklch(0.929 0.013 255.508);
+  --vote: oklch(0.504 0.02 256.788);
   --commit-grid-empty: oklch(26.9% 0 0);
   --commit-grid-low: oklch(39.3% 0.095 152.535);
   --commit-grid-med: oklch(52.7% 0.154 150.069);
@@ -105,25 +135,6 @@
 .blog-root {
   background-color: var(--background);
   color: var(--foreground);
-}
-
-.dark .blog-root {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
 }
 
 /* OverlayScrollbars custom theme — thin dark handle */
@@ -138,6 +149,12 @@
   --os-handle-bg: rgba(0, 0, 0, 0.3);
   --os-handle-bg-hover: rgba(0, 0, 0, 0.45);
   --os-handle-bg-active: rgba(0, 0, 0, 0.6);
+}
+
+.dark .os-theme-gitdot.os-scrollbar {
+  --os-handle-bg: rgba(255, 255, 255, 0.2);
+  --os-handle-bg-hover: rgba(255, 255, 255, 0.3);
+  --os-handle-bg-active: rgba(255, 255, 255, 0.4);
 }
 
 @layer base {
