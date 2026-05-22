@@ -1,7 +1,7 @@
 import { League_Spartan } from "next/font/google";
 import Image from "next/image";
+import { SubscribeButton } from "@/(main)/ui/subscribe-button";
 import Link from "@/ui/link";
-import { SubscribeButton } from "./ui/subscribe-button";
 
 const league_spartan = League_Spartan({
   subsets: ["latin"],
@@ -11,7 +11,7 @@ const league_spartan = League_Spartan({
 export default function Home() {
   return (
     <div
-      className={`${league_spartan.className} blog-root min-h-screen grid place-items-center`}
+      className={`${league_spartan.className} blog-root h-full overflow-y-auto grid place-items-start sm:place-items-center`}
     >
       <div className={`w-full max-w-160 px-4 sm:px-8 py-4`}>
         <div className="mb-4">
