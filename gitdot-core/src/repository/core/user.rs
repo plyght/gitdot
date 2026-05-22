@@ -8,6 +8,7 @@ use crate::{
     dto::Cursor,
     error::DatabaseError,
     model::{AuthProvider, Repository, User},
+    util::user::DEFAULT_USER_README,
 };
 
 #[derive(FromRow)]
@@ -88,8 +89,8 @@ impl UserRepository for UserRepositoryImpl {
         let name = format!("user_{suffix}");
         let user = sqlx::query_as::<_, User>(
             r#"
-            INSERT INTO core.users (email, name, is_email_verified, provider)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO core.users (email, name, is_email_verified, provider, readme)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *
             "#,
         )
@@ -97,6 +98,7 @@ impl UserRepository for UserRepositoryImpl {
         .bind(name)
         .bind(is_email_verified)
         .bind(provider)
+        .bind(DEFAULT_USER_README)
         .fetch_one(&self.pool)
         .await?;
 

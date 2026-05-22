@@ -190,7 +190,8 @@ function CodeForm({ onCancel }: { onCancel: () => void }) {
       } else {
         await refreshUser();
         if (result.is_new) {
-          router.push(`/${result.username}`);
+          router.push("/onboarding");
+          return;
         }
         onCancel();
       }

@@ -103,7 +103,9 @@ function VerifyCodeForm({ redirect }: { redirect?: string }) {
 
   useEffect(() => {
     if (state && !("error" in state)) {
-      router.push(redirect ?? `/${state.username}`);
+      router.push(
+        state.is_new ? "/onboarding" : (redirect ?? `/${state.username}`),
+      );
     }
   }, [state, redirect, router]);
 

@@ -41,5 +41,5 @@ export async function GET(request: NextRequest) {
     return;
   }
 
-  redirect(`/${result.username}`);
+  redirect(result.is_new ? "/onboarding" : `/${result.username}`);
 }

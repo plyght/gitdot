@@ -20,6 +20,7 @@ import {
   uploadUserImage,
 } from "@/dal";
 import {
+  type AuthSignInResult,
   getGitHubRedirectUrl,
   logout,
   sendAuthEmail,
@@ -48,9 +49,7 @@ export async function sendCode(
   return { success: true };
 }
 
-export type VerifyCodeResult =
-  | { is_new: boolean; username: string }
-  | { error: string };
+export type VerifyCodeResult = AuthSignInResult | { error: string };
 
 export async function verifyCode(
   _prev: VerifyCodeResult | null,
@@ -60,7 +59,7 @@ export async function verifyCode(
   const result = await verifyAuthCode(code);
   if (!result) return { error: "Invalid or expired code" };
 
-  return { is_new: result.is_new, username: result.username };
+  return result;
 }
 
 export type LoginWithGithubResult = { success: true } | { error: string };

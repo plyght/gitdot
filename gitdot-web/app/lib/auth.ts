@@ -101,6 +101,11 @@ export async function updateSession(_request: NextRequest) {
 
 // --- Email auth ---
 
+export type AuthSignInResult = {
+  is_new: boolean;
+  username: string;
+};
+
 export async function sendAuthEmail(email: string) {
   const body: SendAuthEmailRequest = { email };
   await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/send`, {
@@ -110,7 +115,9 @@ export async function sendAuthEmail(email: string) {
   });
 }
 
-export async function verifyAuthCode(code: string) {
+export async function verifyAuthCode(
+  code: string,
+): Promise<AuthSignInResult | null> {
   const body: VerifyAuthCodeRequest = { code };
   const res = await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/verify`, {
     method: "POST",
@@ -138,7 +145,10 @@ export async function getGitHubRedirectUrl(): Promise<string | null> {
   return data.authorize_url;
 }
 
-export async function exchangeGitHubCode(code: string, state: string) {
+export async function exchangeGitHubCode(
+  code: string,
+  state: string,
+): Promise<AuthSignInResult | null> {
   const body: ExchangeGitHubCodeRequest = { code, state };
   const res = await authFetch(
     `${GITDOT_AUTH_SERVER_URL}/auth/github/exchange`,

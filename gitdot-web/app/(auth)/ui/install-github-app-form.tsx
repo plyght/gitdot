@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { getGithubAppInstallUrlAction } from "@/actions";
 
-export function GithubPageClient({ username }: { username: string }) {
+export default function InstallGithubAppForm({
+  username,
+}: {
+  username: string;
+}) {
   const [visible, setVisible] = useState(false);
   const [isInstalling, startInstall] = useTransition();
   const router = useRouter();
@@ -31,9 +35,13 @@ export function GithubPageClient({ username }: { username: string }) {
       >
         <p className="pb-2">Connect GitHub.</p>
         <p className="text-muted-foreground leading-relaxed">
-          There are two ways to migrate repositories:
+          Import your profile, commit history, and repositories. All code and
+          commit history is preserved; private repos stay private.
         </p>
-        <ul className="text-muted-foreground pb-2 leading-relaxed list-disc pl-4 flex flex-col gap-0">
+        <p className="pt-2 text-muted-foreground leading-relaxed">
+          There are two ways to migrate:
+        </p>
+        <ul className="text-muted-foreground leading-relaxed list-disc pl-4 flex flex-col gap-0">
           <li>
             <span className="text-foreground">Read-only:</span> a one-way sync.
             New commits on GitHub are replicated to gitdot.
@@ -43,7 +51,7 @@ export function GithubPageClient({ username }: { username: string }) {
             migration to a fully functioning gitdot repository.
           </li>
         </ul>
-        <p className="text-muted-foreground pb-4 leading-relaxed">
+        <p className="pt-2 pb-4 text-muted-foreground leading-relaxed">
           Read-only repositories can be promoted to read-write at any time.
         </p>
         <p className="text-right">
@@ -53,13 +61,13 @@ export function GithubPageClient({ username }: { username: string }) {
             disabled={isInstalling}
             className="cursor-pointer underline text-foreground decoration-current transition-colors disabled:cursor-not-allowed"
           >
-            Migrate
+            Connect
           </button>
           <span className="text-muted-foreground mx-1">or</span>
           <button
             type="button"
             onClick={() => router.push(`/${username}`)}
-            className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+            className="cursor-pointer underline text-muted-foreground decoration-current hover:text-foreground transition-colors"
           >
             skip
           </button>
