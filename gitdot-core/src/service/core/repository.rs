@@ -96,12 +96,9 @@ pub trait RepositoryService: Send + Sync + 'static {
         request: ListRepositoryCommitsRequest,
     ) -> Result<Page<CommitResponse>, RepositoryError>;
 
-    async fn list_latest_repositories(&self)
-    -> Result<Vec<RepositoryResponse>, RepositoryError>;
+    async fn list_latest_repositories(&self) -> Result<Vec<RepositoryResponse>, RepositoryError>;
 
-    async fn list_trending_repositories(
-        &self,
-    ) -> Result<Vec<RepositoryResponse>, RepositoryError>;
+    async fn list_trending_repositories(&self) -> Result<Vec<RepositoryResponse>, RepositoryError>;
 
     async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError>;
 
@@ -532,9 +529,7 @@ where
         })
     }
 
-    async fn list_latest_repositories(
-        &self,
-    ) -> Result<Vec<RepositoryResponse>, RepositoryError> {
+    async fn list_latest_repositories(&self) -> Result<Vec<RepositoryResponse>, RepositoryError> {
         const LATEST_REPOSITORIES_LIMIT: i64 = 100;
 
         let repositories = self
@@ -548,9 +543,7 @@ where
             .collect())
     }
 
-    async fn list_trending_repositories(
-        &self,
-    ) -> Result<Vec<RepositoryResponse>, RepositoryError> {
+    async fn list_trending_repositories(&self) -> Result<Vec<RepositoryResponse>, RepositoryError> {
         const TRENDING_REPOSITORIES_LIMIT: i64 = 100;
 
         let repositories = self
