@@ -5,7 +5,7 @@ use crate::{
     model::ClientPerformance,
 };
 
-const CLIENT_PERFORMANCE_TABLE: &str = "gitdot.client_performance";
+const CLIENT_PERFORMANCE_TABLE: &str = "client_performance";
 
 #[async_trait]
 pub trait MetricsService: Send + Sync + 'static {
