@@ -38,7 +38,7 @@ pub fn create_auth_router(state: AppState) -> Router<AppState> {
         .route("/auth/refresh", post(refresh_session))
         .route("/auth/logout", post(logout))
         .route_layer(middleware::from_fn_with_state(
-            state.vercel_oidc,
+            state.vercel_oidc_config,
             verify_vercel_oidc,
         ));
 

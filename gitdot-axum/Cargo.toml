@@ -9,3 +9,4 @@ gitdot-core = { workspace = true }
 jsonwebtoken = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
+uuid = { workspace = true }

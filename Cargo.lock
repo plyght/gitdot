@@ -2471,6 +2471,7 @@ dependencies = [
  "jsonwebtoken",
  "serde",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
