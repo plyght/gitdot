@@ -90,7 +90,7 @@ export default function Page() {
     <div className="min-h-screen flex items-center justify-center pb-[10vh]">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col text-sm w-sm transition-opacity duration-1000"
+        className="flex flex-col text-sm w-lg transition-opacity duration-1000"
         style={{ opacity: visible ? 1 : 0 }}
         noValidate
       >
