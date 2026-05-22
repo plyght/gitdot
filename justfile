@@ -201,6 +201,24 @@ clickhouse-logs:
 clickhouse-cli:
     docker exec -it {{CLICKHOUSE_CONTAINER}} clickhouse-client --database gitdot --user default --password clickhouse
 
+# Apply ClickHouse up-migrations to the local container
+clickhouse-migrate-up:
+    #!/usr/bin/env bash
+    set -e
+    for f in gitdot-core/migrations/clickhouse/*.up.sql; do
+        echo "Applying $(basename "$f")..."
+        docker exec -i {{CLICKHOUSE_CONTAINER}} clickhouse-client --user default --password clickhouse --multiquery < "$f"
+    done
+
+# Roll back ClickHouse migrations in reverse order (DANGER: drops data)
+clickhouse-migrate-down:
+    #!/usr/bin/env bash
+    set -e
+    for f in $(ls -r gitdot-core/migrations/clickhouse/*.down.sql); do
+        echo "Rolling back $(basename "$f")..."
+        docker exec -i {{CLICKHOUSE_CONTAINER}} clickhouse-client --user default --password clickhouse --multiquery < "$f"
+    done
+
 # ── Dev (run services) ──────────────────────────────────────────────────────
 
 # Start frontend, backend, and s2-server in a tmux session
