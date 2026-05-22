@@ -4,7 +4,6 @@ export * from "./auth";
 export * from "./build";
 export * from "./migration";
 export * from "./organization";
-export * from "./otel";
 export * from "./question";
 export * from "./repository";
 export * from "./review";

@@ -1,104 +1,64 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { onCLS, onFCP, onINP, onTTFB } from "web-vitals";
-import { createSpanAction } from "@/actions/otel";
+import type { WebVitalEvent } from "gitdot-api";
+import { useParams, usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
+import type { Metric } from "web-vitals";
+import { onCLS, onFCP, onINP, onLCP, onTTFB } from "web-vitals";
 
-interface MetricsContext {
-  FCP: number | null;
-  TTFB: number | null;
-  CLS: number | null;
-  INP: number | null;
+import { inferRouteTemplate } from "@/lib/route-template";
 
-  // note: we have multiple navigations here as it's possible for a navigation to be cancelled
-  // in which case we append both entries, but only report the latency to the one resolved
-  navigations: NavigationEvent[];
-  startNavigation: (path: string) => void;
-}
-
-const MetricsContext = createContext<MetricsContext | null>(null);
-
-interface NavigationEvent {
-  path: string;
-  start: number;
-}
+const BEACON_URL = "/api/metrics/web-vital";
 
 export function MetricsProvider({ children }: { children: React.ReactNode }) {
-  const [navigations, setNavigations] = useState<NavigationEvent[]>([]);
-  const [FCP, setFCP] = useState<number | null>(null);
-  const [TTFB, setTTFB] = useState<number | null>(null);
-  const [CLS, setCLS] = useState<number | null>(null);
-  const [INP, setINP] = useState<number | null>(null);
-
-  const fcpLoaded = useRef(false);
   const pathname = usePathname();
+  const params = useParams();
+
+  const queueRef = useRef<WebVitalEvent[]>([]);
+  const contextRef = useRef({ pathname, params });
+  contextRef.current = { pathname, params };
 
   useEffect(() => {
-    onFCP((metric) => setFCP((prev) => (prev === null ? metric.value : prev)));
-    onTTFB((metric) =>
-      setTTFB((prev) => (prev === null ? metric.value : prev)),
-    );
-    onCLS((metric) => setCLS(metric.value), { reportAllChanges: true });
-    onINP((metric) => setINP(metric.value), { reportAllChanges: true });
+    const push = (m: Metric) => {
+      const { pathname, params } = contextRef.current;
+      queueRef.current.push({
+        event_time: Date.now(),
+        name: m.name,
+        value: m.value,
+        rating: m.rating,
+        metric_id: m.id,
+        navigation_type: m.navigationType,
+        route: inferRouteTemplate(pathname, params),
+        path: pathname,
+      });
+    };
+
+    onFCP(push);
+    onTTFB(push);
+    onLCP(push);
+    onCLS(push, { reportAllChanges: true });
+    onINP(push, { reportAllChanges: true });
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intended
   useEffect(() => {
-    if (FCP === null || fcpLoaded.current) return;
+    const flush = () => {
+      if (queueRef.current.length === 0) return;
+      const body = JSON.stringify({ events: queueRef.current.splice(0) });
+      navigator.sendBeacon(
+        BEACON_URL,
+        new Blob([body], { type: "application/json" }),
+      );
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, []);
 
-    fcpLoaded.current = true;
-    createSpanAction(
-      pathname,
-      Math.round(performance.timeOrigin),
-      Math.round(performance.timeOrigin + FCP),
-    );
-  }, [FCP]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intended
-  useEffect(() => {
-    if (!pathname) return;
-
-    for (const navigation of navigations) {
-      if (navigation.path === pathname) {
-        const navigationEnd = performance.now();
-        const fcp = Math.round(navigationEnd - navigation.start);
-        setFCP(fcp);
-        setTTFB(null);
-
-        fcpLoaded.current = true;
-        createSpanAction(
-          navigation.path,
-          Math.round(performance.timeOrigin + navigation.start),
-          Math.round(performance.timeOrigin + navigationEnd),
-        );
-        setNavigations([]);
-      }
-    }
-  }, [pathname]);
-
-  return (
-    <MetricsContext
-      value={{
-        FCP,
-        TTFB,
-        CLS,
-        INP,
-        navigations,
-        startNavigation: (path: string) => {
-          setNavigations([...navigations, { path, start: performance.now() }]);
-        },
-      }}
-    >
-      {children}
-    </MetricsContext>
-  );
-}
-
-export function useMetricsContext(): MetricsContext {
-  const context = useContext(MetricsContext);
-  if (!context) {
-    throw new Error("useMetricsContext must be used within an MetricsProvider");
-  }
-  return context;
+  return <>{children}</>;
 }

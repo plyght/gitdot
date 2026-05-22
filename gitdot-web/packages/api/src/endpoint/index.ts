@@ -1,9 +1,9 @@
 export * from "./auth";
 export * from "./build";
 export type { Endpoint } from "./endpoint";
+export * from "./metrics";
 export * from "./migration";
 export * from "./organization";
-export * from "./otel";
 export * from "./question";
 export * from "./repository";
 export * from "./review";
