@@ -50,30 +50,30 @@ export default function MarketingLayout({
             </Link>
           );
         })}
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new Event("toggleAuthDialog"))}
-          className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          /signup
-        </button>
       </div>
 
-      <div className="px-3 py-2 flex flex-col gap-4 h-full overflow-y-auto scrollbar-none">
+      <div className="px-3 py-2 flex flex-col h-full overflow-y-auto scrollbar-none">
         {children}
       </div>
 
-      <div className="justify-self-end pr-4 pt-1 flex flex-col items-end">
+      <div className="justify-self-end pr-4 pt-1 flex flex-col items-start">
         <Image
           className="dark:invert"
           src="/gitdot-long-black.svg"
           alt="gitdot logo"
-          width={100}
-          height={48}
+          width={120}
+          height={57}
         />
-        <span className="text-xs font-mono text-muted-foreground">
-          A home for great code.
+        <span className="mt-1 text-xs font-mono text-muted-foreground">
+          Build something great.
         </span>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event("toggleAuthDialog"))}
+          className="text-xs font-mono underline text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          sign up
+        </button>
       </div>
     </div>
   );

@@ -127,7 +127,7 @@ export default function Home() {
   const [tab, setTab] = useState<FeedTab>("trending");
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
       <div className="flex items-baseline gap-4">
         {(Object.keys(FEEDS) as FeedTab[]).map((key) => (
           <button
@@ -173,6 +173,6 @@ export default function Home() {
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }
