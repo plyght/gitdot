@@ -9,8 +9,9 @@ use axum::{
     Router, middleware,
     routing::{get, post},
 };
+use gitdot_axum::verify_vercel_oidc;
 
-use crate::{app::AppState, middleware::verify_vercel_oidc};
+use crate::app::AppState;
 
 use device::{
     authorize_device::authorize_device, create_device_code::create_device_code,
@@ -36,7 +37,10 @@ pub fn create_auth_router(state: AppState) -> Router<AppState> {
         .route("/auth/slack/link", post(link_slack_account))
         .route("/auth/refresh", post(refresh_session))
         .route("/auth/logout", post(logout))
-        .route_layer(middleware::from_fn_with_state(state, verify_vercel_oidc));
+        .route_layer(middleware::from_fn_with_state(
+            state.vercel_oidc,
+            verify_vercel_oidc,
+        ));
 
     Router::new().merge(cli_routes).merge(web_routes)
 }

@@ -23,7 +23,9 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use crate::{handler::create_auth_router, middleware::log_request};
+use gitdot_axum::log_request;
+
+use crate::handler::create_auth_router;
 
 pub use error::AppError;
 pub use response::AppResponse;

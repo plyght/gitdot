@@ -23,14 +23,13 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use crate::{
-    handler::{
-        create_build_router, create_git_http_router, create_internal_router,
-        create_migration_router, create_organization_router, create_otel_router,
-        create_question_router, create_repository_router, create_review_router,
-        create_runner_router, create_task_router, create_user_router, create_webhook_router,
-    },
-    middleware::log_request,
+use gitdot_axum::log_request;
+
+use crate::handler::{
+    create_build_router, create_git_http_router, create_internal_router, create_migration_router,
+    create_organization_router, create_otel_router, create_question_router,
+    create_repository_router, create_review_router, create_runner_router, create_task_router,
+    create_user_router, create_webhook_router,
 };
 
 pub use error::AppError;

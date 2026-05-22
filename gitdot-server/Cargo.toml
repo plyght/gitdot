@@ -26,6 +26,7 @@ flate2 = { workspace = true }
 futures = { workspace = true }
 git2 = { workspace = true }
 gitdot-api = { workspace = true }
+gitdot-axum = { workspace = true }
 gitdot-core = { workspace = true }
 http = { workspace = true }
 image = { workspace = true }

@@ -2441,6 +2441,7 @@ dependencies = [
  "dotenvy",
  "figment",
  "gitdot-api",
+ "gitdot-axum",
  "gitdot-core",
  "http 1.4.0",
  "jsonwebtoken",
@@ -2459,6 +2460,17 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "gitdot-axum"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "gitdot-core",
+ "jsonwebtoken",
+ "serde",
+ "tracing",
 ]
 
 [[package]]
@@ -2590,6 +2602,7 @@ dependencies = [
  "futures",
  "git2",
  "gitdot-api",
+ "gitdot-axum",
  "gitdot-core",
  "http 1.4.0",
  "image",

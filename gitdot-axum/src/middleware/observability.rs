@@ -6,15 +6,6 @@ use axum::{
     response::Response,
 };
 
-/// Emits one structured log event per request under target
-/// `gitdot_auth::request`.
-///
-/// Fields: `method`, `route` (matched pattern, not rendered URL),
-/// `status`, `status_class`, `duration_ms`.
-///
-/// Designed to feed Cloud Logging log-based metrics for the
-/// per-endpoint observability dashboard. Human-readable per-request
-/// logging is covered by `tower_http::TraceLayer` at `tower_http=debug`.
 pub async fn log_request(request: Request, next: Next) -> Response {
     let method = request.method().clone();
     let route = request
@@ -37,7 +28,7 @@ pub async fn log_request(request: Request, next: Next) -> Response {
     let duration_ms = start.elapsed().as_millis() as u64;
 
     tracing::info!(
-        target: "gitdot_auth::request",
+        target: "gitdot::request",
         method = %method,
         route = %route,
         status = status,

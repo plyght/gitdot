@@ -1,12 +1,12 @@
 use axum::{Json, extract::State, http::StatusCode};
 
 use gitdot_api::{endpoint::auth::github::exchange as api, resource::auth::AuthTokensResource};
+use gitdot_axum::{ClientIp, UserAgent};
 use gitdot_core::dto::ExchangeGitHubCodeRequest;
 
 use crate::{
     app::{AppError, AppResponse, AppState},
     dto::IntoApi,
-    extract::{ClientIp, UserAgent},
 };
 
 pub async fn exchange_github_code(

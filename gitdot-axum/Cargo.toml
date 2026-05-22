@@ -1,0 +1,11 @@
+[package]
+name = "gitdot-axum"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+axum = { workspace = true }
+gitdot-core = { workspace = true }
+jsonwebtoken = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }

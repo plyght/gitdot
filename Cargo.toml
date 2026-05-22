@@ -4,6 +4,7 @@ members = [
   "gitdot-api",
   "gitdot-api/derive",
   "gitdot-auth",
+  "gitdot-axum",
   "gitdot-cli",
   "gitdot-config",
   "gitdot-consumer",
@@ -53,6 +54,7 @@ flate2 = "1.1"
 futures = "0.3.32"
 git2 = "0.20.3"
 gitdot-api = { path = "gitdot-api", version = "0.1.0" }
+gitdot-axum = { path = "gitdot-axum" }
 gitdot-config = { path = "gitdot-config", version = "0.1.0" }
 gitdot-core = { path = "gitdot-core" }
 gitdot-core-derive = { path = "gitdot-core/derive" }

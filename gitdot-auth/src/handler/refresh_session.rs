@@ -1,12 +1,12 @@
 use axum::{Json, extract::State, http::StatusCode};
 
 use gitdot_api::{endpoint::auth::refresh as api, resource::auth::AuthTokensResource};
+use gitdot_axum::{ClientIp, UserAgent};
 use gitdot_core::dto::RefreshSessionRequest;
 
 use crate::{
     app::{AppError, AppResponse, AppState},
     dto::IntoApi,
-    extract::{ClientIp, UserAgent},
 };
 
 pub async fn refresh_session(
