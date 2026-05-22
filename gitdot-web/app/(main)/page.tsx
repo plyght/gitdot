@@ -1,119 +1,214 @@
-import { League_Spartan } from "next/font/google";
-import Image from "next/image";
-import { SubscribeButton } from "@/(main)/ui/subscribe-button";
-import Link from "@/ui/link";
+"use client";
 
-const league_spartan = League_Spartan({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
+import Image from "next/image";
+import { useState } from "react";
+import Link from "@/ui/link";
+import { cn } from "@/util";
+
+type FeedTab = "trending" | "new";
+
+type FeedRepo = {
+  owner: string;
+  name: string;
+  description?: string;
+  stars: number;
+};
+
+const TRENDING: FeedRepo[] = [
+  {
+    owner: "rust-lang",
+    name: "rust",
+    description:
+      "Empowering everyone to build reliable and efficient software.",
+    stars: 92410,
+  },
+  {
+    owner: "tokio-rs",
+    name: "tokio",
+    description:
+      "A runtime for writing reliable asynchronous applications with Rust.",
+    stars: 26312,
+  },
+  {
+    owner: "vercel",
+    name: "next.js",
+    description: "The React Framework for the Web.",
+    stars: 121008,
+  },
+  {
+    owner: "biomejs",
+    name: "biome",
+    description:
+      "A toolchain for web projects, aimed to provide functionalities to maintain them.",
+    stars: 15820,
+  },
+  {
+    owner: "supabase",
+    name: "supabase",
+    description: "The open source Firebase alternative.",
+    stars: 70234,
+  },
+  {
+    owner: "denoland",
+    name: "deno",
+    description: "A modern runtime for JavaScript and TypeScript.",
+    stars: 94120,
+  },
+  {
+    owner: "tailwindlabs",
+    name: "tailwindcss",
+    description: "A utility-first CSS framework for rapid UI development.",
+    stars: 80211,
+  },
+  {
+    owner: "withastro",
+    name: "astro",
+    description: "The web framework for content-driven websites.",
+    stars: 45102,
+  },
+];
+
+const NEW: FeedRepo[] = [
+  {
+    owner: "baepaul",
+    name: "tinypost",
+    description: "A minimal, single-binary blog engine written in Rust.",
+    stars: 12,
+  },
+  {
+    owner: "mikkelk",
+    name: "claude-cookbook",
+    description: "Patterns and snippets for shipping with the Claude API.",
+    stars: 38,
+  },
+  {
+    owner: "halfwit",
+    name: "weft",
+    description: "A tiny terminal multiplexer for people who only need splits.",
+    stars: 4,
+  },
+  {
+    owner: "ninabit",
+    name: "lila",
+    description: "Visual diffing for SQL migrations.",
+    stars: 21,
+  },
+  {
+    owner: "ptr-collective",
+    name: "kettle",
+    description: "Postgres connection pooler written in Zig.",
+    stars: 0,
+  },
+  {
+    owner: "okta-okta",
+    name: "draft",
+    description: "Local-first writing tool with end-to-end encryption.",
+    stars: 7,
+  },
+  {
+    owner: "softserve",
+    name: "ferment",
+    description: "A pull-request bot that drafts changelogs from commits.",
+    stars: 53,
+  },
+  {
+    owner: "anonyhalibut",
+    name: "kelp",
+    description: "An opinionated CI runner that won't bill you for re-runs.",
+    stars: 2,
+  },
+];
+
+const FEEDS: Record<FeedTab, FeedRepo[]> = {
+  trending: TRENDING,
+  new: NEW,
+};
+
+const NAV_LINKS: { label: string; href: string }[] = [
+  { label: "/home", href: "/home" },
+  { label: "/faq", href: "/faq" },
+  { label: "/weeks", href: "/weeks" },
+  { label: "/decisions", href: "/decisions" },
+  { label: "/releases", href: "/releases" },
+  { label: "/company", href: "/company" },
+  { label: "/signup", href: "/signup" },
+  { label: "/terms", href: "/terms" },
+  { label: "/privacy", href: "/privacy" },
+];
 
 export default function Home() {
+  const [tab, setTab] = useState<FeedTab>("trending");
+
   return (
-    <div
-      className={`${league_spartan.className} blog-root h-full overflow-y-auto grid place-items-start sm:place-items-center`}
-    >
-      <div className={`w-full max-w-160 px-4 sm:px-8 py-4`}>
-        <div className="mb-4">
-          <Image
-            className="dark:invert"
-            src="/gitdot-long-black.svg"
-            alt="gitdot logo"
-            width={120}
-            height={57}
-            preload
-          />
-        </div>
-        <div className="mb-4">
-          <p className="font-semibold text-lg">1. What is gitdot?</p>
-          <p>
-            A better GitHub. <br />
-            An opinionated tool for quality open-source software.
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="font-semibold text-lg">2. Who is gitdot for?</p>
-          <p>
-            Open-source maintainers. <br />
-            People who see code as more than a means to an end, but as a craft
-            to perfect. The software they build serves the world &mdash; but the
-            software they use doesn&apos;t serve them.
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="font-semibold text-lg">
-            3. What problem does gitdot solve?
-          </p>
-          <p>
-            A monopoly. <br />
-            Open-source software only has one competitive platform: GitHub. And
-            while GitHub <i>is</i> an impressive product, we also know that a
-            lack of competition enables degradation over time. There&apos;s a
-            few pain points we&apos;re keenly aware of (e.g., CI) and make it
-            our mission to build a better open-source alternative.
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="font-semibold text-lg">
-            4. What features will gitdot have?
-          </p>
-          <ul className="mb-2">
-            <li>• A hyper-performant Git server written in Rust.</li>
-            <li>
-              • A sane CI/CD platform that is secure by design and locally
-              testable.
-            </li>
-            <li>
-              • An issue tracker designed to serve the maintainer, not the
-              submitter.
-            </li>
-          </ul>
-          <p>
-            We will not have feature parity, but from the get go, our product
-            will be reliable. <br />
-            It will stink of quality &mdash; and deliver a superior experience
-            for a handful of customers.
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="font-semibold text-lg">
-            5. What features will gitdot not have?
-          </p>
-          <ul className="mb-2">
-            <li>• No AI copilot.</li>
-            <li>• No vanity stars.</li>
-            <li>• No free private repos.</li>
-          </ul>
-          We view AI as an implementation detail, not as a feature. We also
-          question some of the paradigms present in open-source and ask whether
-          features like stars truly serve the maintainer. And finally, public
-          repos will be free, but private repos will be paid for.
-          <br />
-        </div>
-        <div className="mb-4">
-          <p className="font-semibold text-lg">6. When will gitdot be ready?</p>
-          <p>
-            Jun 1st, 2026. <br />
-            Every week, we will publish a developer log to detail not only our
-            progress, but our thinking in full. These will be strikingly
-            forthright; we want the <i>why</i> behind our product decisions to
-            be critiqued and understood.
-          </p>
+    <div className="grid grid-cols-[1fr_min(100%,48rem)_1fr] h-full overflow-y-auto scrollbar-none">
+      <div />
+
+      <div className="px-3 py-2 flex flex-col gap-4">
+        <div className="flex items-baseline gap-4">
+          {(Object.keys(FEEDS) as FeedTab[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={cn(
+                "text-sm font-mono cursor-pointer transition-colors",
+                key === tab
+                  ? "font-semibold text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {key}
+            </button>
+          ))}
         </div>
 
-        <p>
-          We recognize that we&apos;re making some bold claims here and
-          we&apos;re not so naive as to think this will be easy. Building
-          software is hard &mdash; but it is simply what we love doing.
-        </p>
-        <p>&mdash;baepaul & mikkelk.</p>
+        <div className="flex flex-col gap-2">
+          {FEEDS[tab].map((repo) => (
+            <div key={`${repo.owner}/${repo.name}`} className="flex flex-col">
+              <div className="flex items-baseline justify-between gap-4">
+                <Link
+                  href={`/${repo.owner}/${repo.name}`}
+                  className="text-sm font-medium dark:font-normal underline decoration-transparent hover:decoration-current transition-colors duration-200 truncate"
+                >
+                  <span className="font-normal text-muted-foreground">
+                    {repo.owner}/
+                  </span>
+                  {repo.name}
+                </Link>
+                {repo.stars > 0 && (
+                  <span className="text-xs text-muted-foreground font-mono">
+                    ({repo.stars})
+                  </span>
+                )}
+              </div>
+              {repo.description && (
+                <div className="text-xs text-foreground truncate pb-1">
+                  {repo.description}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
 
-        <div className="pt-3 flex justify-end gap-1">
-          <SubscribeButton />
-          <span>•</span>
-          <Link href="/week" className="underline cursor-pointer h-5">
-            logs
-          </Link>
+      <div className="justify-self-end pr-4 pt-1 flex flex-col items-end">
+        <Image
+          className="dark:invert"
+          src="/gitdot-long-black.svg"
+          alt="gitdot logo"
+          width={100}
+          height={48}
+        />
+        <div className="flex flex-col gap-1 items-end">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
       </div>
     </div>
