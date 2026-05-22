@@ -11,9 +11,11 @@ import {
   type GetRepositoryBlobsRequest,
   type GetRepositoryPathsRequest,
   type GetRepositoryResourcesRequest,
+  ListLatestRepositoriesResponse,
   ListRepositoryCommitFiltersResponse,
   type ListRepositoryCommitsRequest,
   ListRepositoryCommitsResponse,
+  ListTrendingRepositoriesResponse,
   RepositoryBlobDiffsResource,
   RepositoryBlobResource,
   RepositoryBlobsResource,
@@ -72,6 +74,16 @@ export async function listRepositoryCommits(
   const url = `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commits${queryString ? `?${queryString}` : ""}`;
   const response = await authFetch(url);
   return await handleResponse(response, ListRepositoryCommitsResponse);
+}
+
+export async function listLatestRepositories(): Promise<ListLatestRepositoriesResponse | null> {
+  const response = await authFetch(`${GITDOT_SERVER_URL}/repository/latest`);
+  return await handleResponse(response, ListLatestRepositoriesResponse);
+}
+
+export async function listTrendingRepositories(): Promise<ListTrendingRepositoriesResponse | null> {
+  const response = await authFetch(`${GITDOT_SERVER_URL}/repository/trending`);
+  return await handleResponse(response, ListTrendingRepositoriesResponse);
 }
 
 export async function getRepositoryCommit(

@@ -96,6 +96,13 @@ pub trait RepositoryService: Send + Sync + 'static {
         request: ListRepositoryCommitsRequest,
     ) -> Result<Page<CommitResponse>, RepositoryError>;
 
+    async fn list_latest_repositories(&self)
+    -> Result<Vec<RepositoryResponse>, RepositoryError>;
+
+    async fn list_trending_repositories(
+        &self,
+    ) -> Result<Vec<RepositoryResponse>, RepositoryError>;
+
     async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError>;
 
     async fn unstar_repository(
@@ -523,6 +530,38 @@ where
             data: commits.into_iter().map(CommitResponse::from).collect(),
             next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
+    }
+
+    async fn list_latest_repositories(
+        &self,
+    ) -> Result<Vec<RepositoryResponse>, RepositoryError> {
+        const LATEST_REPOSITORIES_LIMIT: i64 = 100;
+
+        let repositories = self
+            .repo_repo
+            .list_latest(LATEST_REPOSITORIES_LIMIT)
+            .await?;
+
+        Ok(repositories
+            .into_iter()
+            .map(RepositoryResponse::from)
+            .collect())
+    }
+
+    async fn list_trending_repositories(
+        &self,
+    ) -> Result<Vec<RepositoryResponse>, RepositoryError> {
+        const TRENDING_REPOSITORIES_LIMIT: i64 = 100;
+
+        let repositories = self
+            .repo_repo
+            .list_trending(TRENDING_REPOSITORIES_LIMIT)
+            .await?;
+
+        Ok(repositories
+            .into_iter()
+            .map(RepositoryResponse::from)
+            .collect())
     }
 
     async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError> {

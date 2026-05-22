@@ -12,6 +12,8 @@ pub mod get_repository_commit;
 pub mod get_repository_commit_diff;
 pub mod get_repository_paths;
 pub mod get_repository_resources;
+pub mod list_latest_repositories;
+pub mod list_trending_repositories;
 pub mod list_repository_commit_filters;
 pub mod list_repository_commits;
 pub mod star_repository;

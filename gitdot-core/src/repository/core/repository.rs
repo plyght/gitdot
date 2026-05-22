@@ -43,6 +43,10 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError>;
 
+    async fn list_latest(&self, limit: i64) -> Result<Vec<Repository>, DatabaseError>;
+
+    async fn list_trending(&self, limit: i64) -> Result<Vec<Repository>, DatabaseError>;
+
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError>;
 
     async fn disable_readonly(
@@ -251,6 +255,52 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         };
 
         Ok((repositories, next_cursor))
+    }
+
+    async fn list_latest(&self, limit: i64) -> Result<Vec<Repository>, DatabaseError> {
+        let repositories = sqlx::query_as::<_, Repository>(
+            r#"
+            SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
+                   FALSE AS user_star
+            FROM core.repositories r
+            LEFT JOIN core.users u
+              ON r.owner_id = u.id AND r.owner_type = 'user'
+            LEFT JOIN core.organizations o
+              ON r.owner_id = o.id AND r.owner_type = 'organization'
+            WHERE r.visibility = 'public'
+            ORDER BY r.created_at DESC, r.id DESC
+            LIMIT $1
+            "#,
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(repositories)
+    }
+
+    async fn list_trending(&self, limit: i64) -> Result<Vec<Repository>, DatabaseError> {
+        let repositories = sqlx::query_as::<_, Repository>(
+            r#"
+            SELECT r.id, r.name, r.owner_id, COALESCE(u.name, o.name) AS owner_name,
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
+                   FALSE AS user_star
+            FROM core.repositories r
+            LEFT JOIN core.users u
+              ON r.owner_id = u.id AND r.owner_type = 'user'
+            LEFT JOIN core.organizations o
+              ON r.owner_id = o.id AND r.owner_type = 'organization'
+            WHERE r.visibility = 'public'
+            ORDER BY r.stars DESC, r.created_at DESC, r.id DESC
+            LIMIT $1
+            "#,
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(repositories)
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError> {
