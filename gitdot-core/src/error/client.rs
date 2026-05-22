@@ -1,3 +1,4 @@
+mod clickhouse;
 mod email;
 mod git;
 mod github;
@@ -9,6 +10,7 @@ mod secret;
 mod slack_bot;
 mod token;
 
+pub use clickhouse::ClickHouseError;
 pub use email::EmailError;
 pub use git::GitError;
 pub use github::GitHubError;
