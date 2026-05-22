@@ -3,14 +3,13 @@ default:
     @just --list
 
 alias b := build-all
-alias l:= lint-all
-alias t:= test-all
+alias l := lint-all
+alias t := test-all
 
 DB_CONTAINER := "gitdot-db"
 KAFKA_CONTAINER := "gitdot-kafka"
 REDIS_CONTAINER := "gitdot-redis"
 CLICKHOUSE_CONTAINER := "gitdot-clickhouse"
-
 
 # ── Install ───────────────────────────────────────────────────────────────────
 
@@ -33,20 +32,31 @@ install:
         echo "Please install Docker: https://docs.docker.com/get-docker/"
         exit 1
     fi
+
     echo "Running pnpm install"
     cd gitdot-web && pnpm install
+
     echo "Running cargo build"
     cd .. && cargo build
+
     echo "Starting local Postgres..."
     just db
+
     echo "Running migrations..."
     just migrate
+
     echo "Starting local Kafka..."
     just kafka
+
     echo "Starting local Redis..."
     just redis
+
     echo "Starting local ClickHouse..."
     just clickhouse
+
+    echo "Running clickhouse migrations..."
+    just clickhouse-migrate-up
+
     echo "Install complete!"
 
 # ── Database ─────────────────────────────────────────────────────────────────
@@ -59,16 +69,16 @@ db:
         echo "Error: Docker is not running."
         exit 1
     fi
-    if docker ps -q -f name={{DB_CONTAINER}} | grep -q .; then
+    if docker ps -q -f name={{ DB_CONTAINER }} | grep -q .; then
         echo "Postgres already running."
-    elif docker ps -aq -f name={{DB_CONTAINER}} | grep -q .; then
-        echo "Starting existing container '{{DB_CONTAINER}}'..."
-        docker start {{DB_CONTAINER}}
+    elif docker ps -aq -f name={{ DB_CONTAINER }} | grep -q .; then
+        echo "Starting existing container '{{ DB_CONTAINER }}'..."
+        docker start {{ DB_CONTAINER }}
         sleep 1
     else
-        echo "Creating Postgres container '{{DB_CONTAINER}}'..."
+        echo "Creating Postgres container '{{ DB_CONTAINER }}'..."
         docker run -d \
-            --name {{DB_CONTAINER}} \
+            --name {{ DB_CONTAINER }} \
             -e POSTGRES_USER=postgres \
             -e POSTGRES_PASSWORD=postgres \
             -e POSTGRES_DB=gitdot \
@@ -80,7 +90,7 @@ db:
 
 # Stop local Postgres container
 db-stop:
-    docker stop {{DB_CONTAINER}}
+    docker stop {{ DB_CONTAINER }}
 
 # ── Kafka ────────────────────────────────────────────────────────────────────
 
@@ -92,16 +102,16 @@ kafka:
         echo "Error: Docker is not running."
         exit 1
     fi
-    if docker ps -q -f name={{KAFKA_CONTAINER}} | grep -q .; then
+    if docker ps -q -f name={{ KAFKA_CONTAINER }} | grep -q .; then
         echo "Kafka already running."
-    elif docker ps -aq -f name={{KAFKA_CONTAINER}} | grep -q .; then
-        echo "Starting existing container '{{KAFKA_CONTAINER}}'..."
-        docker start {{KAFKA_CONTAINER}}
+    elif docker ps -aq -f name={{ KAFKA_CONTAINER }} | grep -q .; then
+        echo "Starting existing container '{{ KAFKA_CONTAINER }}'..."
+        docker start {{ KAFKA_CONTAINER }}
         sleep 1
     else
-        echo "Creating Kafka container '{{KAFKA_CONTAINER}}'..."
+        echo "Creating Kafka container '{{ KAFKA_CONTAINER }}'..."
         docker run -d \
-            --name {{KAFKA_CONTAINER}} \
+            --name {{ KAFKA_CONTAINER }} \
             -e KAFKA_NODE_ID=1 \
             -e KAFKA_PROCESS_ROLES=broker,controller \
             -e KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093 \
@@ -122,7 +132,7 @@ kafka:
 
 # Stop local Kafka container
 kafka-stop:
-    docker stop {{KAFKA_CONTAINER}}
+    docker stop {{ KAFKA_CONTAINER }}
 
 # ── Redis ────────────────────────────────────────────────────────────────────
 
@@ -134,16 +144,16 @@ redis:
         echo "Error: Docker is not running."
         exit 1
     fi
-    if docker ps -q -f name={{REDIS_CONTAINER}} | grep -q .; then
+    if docker ps -q -f name={{ REDIS_CONTAINER }} | grep -q .; then
         echo "Redis already running."
-    elif docker ps -aq -f name={{REDIS_CONTAINER}} | grep -q .; then
-        echo "Starting existing container '{{REDIS_CONTAINER}}'..."
-        docker start {{REDIS_CONTAINER}}
+    elif docker ps -aq -f name={{ REDIS_CONTAINER }} | grep -q .; then
+        echo "Starting existing container '{{ REDIS_CONTAINER }}'..."
+        docker start {{ REDIS_CONTAINER }}
         sleep 1
     else
-        echo "Creating Redis container '{{REDIS_CONTAINER}}'..."
+        echo "Creating Redis container '{{ REDIS_CONTAINER }}'..."
         docker run -d \
-            --name {{REDIS_CONTAINER}} \
+            --name {{ REDIS_CONTAINER }} \
             -p 6379:6379 \
             redis:7-alpine
         echo "Waiting for Redis to be ready..."
@@ -152,11 +162,11 @@ redis:
 
 # Stop local Redis container
 redis-stop:
-    docker stop {{REDIS_CONTAINER}}
+    docker stop {{ REDIS_CONTAINER }}
 
 # Tail Redis logs
 redis-logs:
-    docker logs -f {{REDIS_CONTAINER}}
+    docker logs -f {{ REDIS_CONTAINER }}
 
 # ── ClickHouse ───────────────────────────────────────────────────────────────
 
@@ -168,16 +178,16 @@ clickhouse:
         echo "Error: Docker is not running."
         exit 1
     fi
-    if docker ps -q -f name={{CLICKHOUSE_CONTAINER}} | grep -q .; then
+    if docker ps -q -f name={{ CLICKHOUSE_CONTAINER }} | grep -q .; then
         echo "ClickHouse already running."
-    elif docker ps -aq -f name={{CLICKHOUSE_CONTAINER}} | grep -q .; then
-        echo "Starting existing container '{{CLICKHOUSE_CONTAINER}}'..."
-        docker start {{CLICKHOUSE_CONTAINER}}
+    elif docker ps -aq -f name={{ CLICKHOUSE_CONTAINER }} | grep -q .; then
+        echo "Starting existing container '{{ CLICKHOUSE_CONTAINER }}'..."
+        docker start {{ CLICKHOUSE_CONTAINER }}
         sleep 2
     else
-        echo "Creating ClickHouse container '{{CLICKHOUSE_CONTAINER}}'..."
+        echo "Creating ClickHouse container '{{ CLICKHOUSE_CONTAINER }}'..."
         docker run -d \
-            --name {{CLICKHOUSE_CONTAINER}} \
+            --name {{ CLICKHOUSE_CONTAINER }} \
             -e CLICKHOUSE_DB=gitdot \
             -e CLICKHOUSE_USER=default \
             -e CLICKHOUSE_PASSWORD=clickhouse \
@@ -191,15 +201,15 @@ clickhouse:
 
 # Stop local ClickHouse container
 clickhouse-stop:
-    docker stop {{CLICKHOUSE_CONTAINER}}
+    docker stop {{ CLICKHOUSE_CONTAINER }}
 
 # Tail ClickHouse logs
 clickhouse-logs:
-    docker logs -f {{CLICKHOUSE_CONTAINER}}
+    docker logs -f {{ CLICKHOUSE_CONTAINER }}
 
 # Open a clickhouse-client REPL against the local container
 clickhouse-cli:
-    docker exec -it {{CLICKHOUSE_CONTAINER}} clickhouse-client --database gitdot --user default --password clickhouse
+    docker exec -it {{ CLICKHOUSE_CONTAINER }} clickhouse-client --database gitdot --user default --password clickhouse
 
 # Apply ClickHouse up-migrations to the local container
 clickhouse-migrate-up:
@@ -207,7 +217,7 @@ clickhouse-migrate-up:
     set -e
     for f in gitdot-core/migrations/clickhouse/*.up.sql; do
         echo "Applying $(basename "$f")..."
-        docker exec -i {{CLICKHOUSE_CONTAINER}} clickhouse-client --user default --password clickhouse --multiquery < "$f"
+        docker exec -i {{ CLICKHOUSE_CONTAINER }} clickhouse-client --user default --password clickhouse --multiquery < "$f"
     done
 
 # Roll back ClickHouse migrations in reverse order (DANGER: drops data)
@@ -216,7 +226,7 @@ clickhouse-migrate-down:
     set -e
     for f in $(ls -r gitdot-core/migrations/clickhouse/*.down.sql); do
         echo "Rolling back $(basename "$f")..."
-        docker exec -i {{CLICKHOUSE_CONTAINER}} clickhouse-client --user default --password clickhouse --multiquery < "$f"
+        docker exec -i {{ CLICKHOUSE_CONTAINER }} clickhouse-client --user default --password clickhouse --multiquery < "$f"
     done
 
 # ── Dev (run services) ──────────────────────────────────────────────────────
@@ -230,6 +240,9 @@ dev:
     echo "Starting local Postgres..."
     just db
 
+    echo "Starting local Kafka..."
+    just kafka
+
     echo "Starting local Redis..."
     just redis
 
@@ -242,7 +255,7 @@ dev:
         sleep 0.2 # Give tmux a heartbeat to clear the process
     fi
 
-    PROJECT_ROOT="{{justfile_directory()}}"
+    PROJECT_ROOT="{{ justfile_directory() }}"
     echo "Starting tmux session '$SESSION_NAME'..."
 
     tmux new-session -d -s "$SESSION_NAME" -c "$PROJECT_ROOT/gitdot-web" -n "gitdot-web" "pnpm run dev"
@@ -280,7 +293,7 @@ s2:
 
 # Run gitdot CLI with arguments
 cli *args:
-    cd gitdot-cli && cargo run -- {{args}}
+    cd gitdot-cli && cargo run -- {{ args }}
 
 # Generate Ed25519 key pair and write to gitdot-server/.env and s2-server/.env
 keygen:
@@ -431,14 +444,14 @@ _docker-push name:
     #!/usr/bin/env bash
     set -e
     SHA=$(git rev-parse --short HEAD)
-    echo "Building {{name}} (${SHA})..."
+    echo "Building {{ name }} (${SHA})..."
     docker build --platform linux/amd64 \
-        -t {{REGISTRY}}/{{name}}:latest \
-        -t {{REGISTRY}}/{{name}}:${SHA} \
-        -f {{name}}/Dockerfile .
-    echo "Pushing {{name}}..."
-    docker push {{REGISTRY}}/{{name}}:latest
-    docker push {{REGISTRY}}/{{name}}:${SHA}
+        -t {{ REGISTRY }}/{{ name }}:latest \
+        -t {{ REGISTRY }}/{{ name }}:${SHA} \
+        -f {{ name }}/Dockerfile .
+    echo "Pushing {{ name }}..."
+    docker push {{ REGISTRY }}/{{ name }}:latest
+    docker push {{ REGISTRY }}/{{ name }}:${SHA}
 
 # ── Clean ──────────────────────────────────────────────────────────────────
 
