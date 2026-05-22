@@ -8,7 +8,7 @@ export function UserReadme({ readme }: { readme: string | null | undefined }) {
         README.md
       </p>
       {readme ? (
-        <MarkdownBody content={readme} />
+        <MarkdownBody content={readme} compact />
       ) : (
         <span className="font-mono text-xs">README.md not found</span>
       )}
