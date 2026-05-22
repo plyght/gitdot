@@ -2585,6 +2585,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "gitdot-metrics"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "figment",
+ "gitdot-axum",
+ "http 1.4.0",
+ "jsonwebtoken",
+ "reqwest 0.13.2",
+ "serde",
+ "thiserror 2.0.17",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tower_governor",
+ "tracing",
+]
+
+[[package]]
 name = "gitdot-server"
 version = "0.1.0"
 dependencies = [

@@ -10,6 +10,7 @@ members = [
   "gitdot-consumer",
   "gitdot-core",
   "gitdot-core/derive",
+  "gitdot-metrics",
   "gitdot-server",
   "s2-api",
   "s2-common",
