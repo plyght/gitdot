@@ -2,6 +2,8 @@ use figment::{Figment, providers::Env};
 use secrecy::SecretString;
 use serde::Deserialize;
 
+use gitdot_core::client::SmtpTlsMode;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
     // infra
@@ -28,6 +30,14 @@ pub struct Settings {
     #[serde(default = "default_redis_url")]
     pub gitdot_redis_url: SecretString,
 
+    // smtp
+    pub smtp_host: String,
+    pub smtp_port: u16,
+    pub smtp_username: String,
+    pub smtp_password: SecretString,
+    #[serde(default = "default_smtp_tls")]
+    pub smtp_tls: SmtpTlsMode,
+
     // github
     pub github_app_id: u64,
     pub github_app_slug: String,
@@ -40,9 +50,6 @@ pub struct Settings {
     pub cloudflare_r2_bucket_name: String,
     pub cloudflare_r2_access_key_id: String,
     pub cloudflare_r2_secret_access_key: SecretString,
-
-    // resend
-    pub resend_api_key: SecretString,
 }
 
 impl Settings {
@@ -73,4 +80,8 @@ fn default_device_url() -> String {
 
 fn default_redis_url() -> SecretString {
     SecretString::from("redis://localhost:6379")
+}
+
+fn default_smtp_tls() -> SmtpTlsMode {
+    SmtpTlsMode::StartTls
 }

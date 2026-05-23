@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     client::{
         EmailClient, GitHubClient, ImageClient, ImageClientImpl, OctocrabClient, R2Client,
-        R2ClientImpl, RedisClient, RedisClientImpl, ResendClient, TokenClient, TokenClientImpl,
+        R2ClientImpl, RedisClient, RedisClientImpl, SmtpClient, TokenClient, TokenClientImpl,
     },
     dto::{
         AuthTokensResponse, ExchangeGitHubCodeRequest, LogoutRequest, OAuthRedirectResponse,
@@ -105,7 +105,7 @@ impl
     SessionServiceImpl<
         SessionRepositoryImpl,
         UserRepositoryImpl,
-        ResendClient,
+        SmtpClient,
         OctocrabClient,
         TokenClientImpl,
         ImageClientImpl,
@@ -116,7 +116,7 @@ impl
     pub fn new(
         session_repo: SessionRepositoryImpl,
         user_repo: UserRepositoryImpl,
-        email_client: ResendClient,
+        email_client: SmtpClient,
         github_client: OctocrabClient,
         token_client: TokenClientImpl,
         image_client: ImageClientImpl,

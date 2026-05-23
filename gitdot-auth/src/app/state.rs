@@ -8,8 +8,8 @@ use sqlx::PgPool;
 use gitdot_axum::config::{AuthConfig, VercelOidcConfig};
 use gitdot_core::{
     client::{
-        ImageClientImpl, OctocrabClient, R2ClientImpl, RedisClient, RedisClientImpl, ResendClient,
-        SlackBotClientImpl, TokenClientImpl,
+        ImageClientImpl, OctocrabClient, R2ClientImpl, RedisClient, RedisClientImpl,
+        SlackBotClientImpl, SmtpClient, TokenClientImpl,
     },
     repository::{
         DeviceRepositoryImpl, SessionRepositoryImpl, SlackRepositoryImpl, TokenRepositoryImpl,
@@ -43,7 +43,13 @@ impl AppState {
         let device_repo = DeviceRepositoryImpl::new(pool.clone());
         let slack_repo = SlackRepositoryImpl::new(pool.clone());
 
-        let email_client = ResendClient::new(settings.resend_api_key.expose_secret());
+        let email_client = SmtpClient::new(
+            &settings.smtp_host,
+            settings.smtp_port,
+            settings.smtp_username.clone(),
+            settings.smtp_password.clone(),
+            settings.smtp_tls,
+        )?;
         let token_client =
             TokenClientImpl::new(settings.gitdot_private_key.expose_secret().to_string());
         let slack_bot_client = SlackBotClientImpl::new(

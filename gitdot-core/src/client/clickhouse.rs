@@ -30,6 +30,7 @@ impl ClickHouseClientImpl {
     }
 }
 
+#[crate::instrument_all(level = "debug")]
 #[async_trait]
 impl ClickHouseClient for ClickHouseClientImpl {
     async fn insert<T>(&self, table: &str, rows: &[T]) -> Result<(), ClickHouseError>
