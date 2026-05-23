@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { MetricsProvider } from "./context/metrics";
 import "./globals.css";
 import { TooltipProvider } from "./ui/tooltip";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "gitdot",
@@ -45,6 +46,7 @@ export default function RootLayout({
             <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
           </MetricsProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
