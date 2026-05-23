@@ -8,20 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Structure
 
-- `resource/` — Data structs returned by the API. One file per domain:
-  - [build](gitdot-api/src/resource/build.rs)
-  - [migration](gitdot-api/src/resource/migration.rs)
-  - [oauth](gitdot-api/src/resource/oauth.rs)
-  - [organization](gitdot-api/src/resource/organization.rs)
-  - [question](gitdot-api/src/resource/question.rs)
-  - [repository](gitdot-api/src/resource/repository.rs)
-  - [review](gitdot-api/src/resource/review.rs)
-  - [runner](gitdot-api/src/resource/runner.rs)
-  - [settings](gitdot-api/src/resource/settings.rs)
-  - [task](gitdot-api/src/resource/task.rs)
-  - [user](gitdot-api/src/resource/user.rs)
-- `endpoint/` — One submodule per endpoint. Each defines a ZST implementing the `Endpoint` trait plus request/response types.
-- `ApiResource` — Marker trait (`Serialize + PartialEq`) with blanket impls for `Vec<T>`, `Option<T>`, and `()`. Use `#[derive(ApiResource)]` from `api_derive`.
+- `resource/` — Data structs returned by the API. One file per domain: `auth`, `build`, `common`, `migration`, `organization`, `question`, `repository`, `review`, `runner`, `slack`, `task`, `user`, `webhook`.
+- `endpoint/` — One submodule per endpoint domain (`auth`, `build`, `metrics`, `migration`, `organization`, `question`, `repository`, `review`, `runner`, `task`, `user`, `webhook`). Each leaf file defines a ZST implementing the `Endpoint` trait plus request/response types.
+- `ApiResource` — Marker trait (`Serialize + PartialEq`) with blanket impls for `Vec<T>`, `Option<T>`, and `()`. Use `#[derive(ApiResource)]` from `gitdot-api-derive`.
+- `ApiRequest` — Companion marker trait for request bodies. Use `#[derive(ApiRequest)]`.
 
 ## Adding a New Endpoint
 
@@ -45,8 +35,8 @@ use std::collections::HashMap;
 // 3. 3rd-party crate imports
 use serde::{Deserialize, Serialize};
 
-// 4. Workspace crate imports (api_derive)
-use api_derive::ApiResource;
+// 4. Workspace crate imports (gitdot-api-derive)
+use gitdot_api_derive::ApiResource;
 
 // 5. crate/super/self imports
 use crate::resource::user::UserResource;

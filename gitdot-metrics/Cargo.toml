@@ -1,7 +1,12 @@
 [package]
 name = "gitdot-metrics"
 version = "0.1.0"
+authors.workspace = true
 edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
 
 [[bin]]
 name = "gitdot-metrics"

@@ -15,5 +15,5 @@ categories = ["development-tools::procedural-macro-helpers"]
 proc-macro = true
 
 [dependencies]
-quote = "1.0"
-syn = { version = "2.0", features = ["full"] }
+quote = { workspace = true }
+syn = { workspace = true }
