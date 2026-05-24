@@ -346,6 +346,28 @@ impl GitClient for Git2Client {
             ))));
         }
 
+        // Scrub the tokenized remote URL written into .git/config by `git clone`.
+        // The clone embedded a 1h GitHub installation token in remote.origin.url;
+        // dropping the entire `origin` remote prevents on-disk token persistence.
+        // Incremental syncs use `fetch_ref` with a URL supplied per call, so no
+        // caller relies on `origin` afterwards.
+        let remove = tokio::process::Command::new("git")
+            .arg("-C")
+            .arg(&repo_path)
+            .arg("remote")
+            .arg("remove")
+            .arg("origin")
+            .output()
+            .await?;
+        if !remove.status.success() {
+            tracing::warn!(
+                owner = %owner,
+                repo = %repo,
+                stderr = %String::from_utf8_lossy(&remove.stderr),
+                "post-clone `git remote remove origin` failed; token may persist in .git/config",
+            );
+        }
+
         let repo_path_clone = repo_path.clone();
         task::spawn_blocking(move || -> Result<(), git2::Error> {
             let repo = git2::Repository::open_bare(&repo_path_clone)?;
