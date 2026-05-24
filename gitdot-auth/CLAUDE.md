@@ -68,4 +68,16 @@ Separate each group with a blank line. Merge imports from the same crate (`impor
 - `IntoApi` converts core response DTOs to API resource types (in `dto.rs`)
 - `Principal` is the JWT-authenticated extractor; verifies the bearer token against `settings.gitdot_public_key`
 - CORS allow-origin is built from `settings.gitdot_web_url` — single origin per environment
-- Tower governor rate-limits all routes (2 rps, burst 10)
+- Tower governor rate-limits all routes per-IP (20 rps sustained, burst 100; see `app.rs`)
+
+## Route Security
+
+`handler.rs::create_auth_router` splits routes into two groups:
+
+- **`cli_routes`** (unauthenticated, publicly reachable):
+  - `POST /auth/device/code` — issues device_code + user_code
+  - `POST /auth/device/token` — polls with the 256-bit device_code (not the readable user_code)
+- **`web_routes`** (wrapped in `verify_vercel_oidc` middleware → callable only from `gitdot-web` on Vercel):
+  - email send/verify, device authorize, github redirect/exchange, slack link, refresh, logout
+
+When reasoning about brute force / abuse on a `web_routes` endpoint, the effective attack surface is *through gitdot-web*, not direct hits on this server. The 20 rps governor limit applies per Vercel egress IP, so forwarded traffic shares one budget.

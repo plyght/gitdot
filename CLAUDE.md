@@ -29,9 +29,11 @@ pnpm biome check . --write           # Auto-fix lint & format
 
 ### Full Dev Environment
 ```bash
-just dev                             # Starts tmux with frontend + backend + s2-lite
+just dev                             # tmux session with web, server, auth, and s2-server
 just web                             # Frontend only
-just server                          # Backend only
+just server                          # Main backend only
+just auth                            # Auth server only (port 8082)
+just s2                              # s2-server only (port 8081)
 ```
 
 ## Workspace Structure
@@ -41,10 +43,15 @@ Rust crates in the workspace:
 - **`gitdot-api`** — Shared API resource types and endpoint request/response definitions.
 - **`gitdot-api/derive`** (`api_derive`) — Proc macro crate providing `#[derive(ApiResource)]`.
 - **`gitdot-core`** — Business logic, services, repositories, models, DB migrations. The bulk of backend logic lives here.
-- **`gitdot-server`** — Axum HTTP handlers, routing, auth middleware. Thin layer that delegates to core services.
+- **`gitdot-core/derive`** — Proc macros used by `gitdot-core` (e.g. `instrument_all`).
+- **`gitdot-server`** — Main Axum HTTP server (repos, orgs, users, git http, runners, etc.). Thin layer that delegates to core services.
+- **`gitdot-auth`** — Standalone Axum auth server (email OTP, GitHub OAuth, device flow, session refresh). Web routes sit behind a Vercel OIDC middleware. See `gitdot-auth/CLAUDE.md`.
+- **`gitdot-axum`** — Shared Axum middleware/helpers used by both servers (logging, request IDs, Vercel OIDC verification, bootstrap).
+- **`gitdot-consumer`** — Background Kafka consumer for async work.
+- **`gitdot-metrics`** — Metrics server (web-vitals + analytics ingest).
 - **`gitdot-cli`** — CLI tool (clap-based).
 - **`gitdot-config`** — Shared configuration types.
-- **`s2-api`**, **`s2-common`**, **`s2-lite`**, **`s2-sdk`** — S2 durable streams library crates.
+- **`s2-api`**, **`s2-common`**, **`s2-sdk`**, **`s2-server`** — S2 durable streams crates.
 
 TypeScript packages (pnpm workspace):
 
@@ -68,7 +75,8 @@ The backend implements smart HTTP git protocol by shelling out to `git http-back
 
 ### Frontend Patterns
 - Server components and server actions for data fetching (`app/actions/`, `app/dal/`)
-- Supabase for auth, custom backend API for application data
+- Auth flows go through `gitdot-auth` (email OTP, GitHub OAuth, device code); web → auth-server calls carry a Vercel OIDC token
+- Application data flows through `gitdot-server`
 - `@/ui/link.tsx` wraps Next.js Link — use it instead of `next/link` directly (enforced by Biome)
 - Radix UI primitives + Tailwind for components
 - `gitdot-api-ts` package provides Zod schemas matching the Rust API types
@@ -92,4 +100,4 @@ Use `imports_granularity = "Crate"` — merge imports from the same crate.
 PostgreSQL via sqlx with compile-time checked queries. Migrations in `gitdot-core/migrations/`.
 
 ### Environment
-Backend config via `gitdot-server/.env` — key vars: `GIT_PROJECT_ROOT`, `DATABASE_URL`, `SUPABASE_JWT_PUBLIC_KEY`.
+Each server reads its own `.env` via figment. Key vars in `gitdot-server/.env`: `GIT_PROJECT_ROOT`, `DATABASE_URL`, `GITDOT_PUBLIC_KEY` / `GITDOT_PRIVATE_KEY` (Ed25519 JWT keys, generate with `just generate-keys`), `VERCEL_OIDC_URL`. The auth server (`gitdot-auth/.env`) has its own set — see `gitdot-auth/CLAUDE.md`.
