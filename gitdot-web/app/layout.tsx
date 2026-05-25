@@ -3,8 +3,8 @@ import { IBM_Plex_Sans, Inconsolata } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { MetricsProvider } from "./context/metrics";
 import "./globals.css";
-import { TooltipProvider } from "./ui/tooltip";
 import { Analytics } from "@vercel/analytics/next";
+import { TooltipProvider } from "./ui/tooltip";
 
 export const metadata: Metadata = {
   title: "gitdot",

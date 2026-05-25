@@ -1,3 +1,4 @@
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { DatabaseProvider } from "./provider/database";
 import { DialogsProvider } from "./provider/dialogs";
@@ -12,7 +13,6 @@ export const metadata: Metadata = {
   description: "A better open-source GitHub",
 };
 
-// TODO: clean up the context + dialogs here
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,6 +30,7 @@ export default function RootLayout({
                     {children}
                   </main>
                   <MainFooter />
+                  <SpeedInsights />
                 </div>
               </DialogsProvider>
             </ShortcutsProvider>
