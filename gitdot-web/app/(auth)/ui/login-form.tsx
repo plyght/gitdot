@@ -70,7 +70,7 @@ function EmailForm({ onSuccess }: { onSuccess: () => void }) {
                     alt=""
                     width={13}
                     height={13}
-                    className="mb-[3px] mx-1"
+                    className="mb-0.75 mx-1"
                   />{" "}
                   GitHub
                 </>

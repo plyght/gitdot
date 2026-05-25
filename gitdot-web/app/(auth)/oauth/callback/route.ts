@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
-import { createInstallation } from "@/dal";
+import { createInstallation, getCurrentUser } from "@/dal";
 import { exchangeGitHubCode } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -10,13 +10,16 @@ export async function GET(request: NextRequest) {
   const installationId = searchParams.get("installation_id");
 
   if (installationId && code && state) {
+    const current = await getCurrentUser(false);
+    const redirectUrl = current ? `/${current.user.name}` : "/login";
+
     const result = await createInstallation(
       Number(installationId),
       code,
       state,
     );
     if (!result) {
-      redirect("/home");
+      redirect(redirectUrl);
       return;
     }
 
@@ -25,7 +28,7 @@ export async function GET(request: NextRequest) {
         `/onboarding/github?installation_id=${result.installation.installation_id}`,
       );
     } else {
-      redirect("/home");
+      redirect(redirectUrl);
     }
     return;
   }
