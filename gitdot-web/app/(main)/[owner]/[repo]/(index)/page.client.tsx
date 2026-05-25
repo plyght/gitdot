@@ -36,13 +36,14 @@ export function PageClient({
 
 function Readme({ promise }: { promise: ResourcePromises["readme"] }) {
   const readme = use(promise);
-  return (
-    <div className="p-4 w-full">
-      {readme && readme.type === "file" ? (
+
+  if (readme && readme.type === "file") {
+    return (
+      <div className="p-4 w-full">
         <MarkdownBody content={readme.content} />
-      ) : (
-        <div className="p-2 text-sm">README.md not found</div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  } else {
+    return <div className="p-2 font-mono h-9 text-sm">README.md not found</div>;
+  }
 }
