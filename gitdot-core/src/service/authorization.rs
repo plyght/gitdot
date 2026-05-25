@@ -8,7 +8,7 @@ use crate::{
         RepositoryCreationAuthorizationRequest, RepositoryPermission, ReviewAuthorizationRequest,
         ReviewCommentAuthorizationRequest, ReviewingAuthorizationRequest,
     },
-    error::AuthorizationError,
+    error::{AuthorizationError, OptionNotFoundExt},
     model::{OrganizationRole, RepositoryOwnerType},
     repository::{
         OrganizationRepository, OrganizationRepositoryImpl, QuestionRepository,
@@ -167,7 +167,10 @@ where
             .repo_repo
             .get(request.owner.as_ref(), request.repo.as_ref(), None)
             .await?
-            .ok_or(AuthorizationError::Unauthorized)?;
+            .or_not_found(
+                "repository",
+                format!("{}/{}", request.owner.as_ref(), request.repo.as_ref()),
+            )?;
 
         if request.permission != RepositoryPermission::Read && repository.readonly {
             return Err(AuthorizationError::ReadonlyRepository);
@@ -591,7 +594,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(err, AuthorizationError::Unauthorized));
+        assert!(matches!(err, AuthorizationError::NotFound(_)));
     }
 
     #[tokio::test]
