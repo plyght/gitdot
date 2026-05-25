@@ -195,13 +195,13 @@ export function MainCommands() {
       path = `${path}/files`;
     }
     if (index > 0) {
-      pathLinks.push(<span key={`sep-${segment}`}>/</span>);
+      pathLinks.push(<span key={`sep-${segment}-${index}`}>/</span>);
     }
     pathLinks.push(
       <Link
         className="hover:underline"
         href={path}
-        key={`segment-${segment}`}
+        key={`segment-${segment}-${index}`}
         prefetch={true}
       >
         {segment}
