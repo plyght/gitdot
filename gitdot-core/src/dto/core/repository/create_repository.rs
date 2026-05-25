@@ -14,9 +14,13 @@ pub struct CreateRepositoryRequest {
     pub owner_type: RepositoryOwnerType,
     pub visibility: RepositoryVisibility,
     pub description: Option<String>,
+    pub init_readme: bool,
+    pub gitignore: Option<GitignoreTemplate>,
+    pub license: Option<LicenseTemplate>,
 }
 
 impl CreateRepositoryRequest {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         repo_name: &str,
         user_id: Uuid,
@@ -24,11 +28,16 @@ impl CreateRepositoryRequest {
         owner_type: &str,
         visibility: &str,
         description: Option<&str>,
+        init_readme: bool,
+        gitignore: Option<&str>,
+        license: Option<&str>,
     ) -> Result<Self, RepositoryError> {
         let description = description
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(str::to_owned);
+        let gitignore = gitignore.map(GitignoreTemplate::try_from).transpose()?;
+        let license = license.map(LicenseTemplate::try_from).transpose()?;
         Ok(Self {
             name: RepositoryName::try_new(repo_name)
                 .map_err(|e| InputError::new("repository name", e))?,
@@ -38,7 +47,50 @@ impl CreateRepositoryRequest {
             owner_type: owner_type.try_into()?,
             visibility: visibility.try_into()?,
             description,
+            init_readme,
+            gitignore,
+            license,
         })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GitignoreTemplate {
+    Rust,
+    Node,
+    Python,
+    Go,
+}
+
+impl TryFrom<&str> for GitignoreTemplate {
+    type Error = RepositoryError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "rust" => Ok(GitignoreTemplate::Rust),
+            "node" => Ok(GitignoreTemplate::Node),
+            "python" => Ok(GitignoreTemplate::Python),
+            "go" => Ok(GitignoreTemplate::Go),
+            _ => Err(InputError::new("gitignore template", value).into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LicenseTemplate {
+    Mit,
+    Apache2,
+}
+
+impl TryFrom<&str> for LicenseTemplate {
+    type Error = RepositoryError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "mit" => Ok(LicenseTemplate::Mit),
+            "apache-2.0" => Ok(LicenseTemplate::Apache2),
+            _ => Err(InputError::new("license template", value).into()),
+        }
     }
 }
 
@@ -46,12 +98,16 @@ impl CreateRepositoryRequest {
 mod tests {
     use super::*;
 
+    fn req(user_id: Uuid) -> Result<CreateRepositoryRequest, RepositoryError> {
+        CreateRepositoryRequest::new(
+            "my-repo", user_id, "johndoe", "user", "public", None, false, None, None,
+        )
+    }
+
     #[test]
     fn valid_request() {
         let user_id = Uuid::new_v4();
-        let request =
-            CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "user", "public", None)
-                .unwrap();
+        let request = req(user_id).unwrap();
 
         assert_eq!(request.name.as_ref(), "my-repo");
         assert_eq!(request.user_id, user_id);
@@ -59,14 +115,26 @@ mod tests {
         assert_eq!(request.owner_type, RepositoryOwnerType::User);
         assert_eq!(request.visibility, RepositoryVisibility::Public);
         assert_eq!(request.description, None);
+        assert!(!request.init_readme);
+        assert_eq!(request.gitignore, None);
+        assert_eq!(request.license, None);
     }
 
     #[test]
     fn valid_private_org_repository() {
         let user_id = Uuid::new_v4();
-        let request =
-            CreateRepositoryRequest::new("repo", user_id, "myorg", "organization", "private", None)
-                .unwrap();
+        let request = CreateRepositoryRequest::new(
+            "repo",
+            user_id,
+            "myorg",
+            "organization",
+            "private",
+            None,
+            false,
+            None,
+            None,
+        )
+        .unwrap();
 
         assert_eq!(request.owner_type, RepositoryOwnerType::Organization);
         assert_eq!(request.visibility, RepositoryVisibility::Private);
@@ -75,9 +143,18 @@ mod tests {
     #[test]
     fn strips_git_suffix_from_repo_name() {
         let user_id = Uuid::new_v4();
-        let request =
-            CreateRepositoryRequest::new("my-repo.git", user_id, "johndoe", "user", "public", None)
-                .unwrap();
+        let request = CreateRepositoryRequest::new(
+            "my-repo.git",
+            user_id,
+            "johndoe",
+            "user",
+            "public",
+            None,
+            false,
+            None,
+            None,
+        )
+        .unwrap();
 
         assert_eq!(request.name.as_ref(), "my-repo");
     }
@@ -91,6 +168,9 @@ mod tests {
             "johndoe",
             "user",
             "public",
+            None,
+            false,
+            None,
             None,
         );
 
@@ -107,6 +187,9 @@ mod tests {
             "user",
             "public",
             None,
+            false,
+            None,
+            None,
         );
 
         assert!(matches!(result, Err(RepositoryError::Input(_))));
@@ -115,8 +198,9 @@ mod tests {
     #[test]
     fn rejects_invalid_owner_type() {
         let user_id = Uuid::new_v4();
-        let result =
-            CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "invalid", "public", None);
+        let result = CreateRepositoryRequest::new(
+            "my-repo", user_id, "johndoe", "invalid", "public", None, false, None, None,
+        );
 
         assert!(matches!(result, Err(RepositoryError::Input(_))));
     }
@@ -124,8 +208,9 @@ mod tests {
     #[test]
     fn rejects_invalid_visibility() {
         let user_id = Uuid::new_v4();
-        let result =
-            CreateRepositoryRequest::new("my-repo", user_id, "johndoe", "user", "invalid", None);
+        let result = CreateRepositoryRequest::new(
+            "my-repo", user_id, "johndoe", "user", "invalid", None, false, None, None,
+        );
 
         assert!(matches!(result, Err(RepositoryError::Input(_))));
     }
@@ -140,6 +225,9 @@ mod tests {
             "user",
             "public",
             Some("  hello world  "),
+            false,
+            None,
+            None,
         )
         .unwrap();
 
@@ -156,9 +244,69 @@ mod tests {
             "user",
             "public",
             Some("   "),
+            false,
+            None,
+            None,
         )
         .unwrap();
 
         assert_eq!(request.description, None);
+    }
+
+    #[test]
+    fn accepts_valid_init_options() {
+        let user_id = Uuid::new_v4();
+        let request = CreateRepositoryRequest::new(
+            "my-repo",
+            user_id,
+            "johndoe",
+            "user",
+            "public",
+            None,
+            true,
+            Some("rust"),
+            Some("mit"),
+        )
+        .unwrap();
+
+        assert!(request.init_readme);
+        assert_eq!(request.gitignore, Some(GitignoreTemplate::Rust));
+        assert_eq!(request.license, Some(LicenseTemplate::Mit));
+    }
+
+    #[test]
+    fn rejects_invalid_gitignore_template() {
+        let user_id = Uuid::new_v4();
+        let result = CreateRepositoryRequest::new(
+            "my-repo",
+            user_id,
+            "johndoe",
+            "user",
+            "public",
+            None,
+            false,
+            Some("cobol"),
+            None,
+        );
+
+        assert!(matches!(result, Err(RepositoryError::Input(_))));
+    }
+
+    #[test]
+    fn rejects_invalid_license_template() {
+        let user_id = Uuid::new_v4();
+        let result = CreateRepositoryRequest::new(
+            "my-repo",
+            user_id,
+            "johndoe",
+            "user",
+            "public",
+            None,
+            false,
+            None,
+            Some("gpl-3.0"),
+        );
+
+        assert!(matches!(result, Err(RepositoryError::Input(_))));
     }
 }

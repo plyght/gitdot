@@ -33,6 +33,9 @@ pub async fn create_repository(
         &request.owner_type,
         &request.visibility,
         request.description.as_deref(),
+        request.init_readme,
+        request.gitignore_template.as_deref(),
+        request.license_template.as_deref(),
     )?;
     state
         .repo_service

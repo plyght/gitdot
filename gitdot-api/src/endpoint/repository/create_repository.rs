@@ -22,6 +22,15 @@ pub struct CreateRepositoryRequest {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+
+    #[serde(default)]
+    pub init_readme: bool,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gitignore_template: Option<String>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license_template: Option<String>,
 }
 
 pub type CreateRepositoryResponse = RepositoryResource;

@@ -24,7 +24,7 @@ use uuid::Uuid;
 use crate::model::{CommitFilter, Repository};
 
 pub use convert_readonly_repository::ConvertReadonlyRepositoryRequest;
-pub use create_repository::CreateRepositoryRequest;
+pub use create_repository::{CreateRepositoryRequest, GitignoreTemplate, LicenseTemplate};
 pub use create_repository_commit_filter::CreateRepositoryCommitFilterRequest;
 pub use delete_repository::DeleteRepositoryRequest;
 pub use delete_repository_commit_filter::DeleteRepositoryCommitFilterRequest;

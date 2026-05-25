@@ -5,4 +5,5 @@ pub mod git;
 pub mod github;
 pub mod image;
 pub mod review;
+pub mod template;
 pub mod user;
