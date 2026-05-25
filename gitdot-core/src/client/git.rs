@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use tokio::{fs, task};
 
 use crate::{
@@ -148,7 +149,8 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         files: Vec<InitialCommitFile>,
         author_name: &str,
         author_email: &str,
-    ) -> Result<(), GitError>;
+        committed_at: DateTime<Utc>,
+    ) -> Result<String, GitError>;
 
     async fn install_hook(
         &self,
@@ -1011,12 +1013,14 @@ impl GitClient for Git2Client {
         files: Vec<InitialCommitFile>,
         author_name: &str,
         author_email: &str,
-    ) -> Result<(), GitError> {
+        committed_at: DateTime<Utc>,
+    ) -> Result<String, GitError> {
         let repo_path = self.get_repo_path(owner, repo);
         let author_name = author_name.to_string();
         let author_email = author_email.to_string();
+        let when = git2::Time::new(committed_at.timestamp(), 0);
 
-        task::spawn_blocking(move || -> Result<(), git2::Error> {
+        let sha = task::spawn_blocking(move || -> Result<String, git2::Error> {
             let repo = git2::Repository::open_bare(&repo_path)?;
 
             let mut tree_builder = repo.treebuilder(None)?;
@@ -1027,15 +1031,15 @@ impl GitClient for Git2Client {
             let tree_oid = tree_builder.write()?;
             let tree = repo.find_tree(tree_oid)?;
 
-            let sig = git2::Signature::now(&author_name, &author_email)?;
+            let sig = git2::Signature::new(&author_name, &author_email, &when)?;
             let ref_name = format!("refs/heads/{}", DEFAULT_BRANCH);
-            repo.commit(Some(&ref_name), &sig, &sig, "Initial commit", &tree, &[])?;
+            let oid = repo.commit(Some(&ref_name), &sig, &sig, "Initial commit", &tree, &[])?;
 
-            Ok(())
+            Ok(oid.to_string())
         })
         .await??;
 
-        Ok(())
+        Ok(sha)
     }
 
     async fn install_hook(

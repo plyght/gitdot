@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::{
@@ -19,14 +20,17 @@ use crate::{
         UpdateRepositoryCommitFilterRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, RepositoryError},
-    model::RepositoryOwnerType,
+    model::{CommitDiff, RepositoryOwnerType},
     repository::{
         CommitRepository, CommitRepositoryImpl, OrganizationRepository, OrganizationRepositoryImpl,
         RepositoryRepository, RepositoryRepositoryImpl, UserRepository, UserRepositoryImpl,
     },
     util::{
         cursor,
-        git::{GitHookType, POST_RECEIVE_SCRIPT, PRE_RECEIVE_SCRIPT, PROC_RECEIVE_SCRIPT},
+        git::{
+            DEFAULT_BRANCH, GitHookType, POST_RECEIVE_SCRIPT, PRE_RECEIVE_SCRIPT,
+            PROC_RECEIVE_SCRIPT, ZERO_SHA,
+        },
         template::{gitignore_for, license_for},
     },
 };
@@ -210,6 +214,62 @@ where
         }
         files
     }
+
+    async fn create_initial_commit(
+        &self,
+        request: &CreateRepositoryRequest,
+        repo_name: &str,
+        repo_id: Uuid,
+        files: Vec<InitialCommitFile>,
+    ) -> Result<(), RepositoryError> {
+        let user = self
+            .user_repo
+            .get_by_id(request.user_id)
+            .await?
+            .or_not_found("user", request.user_id.to_string())?;
+
+        let diffs: Vec<CommitDiff> = files
+            .iter()
+            .map(|f| CommitDiff {
+                path: f.path.to_string(),
+                lines_added: f.content.lines().count() as i32,
+                lines_removed: 0,
+            })
+            .collect();
+
+        let committed_at = Utc::now();
+        let sha = self
+            .git_client
+            .create_initial_commit(
+                &request.owner_name,
+                repo_name,
+                files,
+                &user.name,
+                &user.email,
+                committed_at,
+            )
+            .await?;
+
+        let ref_name = format!("refs/heads/{}", DEFAULT_BRANCH);
+        self.commit_repo
+            .create_bulk(
+                &[Some(user.id)],
+                &[user.name.clone()],
+                &[user.email.clone()],
+                &[repo_id],
+                &[ref_name],
+                &[sha],
+                &[ZERO_SHA.to_string()],
+                &["Initial commit".to_string()],
+                &[committed_at],
+                &[diffs],
+                &[None],
+                &[None],
+            )
+            .await?;
+
+        Ok(())
+    }
 }
 
 #[crate::instrument_all(level = "debug")]
@@ -249,13 +309,10 @@ where
                 org.id
             }
         };
-
-        // Create git repo first
         self.git_client
             .create_repo(&request.owner_name, &repo_name)
             .await?;
 
-        // Install gitdot hooks
         self.git_client
             .install_hook(
                 &request.owner_name,
@@ -281,34 +338,6 @@ where
             )
             .await?;
 
-        // Write initial commit if any init options were chosen
-        let files = self.get_initial_files(&repo_name, &request);
-        if !files.is_empty() {
-            let user = self
-                .user_repo
-                .get_by_id(request.user_id)
-                .await?
-                .or_not_found("user", request.user_id.to_string())?;
-            if let Err(e) = self
-                .git_client
-                .create_initial_commit(
-                    &request.owner_name,
-                    &repo_name,
-                    files,
-                    &user.name,
-                    &user.email,
-                )
-                .await
-            {
-                let _ = self
-                    .git_client
-                    .delete_repo(&request.owner_name, &repo_name)
-                    .await;
-                return Err(e.into());
-            }
-        }
-
-        // Insert into DB, delete git repo on failure
         let repository = match self
             .repo_repo
             .create(
@@ -316,7 +345,7 @@ where
                 owner_id,
                 &request.owner_type,
                 &request.visibility,
-                request.description,
+                request.description.clone(),
                 false,
                 None,
             )
@@ -331,6 +360,21 @@ where
                 return Err(e.into());
             }
         };
+
+        let files = self.get_initial_files(&repo_name, &request);
+        if !files.is_empty() {
+            if let Err(e) = self
+                .create_initial_commit(&request, &repo_name, repository.id, files)
+                .await
+            {
+                let _ = self.repo_repo.delete(repository.id).await;
+                let _ = self
+                    .git_client
+                    .delete_repo(&request.owner_name, &repo_name)
+                    .await;
+                return Err(e);
+            }
+        }
 
         Ok(repository.into())
     }
