@@ -12,11 +12,9 @@ import { FolderViewerProvider } from "./folder-viewer-context";
 export function FolderViewer({
   path,
   paths,
-  pinFiles = true,
 }: {
   path: string;
   paths: RepositoryPathsResource | null;
-  pinFiles?: boolean;
 }) {
   const { owner, repo } = useParams<{ owner: string; repo: string }>();
   const db = useMemo(() => new LocalProvider(owner, repo), [owner, repo]);
@@ -26,7 +24,7 @@ export function FolderViewer({
   if (!paths) return null;
 
   return (
-    <FolderViewerProvider pinFiles={pinFiles}>
+    <FolderViewerProvider pinFiles={true}>
       <div className="flex w-full h-full min-h-0 overflow-hidden">
         <div className="w-[45%] shrink-0 border-r h-full">
           <FolderTree path={path} owner={owner} repo={repo} paths={paths} />

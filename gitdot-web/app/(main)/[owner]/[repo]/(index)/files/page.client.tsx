@@ -34,5 +34,10 @@ export function PageClient({
 
 function PageContent({ promises }: { promises: ResourcePromises }) {
   const paths = use(promises.paths);
-  return <FolderViewer path="" paths={paths} />;
+
+  if (!paths) {
+    return <div className="p-2 font-mono h-9 text-sm">no files found</div>;
+  } else {
+    return <FolderViewer path="" paths={paths} />;
+  }
 }
