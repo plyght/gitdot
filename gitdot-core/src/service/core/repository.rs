@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::{
-    client::{Git2Client, GitClient},
+    client::{Git2Client, GitClient, InitialCommitFile},
     dto::{
         CommitDiffResponse, CommitResponse, ConvertReadonlyRepositoryRequest,
         CreateRepositoryCommitFilterRequest, CreateRepositoryRequest,
@@ -22,11 +22,12 @@ use crate::{
     model::RepositoryOwnerType,
     repository::{
         CommitRepository, CommitRepositoryImpl, OrganizationRepository, OrganizationRepositoryImpl,
-        RepositoryRepository, RepositoryRepositoryImpl,
+        RepositoryRepository, RepositoryRepositoryImpl, UserRepository, UserRepositoryImpl,
     },
     util::{
         cursor,
         git::{GitHookType, POST_RECEIVE_SCRIPT, PRE_RECEIVE_SCRIPT, PROC_RECEIVE_SCRIPT},
+        template::{gitignore_for, license_for},
     },
 };
 
@@ -134,17 +135,19 @@ pub trait RepositoryService: Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct RepositoryServiceImpl<G, O, R, C>
+pub struct RepositoryServiceImpl<G, O, R, C, U>
 where
     G: GitClient,
     O: OrganizationRepository,
     R: RepositoryRepository,
     C: CommitRepository,
+    U: UserRepository,
 {
     git_client: G,
     org_repo: O,
     repo_repo: R,
     commit_repo: C,
+    user_repo: U,
 }
 
 impl
@@ -153,6 +156,7 @@ impl
         OrganizationRepositoryImpl,
         RepositoryRepositoryImpl,
         CommitRepositoryImpl,
+        UserRepositoryImpl,
     >
 {
     pub fn new(
@@ -160,24 +164,63 @@ impl
         org_repo: OrganizationRepositoryImpl,
         repo_repo: RepositoryRepositoryImpl,
         commit_repo: CommitRepositoryImpl,
+        user_repo: UserRepositoryImpl,
     ) -> Self {
         Self {
             git_client,
             org_repo,
             repo_repo,
             commit_repo,
+            user_repo,
         }
     }
 }
 
-#[crate::instrument_all(level = "debug")]
-#[async_trait]
-impl<G, O, R, C> RepositoryService for RepositoryServiceImpl<G, O, R, C>
+impl<G, O, R, C, U> RepositoryServiceImpl<G, O, R, C, U>
 where
     G: GitClient,
     O: OrganizationRepository,
     R: RepositoryRepository,
     C: CommitRepository,
+    U: UserRepository,
+{
+    fn get_initial_files(
+        &self,
+        repo_name: &str,
+        request: &CreateRepositoryRequest,
+    ) -> Vec<InitialCommitFile> {
+        let mut files = Vec::new();
+        if request.init_readme {
+            files.push(InitialCommitFile {
+                path: "README.md",
+                content: format!("# {}\n", repo_name),
+            });
+        }
+        if let Some(t) = request.gitignore {
+            files.push(InitialCommitFile {
+                path: ".gitignore",
+                content: gitignore_for(t).to_string(),
+            });
+        }
+        if let Some(t) = request.license {
+            files.push(InitialCommitFile {
+                path: "LICENSE",
+                content: license_for(t).to_string(),
+            });
+        }
+        files
+    }
+}
+
+#[crate::instrument_all(level = "debug")]
+#[async_trait]
+impl<G, O, R, C, U> RepositoryService for RepositoryServiceImpl<G, O, R, C, U>
+where
+    G: GitClient,
+    O: OrganizationRepository,
+    R: RepositoryRepository,
+    C: CommitRepository,
+    U: UserRepository,
 {
     async fn create_repository(
         &self,
@@ -237,6 +280,33 @@ where
                 PROC_RECEIVE_SCRIPT,
             )
             .await?;
+
+        // Write initial commit if any init options were chosen
+        let files = self.get_initial_files(&repo_name, &request);
+        if !files.is_empty() {
+            let user = self
+                .user_repo
+                .get_by_id(request.user_id)
+                .await?
+                .or_not_found("user", request.user_id.to_string())?;
+            if let Err(e) = self
+                .git_client
+                .create_initial_commit(
+                    &request.owner_name,
+                    &repo_name,
+                    files,
+                    &user.name,
+                    &user.email,
+                )
+                .await
+            {
+                let _ = self
+                    .git_client
+                    .delete_repo(&request.owner_name, &repo_name)
+                    .await;
+                return Err(e.into());
+            }
+        }
 
         // Insert into DB, delete git repo on failure
         let repository = match self

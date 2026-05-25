@@ -14,6 +14,12 @@ use crate::{
     },
 };
 
+#[derive(Debug, Clone)]
+pub struct InitialCommitFile {
+    pub path: &'static str,
+    pub content: String,
+}
+
 #[async_trait]
 pub trait GitClient: Send + Sync + Clone + 'static {
     async fn repo_exists(&self, owner: &str, repo: &str) -> bool;
@@ -134,6 +140,15 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         commit_sha: &str,
         new_parent_sha: &str,
     ) -> Result<String, GitError>;
+
+    async fn create_initial_commit(
+        &self,
+        owner: &str,
+        repo: &str,
+        files: Vec<InitialCommitFile>,
+        author_name: &str,
+        author_email: &str,
+    ) -> Result<(), GitError>;
 
     async fn install_hook(
         &self,
@@ -987,6 +1002,40 @@ impl GitClient for Git2Client {
             Ok(new_oid.to_string())
         })
         .await?
+    }
+
+    async fn create_initial_commit(
+        &self,
+        owner: &str,
+        repo: &str,
+        files: Vec<InitialCommitFile>,
+        author_name: &str,
+        author_email: &str,
+    ) -> Result<(), GitError> {
+        let repo_path = self.get_repo_path(owner, repo);
+        let author_name = author_name.to_string();
+        let author_email = author_email.to_string();
+
+        task::spawn_blocking(move || -> Result<(), git2::Error> {
+            let repo = git2::Repository::open_bare(&repo_path)?;
+
+            let mut tree_builder = repo.treebuilder(None)?;
+            for file in &files {
+                let blob_oid = repo.blob(file.content.as_bytes())?;
+                tree_builder.insert(file.path, blob_oid, git2::FileMode::Blob.into())?;
+            }
+            let tree_oid = tree_builder.write()?;
+            let tree = repo.find_tree(tree_oid)?;
+
+            let sig = git2::Signature::now(&author_name, &author_email)?;
+            let ref_name = format!("refs/heads/{}", DEFAULT_BRANCH);
+            repo.commit(Some(&ref_name), &sig, &sig, "Initial commit", &tree, &[])?;
+
+            Ok(())
+        })
+        .await??;
+
+        Ok(())
     }
 
     async fn install_hook(
