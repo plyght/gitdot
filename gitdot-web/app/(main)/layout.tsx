@@ -20,17 +20,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const vercelTimezone = (await headers()).get("x-vercel-ip-timezone");
-  console.log("vercel timezone", vercelTimezone);
-  const tz = vercelTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-  console.log("initial timezone", tz);
+  const timezone =
+    (await headers()).get("x-vercel-ip-timezone") ??
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
     <ToasterProvider>
       <DatabaseProvider>
         <WorkerProvider>
           <UserProvider>
-            <TimezoneProvider initialTimezone={tz}>
+            <TimezoneProvider timezone={timezone}>
               <ShortcutsProvider>
                 <DialogsProvider>
                   <div className="flex flex-col h-screen w-full max-w-screen overflow-hidden">
