@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { memo, useRef } from "react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { UserSlug } from "@/(main)/[owner]/ui/user/user-slug";
+import { useTimezone } from "@/(main)/provider/timezone";
+import { formatDateIso } from "@/util/date";
 
 export function CommitsList({
   commits,
@@ -49,6 +51,7 @@ const CommitRow = memo(function CommitRow({
   commit: RepositoryCommitResource;
 }) {
   const { owner, repo } = useParams<{ owner: string; repo: string }>();
+  const tz = useTimezone();
   const href = `/${owner}/${repo}/commits/${commit.sha.substring(0, 7)}`;
 
   return (
@@ -74,7 +77,7 @@ const CommitRow = memo(function CommitRow({
     >
       <div className="flex flex-row items-center gap-2 min-w-0 text-xs">
         <span className="text-muted-foreground shrink-0 tabular-nums">
-          {commit.date.slice(0, 10)}
+          {formatDateIso(new Date(commit.date), tz)}
         </span>
         <span className="text-foreground truncate">
           {commit.message.split("\n")[0]}

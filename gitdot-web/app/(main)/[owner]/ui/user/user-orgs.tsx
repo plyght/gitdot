@@ -1,4 +1,7 @@
+"use client";
+
 import type { OrganizationMemberResource } from "gitdot-api";
+import { useTimezone } from "@/(main)/provider/timezone";
 import Link from "@/ui/link";
 import { formatDate } from "@/util/date";
 import { OrgImage } from "../org/org-image";
@@ -8,6 +11,7 @@ export function UserOrgs({
 }: {
   memberships: OrganizationMemberResource[] | null;
 }) {
+  const tz = useTimezone();
   if (!memberships?.length) return null;
 
   return (
@@ -32,7 +36,7 @@ export function UserOrgs({
               {m.org_name}
             </Link>
             <span className="text-xs font-mono text-muted-foreground self-start">
-              member since {formatDate(new Date(m.created_at))}
+              member since {formatDate(new Date(m.created_at), tz)}
             </span>
             <p
               className={`col-start-2 col-end-4 ${

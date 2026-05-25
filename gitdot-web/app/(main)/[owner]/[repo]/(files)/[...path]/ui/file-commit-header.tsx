@@ -3,8 +3,9 @@
 import type { RepositoryCommitResource } from "gitdot-api";
 import { File, GitCommitHorizontal, X } from "lucide-react";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { useTimezone } from "@/(main)/provider/timezone";
 import Link from "@/ui/link";
-import { formatDateTime } from "@/util";
+import { formatDateTime } from "@/util/date";
 import { useFileViewerContext } from "./file-viewer-context";
 
 export function FileCommitHeader({
@@ -12,6 +13,7 @@ export function FileCommitHeader({
 }: {
   commit: RepositoryCommitResource;
 }) {
+  const tz = useTimezone();
   const author = commit.author.name;
   const { setSelectedSha } = useFileViewerContext();
   const pathname = usePathname();
@@ -33,7 +35,7 @@ export function FileCommitHeader({
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <span>{author}</span>
           <span>•</span>
-          <span>{formatDateTime(new Date(commit.date))}</span>
+          <span>{formatDateTime(new Date(commit.date), tz)}</span>
         </div>
         <div className="text-sm text-foreground mb-0.5">{commit.message}</div>
         <div className="flex">

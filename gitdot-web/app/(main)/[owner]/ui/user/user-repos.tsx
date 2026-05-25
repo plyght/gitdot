@@ -3,6 +3,7 @@
 import type { RepositoryResource, UserCommitResource } from "gitdot-api";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTimezone } from "@/(main)/provider/timezone";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
 import Link from "@/ui/link";
-import { formatDate } from "@/util";
+import { formatDate } from "@/util/date";
 
 type RepoSort = "recent" | "contributions" | "stars";
 
@@ -126,6 +127,7 @@ function RepoGroup({
 }
 
 function RepoRow({ repo }: { repo: Repository }) {
+  const tz = useTimezone();
   return (
     <div className="flex flex-col">
       <div className="flex items-baseline justify-between gap-4">
@@ -150,7 +152,7 @@ function RepoRow({ repo }: { repo: Repository }) {
             <>
               {repo.count} contributions
               <span className="mx-1.5">•</span>
-              {formatDate(repo.lastDate)}
+              {formatDate(repo.lastDate, tz)}
             </>
           ) : (
             "no contributions"

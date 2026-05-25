@@ -1,7 +1,7 @@
 "use client";
 
 import type { UserCommitResource } from "gitdot-api";
-import { inRange } from "@/util/date";
+import { dateInRange } from "@/util/date";
 
 export function UserCommitsLog({
   commits,
@@ -15,7 +15,7 @@ export function UserCommitsLog({
   selectedMonth: string | null;
 }) {
   const inRangeDays = [...commits.entries()]
-    .filter(([date]) => inRange(date, startDate, endDate))
+    .filter(([date]) => dateInRange(date, startDate, endDate))
     .sort((a, b) => a[0].localeCompare(b[0]));
 
   const visibleMonth =

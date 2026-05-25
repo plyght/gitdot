@@ -3,7 +3,8 @@
 import type { BuildResource, RepositoryCommitResource } from "gitdot-api";
 import { FileCog } from "lucide-react";
 import { useState } from "react";
-import { formatDateTime } from "@/util";
+import { useTimezone } from "@/(main)/provider/timezone";
+import { formatDateTime } from "@/util/date";
 import { BuildConfigDialog } from "./build-config-dialog";
 import { JobTimer } from "./job-timer";
 
@@ -16,6 +17,7 @@ export function BuildDetails({
   commit: RepositoryCommitResource | null;
   configHtml: string | null;
 }) {
+  const tz = useTimezone();
   const createdAt = new Date(build.created_at);
   const updatedAt = new Date(build.updated_at);
   const running = build.status === "running";
@@ -36,7 +38,7 @@ export function BuildDetails({
         </div>
         <div>
           <div className="text-xs text-muted-foreground">Created</div>
-          <div className="text-sm">{formatDateTime(createdAt)}</div>
+          <div className="text-sm">{formatDateTime(createdAt, tz)}</div>
         </div>
         <div>
           <div className="text-xs text-muted-foreground">Runtime</div>

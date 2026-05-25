@@ -3,6 +3,7 @@
 import type { OrganizationMemberResource } from "gitdot-api";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTimezone } from "@/(main)/provider/timezone";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,7 @@ export function OrgMembers({
 }: {
   members: OrganizationMemberResource[] | null;
 }) {
+  const tz = useTimezone();
   const [sortBy, setSortBy] = useState<MemberSort>("oldest");
 
   const sortedMembers = useMemo(() => {
@@ -82,7 +84,7 @@ export function OrgMembers({
               {member.user_name}
             </Link>
             <span className="text-xs font-mono text-muted-foreground self-start">
-              joined {formatDate(new Date(member.created_at))}
+              joined {formatDate(new Date(member.created_at), tz)}
             </span>
             <p
               className={`col-start-2 col-end-4 ${

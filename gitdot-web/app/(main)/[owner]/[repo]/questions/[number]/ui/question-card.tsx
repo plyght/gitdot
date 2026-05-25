@@ -2,8 +2,10 @@
 
 import type { QuestionResource } from "gitdot-api";
 import { MarkdownBody } from "@/(main)/[owner]/[repo]/ui/markdown/markdown-body";
+import { useTimezone } from "@/(main)/provider/timezone";
 import { useUserContext } from "@/(main)/provider/user";
-import { formatDate, timeAgoFull } from "@/util";
+import { timeAgoFull } from "@/util";
+import { formatDate } from "@/util/date";
 import { CommentThread } from "./comment-thread";
 import { QuestionDropdown } from "./question-dropdown";
 import { VoteBox } from "./vote-box";
@@ -15,6 +17,7 @@ type QuestionCardProps = {
 };
 
 export function QuestionCard({ question, owner, repo }: QuestionCardProps) {
+  const tz = useTimezone();
   const { user } = useUserContext();
   const wasUpdated = question.created_at !== question.updated_at;
   const isOwner = user?.id === question.author_id;
@@ -45,7 +48,7 @@ export function QuestionCard({ question, owner, repo }: QuestionCardProps) {
             </span>
             <span>
               <span className="text-muted-foreground">asked</span>{" "}
-              {formatDate(new Date(question.created_at))}
+              {formatDate(new Date(question.created_at), tz)}
               {", "}
               {wasUpdated ? (
                 <>

@@ -4,14 +4,16 @@ import type { MigrationResource } from "gitdot-api";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listMigrationsAction } from "@/actions";
+import { useTimezone } from "@/(main)/provider/timezone";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/ui/collapsible";
-import { formatDate } from "@/util";
+import { formatDate } from "@/util/date";
 
 export function SettingsMigrations() {
+  const tz = useTimezone();
   const [migrations, setMigrations] = useState<
     MigrationResource[] | null | undefined
   >(undefined);
@@ -52,7 +54,7 @@ export function SettingsMigrations() {
                     <CollapsibleTrigger className="group flex items-center gap-2 w-full text-sm border-b border-border hover:border-foreground transition-all duration-200 cursor-pointer py-0.4 text-left">
                       <ChevronRight className="size-3 text-muted-foreground group-data-[state=open]:rotate-90" />
                       <span className="text-muted-foreground">
-                        {formatDate(new Date(migration.created_at))}:
+                        {formatDate(new Date(migration.created_at), tz)}:
                       </span>
                       <span className="flex-1 truncate">
                         {migration.origin} → {migration.destination} (

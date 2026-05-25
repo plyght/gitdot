@@ -3,6 +3,7 @@
 import type { RepositoryCommitResource, RepositoryResource } from "gitdot-api";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTimezone } from "@/(main)/provider/timezone";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
 import { cn, pluralize } from "@/util";
-import { formatDate, inRange } from "@/util/date";
+import { dateInRange, formatCalendarDate, formatDateIso } from "@/util/date";
 import {
   buildGrid,
   cellColor,
@@ -62,10 +63,12 @@ export function CommitsGrid({
     setHoverActive,
   );
 
+  const tz = useTimezone();
   const { weeks, months, numWeeks } = buildGrid(
     commits,
     windowStart,
     windowEnd,
+    tz,
   );
   const thresholds = computeThresholds(
     weeks.flatMap((w) => w.map((d) => d.commitCount)),
@@ -74,8 +77,8 @@ export function CommitsGrid({
   const dimmed = hoverActive || !!(selectedStart && selectedEnd);
 
   const commitsInRange = commits.filter((c) =>
-    inRange(
-      c.date.slice(0, 10),
+    dateInRange(
+      formatDateIso(new Date(c.date), tz),
       selectedStart ?? windowStart,
       selectedEnd ?? windowEnd,
     ),
@@ -147,7 +150,7 @@ export function CommitsGrid({
                     className={cn(
                       "w-full h-full transition-opacity duration-300 group-hover:duration-0",
                       cellColor(day.commitCount, thresholds),
-                      inRange(day.date, selectedStart, selectedEnd)
+                      dateInRange(day.date, selectedStart, selectedEnd)
                         ? "opacity-100! ring-1 ring-inset ring-foreground"
                         : cn(
                             dimmed && "opacity-40",
@@ -285,6 +288,7 @@ function DateDropdown({
   setSelectedStart: (date: string | null) => void;
   setSelectedEnd: (date: string | null) => void;
 }) {
+  const tz = useTimezone();
   const currentYear = new Date().getFullYear();
   const createdYear = repository?.created_at
     ? new Date(repository.created_at).getFullYear()
@@ -296,8 +300,8 @@ function DateDropdown({
   const presets: { label: string; start: string; end: string }[] = [
     {
       label: "Recent",
-      start: recentWindowStart(commits),
-      end: recentWindowEnd(commits),
+      start: recentWindowStart(commits, tz),
+      end: recentWindowEnd(commits, tz),
     },
   ];
   for (let y = createdYear; y <= latestYear; y++) {
@@ -316,8 +320,8 @@ function DateDropdown({
           className="flex items-center gap-0.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
         >
           {pluralize(commitsInRange.length, "commit")}:{" "}
-          {formatDate(new Date(`${selectedStart ?? windowStart}T00:00:00`))} –{" "}
-          {formatDate(new Date(`${selectedEnd ?? windowEnd}T00:00:00`))}
+          {formatCalendarDate(selectedStart ?? windowStart)} –{" "}
+          {formatCalendarDate(selectedEnd ?? windowEnd)}
           <ChevronDownIcon className="size-3 shrink-0" />
         </button>
       </DropdownMenuTrigger>

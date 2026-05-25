@@ -1,7 +1,9 @@
 "use client";
 
 import type { UserCommitResource } from "gitdot-api";
+import { useTimezone } from "@/(main)/provider/timezone";
 import { cn } from "@/util";
+import { formatDateIso } from "@/util/date";
 import {
   cellColor,
   computeThresholds,
@@ -20,7 +22,8 @@ export function UserCommitsCalendar({
   selectedMonth: string | null;
   setSelectedMonth: (month: string | null) => void;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const tz = useTimezone();
+  const today = formatDateIso(new Date(), tz);
   const months = monthsBetween(startDate, endDate);
 
   const counts = new Map<string, number>();

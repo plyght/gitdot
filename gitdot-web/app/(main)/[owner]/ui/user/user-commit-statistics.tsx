@@ -1,7 +1,7 @@
 "use client";
 
 import type { UserCommitResource } from "gitdot-api";
-import { inRange } from "@/util/date";
+import { dateInRange } from "@/util/date";
 
 export function UserCommitStatistics({
   commits,
@@ -17,7 +17,7 @@ export function UserCommitStatistics({
   const visibleCommits = [...commits.entries()]
     .filter(
       ([date]) =>
-        inRange(date, startDate, endDate) &&
+        dateInRange(date, startDate, endDate) &&
         (selectedMonth === null || date.startsWith(selectedMonth)),
     )
     .flatMap(([, cs]) => cs);

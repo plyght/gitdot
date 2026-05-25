@@ -1,13 +1,14 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useTimezone } from "@/(main)/provider/timezone";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
-import { subtractMonths } from "@/util/date";
+import { formatDateIso, subtractMonths } from "@/util/date";
 
 export function UserCommitsHeader({
   endDate,
@@ -21,6 +22,7 @@ export function UserCommitsHeader({
   setEndDate: (d: string) => void;
   setSelectedMonth: (m: string | null) => void;
 }) {
+  const tz = useTimezone();
   const currentYear = new Date().getFullYear();
   const displayYear = endDate.slice(0, 4);
   const years = [
@@ -34,8 +36,8 @@ export function UserCommitsHeader({
   function selectYear(y: number) {
     setSelectedMonth(null);
     if (y === currentYear) {
-      setStartDate(subtractMonths(new Date(), 11).toISOString().slice(0, 10));
-      setEndDate(new Date().toISOString().slice(0, 10));
+      setStartDate(formatDateIso(subtractMonths(new Date(), 11), tz));
+      setEndDate(formatDateIso(new Date(), tz));
     } else {
       setStartDate(`${y}-01-01`);
       setEndDate(`${y}-12-31`);

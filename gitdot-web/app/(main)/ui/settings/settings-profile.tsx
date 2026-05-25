@@ -4,6 +4,7 @@ import type { UserResource } from "gitdot-api";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
+import { useTimezone } from "@/(main)/provider/timezone";
 import { toast } from "@/(main)/provider/toaster";
 import { useUserContext } from "@/(main)/provider/user";
 import { updateUserAction, uploadUserImageAction } from "@/actions";
@@ -79,6 +80,7 @@ export function SettingsProfile({ user }: { user: UserResource }) {
 }
 
 function ProfilePrimary({ user }: { user: UserResource }) {
+  const tz = useTimezone();
   const { refreshUser } = useUserContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -138,7 +140,7 @@ function ProfilePrimary({ user }: { user: UserResource }) {
         <span className="text-sm">{user.email}</span>
         <span className="text-sm text-muted-foreground">joined</span>
         <span className="text-sm text-muted-foreground">
-          {formatDate(new Date(user.created_at))} (
+          {formatDate(new Date(user.created_at), tz)} (
           {timeAgo(new Date(user.created_at))})
         </span>
       </div>

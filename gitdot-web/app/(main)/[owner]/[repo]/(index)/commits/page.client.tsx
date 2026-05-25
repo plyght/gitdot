@@ -10,8 +10,9 @@ import {
   type ResourceRequestsType,
   useResolvePromises,
 } from "@/(main)/[owner]/[repo]/resources";
+import { useTimezone } from "@/(main)/provider/timezone";
 import { Loading } from "@/ui/loading";
-import { inRange } from "@/util/date";
+import { dateInRange, formatDateIso } from "@/util/date";
 import type { Resources } from "./page";
 import { CommitsFilterPanel } from "./ui/commits-filter-panel";
 import { CommitsGrid } from "./ui/commits-grid";
@@ -63,14 +64,17 @@ function PageContent({
   promises: ResourcePromises;
   repository: RepositoryResource | null;
 }) {
+  const tz = useTimezone();
   const commits = use(promises.commits);
   const paths = use(promises.paths);
   const commitFilters = use(promises.commitFilters);
 
   const [windowStart, setWindowStart] = useState(() =>
-    recentWindowStart(commits),
+    recentWindowStart(commits, tz),
   );
-  const [windowEnd, setWindowEnd] = useState(() => recentWindowEnd(commits));
+  const [windowEnd, setWindowEnd] = useState(() =>
+    recentWindowEnd(commits, tz),
+  );
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
   const filters = [ALL_COMMITS_FILTER, ...(commitFilters ?? [])];
@@ -83,7 +87,11 @@ function PageContent({
   const filterStart = selectedStart ?? windowStart;
   const filterEnd = selectedEnd ?? windowEnd;
   const commitsInRange = filteredCommits.filter((commit) =>
-    inRange(commit.date.slice(0, 10), filterStart, filterEnd),
+    dateInRange(
+      formatDateIso(new Date(commit.date), tz),
+      filterStart,
+      filterEnd,
+    ),
   );
 
   return (

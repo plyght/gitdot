@@ -4,7 +4,7 @@ import type {
   RepositoryDiffStatResource,
   RepositoryPathResource,
 } from "gitdot-api";
-import { addDays, dateOnly, formatIsoDate, subtractDays } from "@/util";
+import { addDays, formatDateIso, subtractDays } from "@/util/date";
 
 // ---------------------------------------------------------------------------
 // commit filtering utils
@@ -128,37 +128,43 @@ export type Thresholds = [number, number, number]; // [low, med, high]
  */
 export function recentWindowEnd(
   commits: RepositoryCommitResource[] | null,
+  tz: string,
 ): string {
   const today = new Date();
-  const todayStr = formatIsoDate(today);
-  const mostRecent = commits?.[0]?.date.slice(0, 10);
+  const todayStr = formatDateIso(today, tz);
+  const mostRecent = commits?.[0]?.date
+    ? formatDateIso(new Date(commits[0].date), tz)
+    : undefined;
+
   if (!mostRecent) return todayStr;
-  const oneYearAgo = formatIsoDate(subtractDays(today, 365));
+  const oneYearAgo = formatDateIso(subtractDays(today, 365), tz);
   return mostRecent >= oneYearAgo ? todayStr : mostRecent;
 }
 
 export function recentWindowStart(
   commits: RepositoryCommitResource[] | null,
+  tz: string,
 ): string {
-  const end = recentWindowEnd(commits);
+  const end = recentWindowEnd(commits, tz);
   const rough = subtractDays(new Date(`${end}T00:00:00`), 365);
-  return formatIsoDate(subtractDays(rough, rough.getDay()));
+  return formatDateIso(subtractDays(rough, rough.getDay()), tz);
 }
 
 export function buildGrid(
   commits: RepositoryCommitResource[],
   windowStart: string,
   windowEnd: string,
+  tz: string,
 ): { weeks: Week[]; months: Month[]; numWeeks: number } {
   const countMap = new Map<string, number>();
   for (const commit of commits) {
-    const date = commit.date.slice(0, 10); // iso date YYYY-MM-DD
+    const date = formatDateIso(new Date(commit.date), tz);
     countMap.set(date, (countMap.get(date) ?? 0) + 1);
   }
 
-  const today = dateOnly(new Date());
-  const start = dateOnly(windowStart);
-  const end = dateOnly(windowEnd);
+  const today = new Date(`${formatDateIso(new Date(), tz)}T00:00:00`);
+  const start = new Date(`${windowStart}T00:00:00`);
+  const end = new Date(`${windowEnd}T00:00:00`);
   const firstSunday = subtractDays(start, start.getDay());
   const lastSunday = subtractDays(end, end.getDay());
   const numWeeks =
@@ -177,7 +183,7 @@ export function buildGrid(
     for (let row = 0; row < NUM_DAYS; row++) {
       const d = addDays(weekStart, row);
       if (d < start || d > end || d > today) continue;
-      const dateStr = formatIsoDate(d);
+      const dateStr = formatDateIso(d, tz);
       week.push({
         date: dateStr,
         commitCount: countMap.get(dateStr) ?? 0,

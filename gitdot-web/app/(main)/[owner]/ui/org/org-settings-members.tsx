@@ -1,6 +1,7 @@
 "use client";
 
 import type { OrganizationMemberResource } from "gitdot-api";
+import { useTimezone } from "@/(main)/provider/timezone";
 import { formatDate } from "@/util/date";
 import { UserImage } from "../user/user-image";
 
@@ -13,6 +14,7 @@ export function OrgSettingsMembers({
   onAddMember: () => void;
   onEditMember: (member: OrganizationMemberResource) => void;
 }) {
+  const tz = useTimezone();
   const sorted = members
     ? [...members].sort(
         (a, b) =>
@@ -42,7 +44,7 @@ export function OrgSettingsMembers({
                 {member.role_description || "no description found"}
               </p>
               <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                Joined {formatDate(new Date(member.created_at))}
+                Joined {formatDate(new Date(member.created_at), tz)}
               </span>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import type { OrganizationResource } from "gitdot-api";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useTimezone } from "@/(main)/provider/timezone";
 import { toast } from "@/(main)/provider/toaster";
 import {
   updateOrganizationAction,
@@ -83,6 +84,7 @@ export function OrgSettingsProfile({ org }: { org: OrganizationResource }) {
 }
 
 function OrgProfilePrimary({ org }: { org: OrganizationResource }) {
+  const tz = useTimezone();
   const router = useRouter();
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,7 +143,7 @@ function OrgProfilePrimary({ org }: { org: OrganizationResource }) {
         <span className="text-sm font-semibold mb-1.5">{org.name}</span>
         <span className="text-sm text-muted-foreground">joined</span>
         <span className="text-sm text-muted-foreground">
-          {formatDate(new Date(org.created_at))} (
+          {formatDate(new Date(org.created_at), tz)} (
           {timeAgo(new Date(org.created_at))})
         </span>
       </div>

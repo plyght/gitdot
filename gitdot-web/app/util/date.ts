@@ -1,3 +1,65 @@
+// ==================================
+// timezone required date formatters
+// use useTimezone to avoid date flicker and keep locality
+// ==================================
+
+export function formatDateIso(date: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function formatDate(date: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+export function formatTime(date: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+export function formatDateTime(date: Date, tz: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("month")} ${get("day")}, ${get("year")} ${get("hour")}:${get("minute")}:${get("second")} ${get("dayPeriod")}`;
+}
+
+// ============================
+// timezone invariant utilities
+// ============================
+export function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60)
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
 export function addDays(date: Date, days: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
@@ -10,18 +72,6 @@ export function subtractDays(date: Date, days: number): Date {
 
 export function subtractMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() - months, 1);
-}
-
-export function dateOnly(value: string): Date;
-export function dateOnly(value: Date): Date;
-export function dateOnly(value: string | Date): Date {
-  if (typeof value === "string") {
-    const d = new Date(`${value.slice(0, 10)}T00:00:00`);
-    return d;
-  }
-  const d = new Date(value);
-  d.setHours(0, 0, 0, 0);
-  return d;
 }
 
 export function timeAgo(date: Date) {
@@ -77,78 +127,7 @@ export function timeAgoFull(date: Date) {
     : `${p(years, "year")} ago`;
 }
 
-/**
- * Format date header: "Today", "Yesterday", or "Jan 12"
- */
-export function formatDateKey(dateKey: string): string {
-  const date = new Date(`${dateKey}T00:00:00`);
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-  });
-}
-
-/**
- * Format date as "2025-01-12" in local time.
- */
-export function formatIsoDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/**
- * Format date as "Jan 12, 2025"
- */
-export function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-/**
- * Format time from date: "2:30 PM"
- */
-export function formatTime(date: Date): string {
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-/**
- * For use in formal settings
- */
-export function formatDateTime(date: Date): string {
-  const datePart = date.toDateString(); // "Wed Jan 14 2026"
-  const monthDay = datePart.slice(4, 10); // "Jan 14"
-  const year = date.getFullYear();
-
-  let hours = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12; // Convert to 12-hour format, 0 becomes 12
-
-  return `${monthDay}, ${year} ${hours}:${minutes}:${seconds} ${ampm}`;
-}
-
-export function inRange(
+export function dateInRange(
   date: string,
   start: string | null,
   end: string | null,
@@ -159,14 +138,15 @@ export function inRange(
   return date >= lo && date <= hi;
 }
 
-export function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  if (totalSeconds < 60) return `${totalSeconds}s`;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes < 60)
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+/**
+ * Format a YYYY-MM-DD calendar string as "Jan 12, 2025". Tz-stable because the
+ * Y/M/D round-trips through local midnight; no tz argument needed.
+ */
+export function formatCalendarDate(yyyymmdd: string): string {
+  const [y, m, d] = yyyymmdd.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }

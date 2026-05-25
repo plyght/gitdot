@@ -4,7 +4,9 @@ import type { RepositoryCommitResource } from "gitdot-api";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { UserSlug } from "@/(main)/[owner]/ui/user/user-slug";
 import { useRightSidebar } from "@/(main)/hooks/use-sidebar";
-import { formatDate, timeAgo } from "@/util";
+import { useTimezone } from "@/(main)/provider/timezone";
+import { timeAgo } from "@/util";
+import { formatDate } from "@/util/date";
 import { DiffStatBar } from "../../../commits/[sha]/ui/diff-stat-bar";
 import { useFileViewerContext } from "./file-viewer-context";
 
@@ -67,6 +69,7 @@ function FileCommit({
   onHover: () => void;
   onClick: () => void;
 }) {
+  const tz = useTimezone();
   const date = new Date(commit.date);
 
   return (
@@ -78,7 +81,7 @@ function FileCommit({
     >
       <div className="flex flex-col w-full justify-start items-start min-w-0">
         <div className="text-xs text-muted-foreground flex items-center w-full min-w-0">
-          <span className="shrink-0">{formatDate(date)}</span>
+          <span className="shrink-0">{formatDate(date, tz)}</span>
           <span className="ml-auto shrink-0">{timeAgo(date)}</span>
         </div>
         <div className="text-sm truncate pb-0.5 w-full">{commit.message}</div>

@@ -2,8 +2,10 @@
 
 import type { AnswerResource } from "gitdot-api";
 import { MarkdownBody } from "@/(main)/[owner]/[repo]/ui/markdown/markdown-body";
+import { useTimezone } from "@/(main)/provider/timezone";
 import { useUserContext } from "@/(main)/provider/user";
-import { formatDate, timeAgoFull } from "@/util";
+import { timeAgoFull } from "@/util";
+import { formatDate } from "@/util/date";
 import { AnswerDropdown } from "./answer-dropdown";
 import { CommentThread } from "./comment-thread";
 import { VoteBox } from "./vote-box";
@@ -16,6 +18,7 @@ type AnswerCardProps = {
 };
 
 export function AnswerCard({ answer, owner, repo, number }: AnswerCardProps) {
+  const tz = useTimezone();
   const wasUpdated = answer.created_at !== answer.updated_at;
   const { user } = useUserContext();
 
@@ -50,7 +53,7 @@ export function AnswerCard({ answer, owner, repo, number }: AnswerCardProps) {
             </span>
             <span>
               <span className="text-muted-foreground">answered</span>{" "}
-              {formatDate(new Date(answer.created_at))}
+              {formatDate(new Date(answer.created_at), tz)}
               {", "}
               {wasUpdated ? (
                 <>

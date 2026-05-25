@@ -1,12 +1,16 @@
+"use client";
+
 import type { RepositoryResource } from "gitdot-api";
+import { useTimezone } from "@/(main)/provider/timezone";
 import { formatDate } from "@/util/date";
 
 export function RepoInfo({ repository }: { repository: RepositoryResource }) {
+  const tz = useTimezone();
   const rows: { label: string; value: string }[] = [
     { label: "visibility", value: repository.visibility },
     {
       label: "created",
-      value: formatDate(new Date(repository.created_at)),
+      value: formatDate(new Date(repository.created_at), tz),
     },
   ];
 

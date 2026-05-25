@@ -1,7 +1,10 @@
+"use client";
+
 import type { RepositoryCommitResource } from "gitdot-api";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
+import { useTimezone } from "@/(main)/provider/timezone";
 import Link from "@/ui/link";
-import { formatDateTime } from "@/util";
+import { formatDateTime } from "@/util/date";
 
 export function CommitHeader({
   commit,
@@ -12,6 +15,7 @@ export function CommitHeader({
   owner: string;
   repo: string;
 }) {
+  const tz = useTimezone();
   const date = new Date(commit.date);
 
   return (
@@ -50,7 +54,7 @@ export function CommitHeader({
         {commit.message}
       </div>
       <div className="flex items-baseline gap-1 text-xs font-mono text-muted-foreground mt-1">
-        <span>{formatDateTime(date)}</span>
+        <span>{formatDateTime(date, tz)}</span>
         <span>·</span>
         <span>{commit.sha.substring(0, 7)}</span>
       </div>
