@@ -1,11 +1,11 @@
-const MS_PER_DAY = 86400000;
-
 export function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * MS_PER_DAY);
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
 }
 
 export function subtractDays(date: Date, days: number): Date {
-  return new Date(date.getTime() - days * MS_PER_DAY);
+  return addDays(date, -days);
 }
 
 export function subtractMonths(date: Date, months: number): Date {
@@ -106,17 +106,6 @@ export function formatIsoDate(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
-}
-
-/**
- * Format date as "2025-01-12 2:30 PM" in local time.
- */
-export function formatIsoDateTime(date: Date): string {
-  const hours24 = date.getHours();
-  const ampm = hours24 >= 12 ? "PM" : "AM";
-  const h = hours24 % 12 || 12;
-  const m = String(date.getMinutes()).padStart(2, "0");
-  return `${formatIsoDate(date)} ${h}:${m} ${ampm}`;
 }
 
 /**

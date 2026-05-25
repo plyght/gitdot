@@ -4,7 +4,7 @@ import type {
   RepositoryDiffStatResource,
   RepositoryPathResource,
 } from "gitdot-api";
-import { addDays, dateOnly, subtractDays } from "@/util";
+import { addDays, dateOnly, formatIsoDate, subtractDays } from "@/util";
 
 // ---------------------------------------------------------------------------
 // commit filtering utils
@@ -120,27 +120,20 @@ export type Month = {
   numWeeks: number;
 };
 
-// [low, med, high] buckets
-export type Thresholds = [number, number, number];
+export type Thresholds = [number, number, number]; // [low, med, high]
 
-// Date YYYY-MM-DD strings in this module are always in *local* time. Avoid
-// `.toISOString().slice(0,10)` — that returns the UTC date, which shifts by a
-// day for users in UTC+ timezones and breaks the snap-to-Sunday math.
-function toLocalISODate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
+/**
+ * the window end is either today if the latest commit is made within this year
+ * or it is the latest commit (e.g., for old repos, avoid showing a blank commit grid)
+ */
 export function recentWindowEnd(
   commits: RepositoryCommitResource[] | null,
 ): string {
   const today = new Date();
-  const todayStr = toLocalISODate(today);
+  const todayStr = formatIsoDate(today);
   const mostRecent = commits?.[0]?.date.slice(0, 10);
   if (!mostRecent) return todayStr;
-  const oneYearAgo = toLocalISODate(subtractDays(today, 365));
+  const oneYearAgo = formatIsoDate(subtractDays(today, 365));
   return mostRecent >= oneYearAgo ? todayStr : mostRecent;
 }
 
@@ -148,10 +141,8 @@ export function recentWindowStart(
   commits: RepositoryCommitResource[] | null,
 ): string {
   const end = recentWindowEnd(commits);
-  // 365 days back, then snap further to the previous Sunday so the leftmost
-  // grid column is always a complete Sun→Sat (up to ~53 weeks total).
   const rough = subtractDays(new Date(`${end}T00:00:00`), 365);
-  return toLocalISODate(subtractDays(rough, rough.getDay()));
+  return formatIsoDate(subtractDays(rough, rough.getDay()));
 }
 
 export function buildGrid(
@@ -186,7 +177,7 @@ export function buildGrid(
     for (let row = 0; row < NUM_DAYS; row++) {
       const d = addDays(weekStart, row);
       if (d < start || d > end || d > today) continue;
-      const dateStr = toLocalISODate(d);
+      const dateStr = formatIsoDate(d);
       week.push({
         date: dateStr,
         commitCount: countMap.get(dateStr) ?? 0,
