@@ -5,6 +5,7 @@ import type {
   RepositoryCommitResource,
   RepositoryPathsResource,
 } from "gitdot-api";
+import { useRightSidebar } from "@/(main)/hooks/use-sidebar";
 import { ALL_COMMITS_FILTER, isFilterModified } from "../util";
 import { CommitsFilterDetail } from "./commits-filter-detail";
 import { CommitsFilterList } from "./commits-filter-list";
@@ -26,6 +27,9 @@ export function CommitsFilterPanel({
   activeFilter: RepositoryCommitFilterResource;
   setActiveFilter: (filter: RepositoryCommitFilterResource) => void;
 }) {
+  const open = useRightSidebar();
+  if (!open) return null;
+
   const original =
     filters.find((f) => f.id === activeFilter.id) ?? ALL_COMMITS_FILTER;
   const isModified = isFilterModified(activeFilter, original);
