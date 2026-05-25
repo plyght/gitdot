@@ -26,6 +26,7 @@ pub async fn handle_events(
         }
         GithubEvent::Push => handle_push(state, delivery, body)?,
         GithubEvent::Installation => handle_installation(state, body).await?,
+        GithubEvent::InstallationRepositories => {}
     }
 
     Ok(AppResponse::new(StatusCode::OK, ()))

@@ -31,6 +31,7 @@ pub enum GithubEvent {
     Ping,
     Push,
     Installation,
+    InstallationRepositories,
 }
 
 impl FromStr for GithubEvent {
@@ -41,6 +42,7 @@ impl FromStr for GithubEvent {
             "ping" => Ok(Self::Ping),
             "push" => Ok(Self::Push),
             "installation" => Ok(Self::Installation),
+            "installation_repositories" => Ok(Self::InstallationRepositories),
             other => Err(format!("unsupported github event: {other}")),
         }
     }
