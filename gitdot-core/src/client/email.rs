@@ -7,9 +7,8 @@ use lettre::{
     transport::smtp::authentication::Credentials,
 };
 use secrecy::{ExposeSecret, SecretString};
-use serde::Deserialize;
 
-use crate::error::EmailError;
+use crate::{dto::SmtpTlsMode, error::EmailError};
 
 const SMTP_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -22,14 +21,6 @@ pub trait EmailClient: Send + Sync + Clone + 'static {
         subject: &str,
         html: &str,
     ) -> Result<(), EmailError>;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SmtpTlsMode {
-    Implicit,
-    StartTls,
-    None,
 }
 
 #[derive(Debug, Clone)]

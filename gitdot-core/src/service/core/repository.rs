@@ -5,19 +5,19 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::{
-    client::{Git2Client, GitClient, InitialCommitFile},
+    client::{Git2Client, GitClient},
     dto::{
         CommitDiffResponse, CommitResponse, ConvertReadonlyRepositoryRequest,
         CreateRepositoryCommitFilterRequest, CreateRepositoryRequest,
         DeleteRepositoryCommitFilterRequest, DeleteRepositoryRequest, GetRepositoryActivityRequest,
         GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest, GetRepositoryBlobsRequest,
         GetRepositoryCommitDiffRequest, GetRepositoryCommitRequest, GetRepositoryPathsRequest,
-        GetRepositoryRequest, ListRepositoryCommitFiltersRequest, ListRepositoryCommitsRequest,
-        MAX_PER_PAGE_LIMIT, Page, RepositoryActivityEvent, RepositoryBlobDiffsResponse,
-        RepositoryBlobResponse, RepositoryBlobsResponse, RepositoryCommitFilterResponse,
-        RepositoryDiffFileResponse, RepositoryFileResponse, RepositoryPathsResponse,
-        RepositoryResponse, StarRepositoryRequest, UnstarRepositoryRequest,
-        UpdateRepositoryCommitFilterRequest,
+        GetRepositoryRequest, InitialCommitFile, ListRepositoryCommitFiltersRequest,
+        ListRepositoryCommitsRequest, MAX_PER_PAGE_LIMIT, Page, RepositoryActivityEvent,
+        RepositoryBlobDiffsResponse, RepositoryBlobResponse, RepositoryBlobsResponse,
+        RepositoryCommitFilterResponse, RepositoryDiffFileResponse, RepositoryFileResponse,
+        RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest,
+        UnstarRepositoryRequest, UpdateRepositoryCommitFilterRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, RepositoryError},
     model::{CommitDiff, RepositoryOwnerType},

@@ -13,8 +13,8 @@ mod slack_bot;
 mod token;
 
 pub use clickhouse::{ClickHouseClient, ClickHouseClientImpl};
-pub use email::{EmailClient, SmtpClient, SmtpTlsMode};
-pub use git::{Git2Client, GitClient, InitialCommitFile};
+pub use email::{EmailClient, SmtpClient};
+pub use git::{Git2Client, GitClient};
 pub use git_http::{GitHttpClient, GitHttpClientImpl};
 pub use github::{GitHubClient, OctocrabClient};
 pub use image::{ImageClient, ImageClientImpl};

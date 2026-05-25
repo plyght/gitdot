@@ -4,9 +4,9 @@ use tokio::{fs, task};
 
 use crate::{
     dto::{
-        PathType, RepositoryBlobResponse, RepositoryBlobsResponse, RepositoryCommitResponse,
-        RepositoryDiffFileResponse, RepositoryDiffStatResponse, RepositoryFileResponse,
-        RepositoryFolderResponse, RepositoryPath, RepositoryPathsResponse,
+        InitialCommitFile, PathType, RepositoryBlobResponse, RepositoryBlobsResponse,
+        RepositoryCommitResponse, RepositoryDiffFileResponse, RepositoryDiffStatResponse,
+        RepositoryFileResponse, RepositoryFolderResponse, RepositoryPath, RepositoryPathsResponse,
     },
     error::GitError,
     util::{
@@ -14,12 +14,6 @@ use crate::{
         review::MAGIC_REF_PREFIX,
     },
 };
-
-#[derive(Debug, Clone)]
-pub struct InitialCommitFile {
-    pub path: &'static str,
-    pub content: String,
-}
 
 #[async_trait]
 pub trait GitClient: Send + Sync + Clone + 'static {

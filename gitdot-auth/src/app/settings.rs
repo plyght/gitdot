@@ -2,7 +2,7 @@ use figment::{Figment, providers::Env};
 use secrecy::SecretString;
 use serde::Deserialize;
 
-use gitdot_core::client::SmtpTlsMode;
+use gitdot_core::dto::SmtpTlsMode;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
