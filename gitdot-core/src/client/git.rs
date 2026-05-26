@@ -205,6 +205,7 @@ impl Git2Client {
         right_tree: &git2::Tree<'repo>,
     ) -> Result<git2::Diff<'repo>, git2::Error> {
         let mut diff_opts = git2::DiffOptions::new();
+        diff_opts.skip_binary_check(true);
         let diff =
             repo.diff_tree_to_tree(Some(left_tree), Some(right_tree), Some(&mut diff_opts))?;
         Ok(diff)
