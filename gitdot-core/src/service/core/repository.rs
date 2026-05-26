@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
 
 use async_trait::async_trait;
 use chrono::Utc;
@@ -568,17 +568,21 @@ where
         let owner = request.owner.to_string();
         let repo_name = request.repo.to_string();
 
+        let repo_start = Instant::now();
         let repository = self
             .repo_repo
             .get(&owner, &repo_name, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo_name))?;
+        let repo_lookup_ms = repo_start.elapsed().as_millis() as u64;
 
+        let commit_start = Instant::now();
         let commit = self
             .commit_repo
             .get_commit(repository.id, &request.sha)
             .await?
             .or_not_found("commit", &request.sha)?;
+        let commit_lookup_ms = commit_start.elapsed().as_millis() as u64;
 
         let sha = commit.sha.clone();
         let parent_sha = commit.parent_sha.clone();
@@ -589,10 +593,24 @@ where
             Some(parent_sha.as_str())
         };
 
+        let diff_start = Instant::now();
         let files = self
             .git_client
             .get_repo_diff_files(&owner, &repo_name, left_ref, &sha)
             .await?;
+        let diff_files_ms = diff_start.elapsed().as_millis() as u64;
+
+        tracing::error!(
+            %owner,
+            %repo_name,
+            sha = %sha,
+            is_initial,
+            file_count = files.len(),
+            repo_lookup_ms,
+            commit_lookup_ms,
+            diff_files_ms,
+            "get_repository_commit_diff stage timings"
+        );
 
         Ok(CommitDiffResponse {
             sha,

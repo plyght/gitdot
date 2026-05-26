@@ -50,8 +50,8 @@ const CommitRow = memo(function CommitRow({
 }: {
   commit: RepositoryCommitResource;
 }) {
-  const { owner, repo } = useParams<{ owner: string; repo: string }>();
   const tz = useTimezone();
+  const { owner, repo } = useParams<{ owner: string; repo: string }>();
   const href = `/${owner}/${repo}/commits/${commit.sha.substring(0, 7)}`;
 
   return (

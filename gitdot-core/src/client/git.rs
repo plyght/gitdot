@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use tokio::{fs, task};
@@ -714,9 +716,17 @@ impl GitClient for Git2Client {
         let repo = repo.to_string();
         let left_ref = left_ref.map(str::to_string);
         let right_ref = right_ref.to_string();
+
+        let open_start = Instant::now();
         let repository = self.open_repository(&owner, &repo)?;
+        let open_ms = open_start.elapsed().as_millis() as u64;
+
+        let owner_log = owner.clone();
+        let repo_log = repo.clone();
+        let right_ref_log = right_ref.clone();
 
         task::spawn_blocking(move || {
+            let trees_start = Instant::now();
             let left_tree = match left_ref {
                 None => {
                     let empty_oid = repository.treebuilder(None)?.write()?;
@@ -725,9 +735,18 @@ impl GitClient for Git2Client {
                 Some(ref r) => Self::resolve_ref(&repository, r)?.tree()?,
             };
             let right_tree = Self::resolve_ref(&repository, &right_ref)?.tree()?;
-            let diff = Self::diff_trees(&repository, &left_tree, &right_tree)?;
+            let trees_ms = trees_start.elapsed().as_millis() as u64;
 
+            let diff_start = Instant::now();
+            let diff = Self::diff_trees(&repository, &left_tree, &right_tree)?;
             let num_deltas = diff.deltas().count();
+            let diff_ms = diff_start.elapsed().as_millis() as u64;
+
+            let loop_start = Instant::now();
+            let mut blob_ms: u64 = 0;
+            let mut patch_ms: u64 = 0;
+            let mut total_left_bytes: u64 = 0;
+            let mut total_right_bytes: u64 = 0;
             let mut results = Vec::with_capacity(num_deltas);
 
             for i in 0..num_deltas {
@@ -736,6 +755,7 @@ impl GitClient for Git2Client {
                     .ok_or_else(|| git2::Error::from_str("delta index out of range"))?;
                 let status = delta.status();
 
+                let blob_start = Instant::now();
                 let left_content = if status != git2::Delta::Added {
                     delta
                         .old_file()
@@ -743,7 +763,9 @@ impl GitClient for Git2Client {
                         .and_then(|p| p.to_str())
                         .and_then(|path| {
                             let blob = Self::get_blob(&repository, &left_tree, path).ok()?;
-                            Some(Self::blob_content_string(&blob))
+                            let content = Self::blob_content_string(&blob);
+                            total_left_bytes += content.len() as u64;
+                            Some(content)
                         })
                 } else {
                     None
@@ -756,11 +778,14 @@ impl GitClient for Git2Client {
                         .and_then(|p| p.to_str())
                         .and_then(|path| {
                             let blob = Self::get_blob(&repository, &right_tree, path).ok()?;
-                            Some(Self::blob_content_string(&blob))
+                            let content = Self::blob_content_string(&blob);
+                            total_right_bytes += content.len() as u64;
+                            Some(content)
                         })
                 } else {
                     None
                 };
+                blob_ms += blob_start.elapsed().as_millis() as u64;
 
                 let path = delta
                     .new_file()
@@ -770,9 +795,11 @@ impl GitClient for Git2Client {
                     .unwrap_or("")
                     .to_string();
 
+                let patch_start = Instant::now();
                 let patch = git2::Patch::from_diff(&diff, i)?;
                 let (_, insertions, deletions) =
                     patch.map(|p| p.line_stats()).unwrap_or(Ok((0, 0, 0)))?;
+                patch_ms += patch_start.elapsed().as_millis() as u64;
 
                 results.push(RepositoryDiffFileResponse {
                     path,
@@ -782,6 +809,23 @@ impl GitClient for Git2Client {
                     lines_removed: deletions as u32,
                 });
             }
+            let loop_ms = loop_start.elapsed().as_millis() as u64;
+
+            tracing::error!(
+                owner = %owner_log,
+                repo = %repo_log,
+                right_ref = %right_ref_log,
+                num_deltas,
+                open_ms,
+                trees_ms,
+                diff_ms,
+                loop_ms,
+                blob_ms,
+                patch_ms,
+                total_left_bytes,
+                total_right_bytes,
+                "get_repo_diff_files stage timings"
+            );
 
             Ok(results)
         })
