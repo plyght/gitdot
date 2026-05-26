@@ -9,6 +9,7 @@ import { toast } from "@/(main)/provider/toaster";
 import { useUserContext } from "@/(main)/provider/user";
 import { updateUserAction, uploadUserImageAction } from "@/actions";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
+import { cn } from "@/util";
 import { formatDate, timeAgo } from "@/util/date";
 
 export function SettingsProfile({ user }: { user: UserResource }) {
@@ -54,6 +55,7 @@ export function SettingsProfile({ user }: { user: UserResource }) {
     <div className="max-w-lg mx-auto p-4">
       <div className="space-y-6">
         <ProfilePrimary user={user} />
+        <ProfileEmails />
         <ProfileAbout
           displayName={displayName}
           location={location}
@@ -81,8 +83,7 @@ export function SettingsProfile({ user }: { user: UserResource }) {
 
 function ProfilePrimary({ user }: { user: UserResource }) {
   const tz = useTimezone();
-  const { emails, refreshUser } = useUserContext();
-  const primaryEmail = emails?.find((e) => e.is_primary)?.email ?? "";
+  const { refreshUser } = useUserContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -137,8 +138,6 @@ function ProfilePrimary({ user }: { user: UserResource }) {
           <TooltipContent>Upload photo</TooltipContent>
         </Tooltip>
         <span className="text-sm font-semibold mb-1.5">{user.name}</span>
-        <span className="text-sm text-muted-foreground">email</span>
-        <span className="text-sm">{primaryEmail}</span>
         <span className="text-sm text-muted-foreground">joined</span>
         <span className="text-sm text-muted-foreground">
           {formatDate(new Date(user.created_at), tz)} (
@@ -267,6 +266,73 @@ function ProfileLinks({
             className="h-5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer block border-b border-transparent w-full text-left"
           >
             new link
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProfileEmails() {
+  const { emails } = useUserContext();
+  const [draft, setDraft] = useState<string | null>(null);
+
+  function commitDraft() {
+    // dummy — backend wire-up (POST /user/email) is not implemented yet
+    setDraft(null);
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground font-mono">
+        <span className="text-foreground/40 select-none"># </span>
+        emails
+      </p>
+      <div className="space-y-1">
+        {emails?.map((e) => (
+          <div
+            key={e.email}
+            className="grid grid-cols-[1fr_auto] items-center gap-x-3 h-5"
+          >
+            <span className="text-sm truncate">{e.email}</span>
+            <span className="flex items-center gap-2 text-xs font-mono">
+              {e.is_primary && (
+                <span className="text-muted-foreground">primary</span>
+              )}
+              <span
+                className={cn(
+                  e.is_verified
+                    ? "text-muted-foreground"
+                    : "text-destructive/80",
+                )}
+              >
+                {e.is_verified ? "verified" : "unverified"}
+              </span>
+            </span>
+          </div>
+        ))}
+        {draft !== null ? (
+          <input
+            value={draft}
+            onChange={(ev) => setDraft(ev.target.value)}
+            onKeyDown={(ev) => {
+              if (ev.key === "Enter" || ev.key === "Escape") {
+                ev.stopPropagation();
+                commitDraft();
+              }
+            }}
+            onBlur={commitDraft}
+            autoFocus
+            className="h-5 text-sm bg-transparent border-b border-border outline-none w-full placeholder:text-muted-foreground/40 transition-colors focus:border-foreground"
+            placeholder="you@another-domain.com"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setDraft("")}
+            className="h-5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer block border-b border-transparent w-full text-left"
+          >
+            new email
           </button>
         )}
       </div>
