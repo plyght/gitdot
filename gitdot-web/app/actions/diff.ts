@@ -63,9 +63,30 @@ export async function renderCommitDiffAction(
   repo: string,
   sha: string,
 ): Promise<DiffEntry[]> {
+  const totalStart = performance.now();
+  const fetchStart = performance.now();
   const result = await getRepositoryCommitDiff(owner, repo, sha);
-  if (!result) return [];
-  return renderDiffs(result.files);
+  console.log(
+    `[renderCommitDiffAction] getRepositoryCommitDiff: ${(performance.now() - fetchStart).toFixed(1)}ms`,
+  );
+  if (!result) {
+    console.log(
+      `[renderCommitDiffAction] total (no result): ${(performance.now() - totalStart).toFixed(1)}ms`,
+    );
+    return [];
+  }
+  console.log(
+    `[renderCommitDiffAction] files to render: ${result.files.length}`,
+  );
+  const renderStart = performance.now();
+  const entries = await renderDiffs(result.files);
+  console.log(
+    `[renderCommitDiffAction] renderDiffs: ${(performance.now() - renderStart).toFixed(1)}ms`,
+  );
+  console.log(
+    `[renderCommitDiffAction] total: ${(performance.now() - totalStart).toFixed(1)}ms`,
+  );
+  return entries;
 }
 
 export async function renderReviewDiffAction(
@@ -98,11 +119,16 @@ async function renderDiffs(
 async function renderDiff(
   file: RepositoryDiffFileResource,
 ): Promise<DiffSpans> {
+  const fileStart = performance.now();
   const left = file.left_content ?? null;
   const right = file.right_content ?? null;
 
   const lang = inferLanguage(file.path);
+  const diffStart = performance.now();
   const hunks = left != null && right != null ? diffFiles(left, right) : [];
+  console.log(
+    `[renderDiff] ${file.path} diffFiles: ${(performance.now() - diffStart).toFixed(1)}ms (left=${left?.length ?? 0}, right=${right?.length ?? 0}, hunks=${hunks.length})`,
+  );
 
   if (left && right && hunks.length > 0) {
     const isAllAdditions = hunks.every((h) => h.every((p) => !p.lhs));
@@ -111,9 +137,20 @@ async function renderDiff(
     if (isAllAdditions || isAllRemovals) {
       const side = isAllAdditions ? ("right" as const) : ("left" as const);
       const content = isAllAdditions ? right : left;
+      const mapStart = performance.now();
       const { leftLines, rightLines } = createChangeMaps(hunks);
+      console.log(
+        `[renderDiff] ${file.path} createChangeMaps: ${(performance.now() - mapStart).toFixed(1)}ms`,
+      );
       const changedLines = isAllAdditions ? rightLines : leftLines;
+      const spansStart = performance.now();
       const spans = await renderSpans(side, content, lang, changedLines);
+      console.log(
+        `[renderDiff] ${file.path} renderSpans (unilateral): ${(performance.now() - spansStart).toFixed(1)}ms`,
+      );
+      console.log(
+        `[renderDiff] ${file.path} total: ${(performance.now() - fileStart).toFixed(1)}ms`,
+      );
       return {
         kind: "unilateral" as const,
         spans,
@@ -122,11 +159,22 @@ async function renderDiff(
       };
     }
 
+    const mapStart = performance.now();
     const { leftLines, rightLines } = createChangeMaps(hunks);
+    console.log(
+      `[renderDiff] ${file.path} createChangeMaps: ${(performance.now() - mapStart).toFixed(1)}ms`,
+    );
+    const spansStart = performance.now();
     const [leftSpans, rightSpans] = await Promise.all([
       renderSpans("left", left, lang, leftLines),
       renderSpans("right", right, lang, rightLines),
     ]);
+    console.log(
+      `[renderDiff] ${file.path} renderSpans (split, parallel): ${(performance.now() - spansStart).toFixed(1)}ms`,
+    );
+    console.log(
+      `[renderDiff] ${file.path} total: ${(performance.now() - fileStart).toFixed(1)}ms`,
+    );
     return {
       kind: "split" as const,
       leftSpans,
@@ -138,6 +186,7 @@ async function renderDiff(
     const content = (left ?? right)!;
     const side = left != null ? "left" : "right";
     const lineType = side === "left" ? "removed" : "added";
+    const hastStart = performance.now();
     const hast = await fileToHast(content, lang, "gitdot", [
       {
         line(node, lineNumber) {
@@ -148,14 +197,23 @@ async function renderDiff(
         },
       },
     ]);
+    console.log(
+      `[renderDiff] ${file.path} fileToHast (created/deleted): ${(performance.now() - hastStart).toFixed(1)}ms`,
+    );
     const pre = hast.children[0] as Element;
     const code = pre.children[0] as Element;
     const spans = code.children.filter(
       (child): child is Element => child.type === "element",
     );
+    console.log(
+      `[renderDiff] ${file.path} total: ${(performance.now() - fileStart).toFixed(1)}ms`,
+    );
     if (side === "left") return { kind: "deleted" as const };
     return { kind: "created" as const, spans };
   } else {
+    console.log(
+      `[renderDiff] ${file.path} no-change total: ${(performance.now() - fileStart).toFixed(1)}ms`,
+    );
     return { kind: "no-change" as const };
   }
 }

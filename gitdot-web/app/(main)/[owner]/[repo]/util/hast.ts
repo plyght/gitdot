@@ -23,12 +23,18 @@ async function getHighlighter(
   lang: BundledLanguage | undefined,
   theme: "vitesse" | "gitdot",
 ): Promise<Highlighter> {
+  const totalStart = performance.now();
+  const singletonStart = performance.now();
   const highlighter = await getSingletonHighlighter();
+  const singletonMs = performance.now() - singletonStart;
   const themesToLoad: ("vitesse-light" | "vitesse-dark" | "gitdot-light")[] =
     theme === "vitesse" ? ["vitesse-light", "vitesse-dark"] : ["gitdot-light"];
 
+  const themesStart = performance.now();
+  const themesLoaded: string[] = [];
   for (const t of themesToLoad) {
     if (highlighter.getLoadedThemes().includes(t)) continue;
+    const tStart = performance.now();
     if (t === "gitdot-light") {
       const gitdotLight = (await import("@/themes/gitdot-light")).default;
       await highlighter.loadTheme(gitdotLight);
@@ -40,11 +46,21 @@ async function getHighlighter(
       const vitesseDark = (await import("@/themes/vitesse-dark")).default;
       await highlighter.loadTheme(vitesseDark);
     }
+    themesLoaded.push(`${t}=${(performance.now() - tStart).toFixed(1)}ms`);
   }
+  const themesMs = performance.now() - themesStart;
 
+  let langMs = 0;
+  let langLoaded = false;
   if (lang && !highlighter.getLoadedLanguages().includes(lang)) {
+    const langStart = performance.now();
     await highlighter.loadLanguage(lang);
+    langMs = performance.now() - langStart;
+    langLoaded = true;
   }
+  console.log(
+    `[getHighlighter] lang=${lang ?? "none"} theme=${theme} total=${(performance.now() - totalStart).toFixed(1)}ms singleton=${singletonMs.toFixed(1)}ms themes=${themesMs.toFixed(1)}ms(loaded=[${themesLoaded.join(",")}]) langLoad=${langMs.toFixed(1)}ms(loaded=${langLoaded})`,
+  );
   return highlighter;
 }
 
@@ -54,22 +70,31 @@ export async function fileToHast(
   theme: "vitesse" | "gitdot",
   transformers: ShikiTransformer[],
 ) {
+  const totalStart = performance.now();
+  const highlighterStart = performance.now();
   const highlighter = await getHighlighter(lang, theme);
+  const highlighterMs = performance.now() - highlighterStart;
 
+  const codeStart = performance.now();
+  let result: ReturnType<Highlighter["codeToHast"]>;
   if (theme === "vitesse") {
-    return highlighter.codeToHast(content, {
+    result = highlighter.codeToHast(content, {
       lang: lang ?? "plaintext",
       themes: VITESSE_THEMES,
       defaultColor: "light",
       transformers,
     });
+  } else {
+    result = highlighter.codeToHast(content, {
+      lang: lang ?? "plaintext",
+      theme: "gitdot-light",
+      transformers,
+    });
   }
-
-  return highlighter.codeToHast(content, {
-    lang: lang ?? "plaintext",
-    theme: "gitdot-light",
-    transformers,
-  });
+  console.log(
+    `[fileToHast] lang=${lang ?? "none"} theme=${theme} bytes=${content.length} total=${(performance.now() - totalStart).toFixed(1)}ms getHighlighter=${highlighterMs.toFixed(1)}ms codeToHast=${(performance.now() - codeStart).toFixed(1)}ms`,
+  );
+  return result;
 }
 
 export async function renderFileToHtml(
@@ -99,6 +124,8 @@ export async function renderSpans(
   lang: BundledLanguage | undefined,
   changedLines: Set<number>,
 ): Promise<Element[]> {
+  const totalStart = performance.now();
+  const hastStart = performance.now();
   const hast = await fileToHast(content, lang, "gitdot", [
     {
       pre(node) {
@@ -122,6 +149,9 @@ export async function renderSpans(
     },
   ]);
 
+  const hastMs = performance.now() - hastStart;
+
+  const postStart = performance.now();
   const root = hast as Root;
   const pre = root.children[0] as Element;
   const code = pre.children[0] as Element;
@@ -132,6 +162,9 @@ export async function renderSpans(
   for (const line of lines) {
     splitLineByWhitespace(line);
   }
+  console.log(
+    `[renderSpans] side=${side} lang=${lang ?? "none"} bytes=${content.length} lines=${lines.length} total=${(performance.now() - totalStart).toFixed(1)}ms fileToHast=${hastMs.toFixed(1)}ms postProcess=${(performance.now() - postStart).toFixed(1)}ms`,
+  );
 
   return lines;
 }
