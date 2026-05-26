@@ -7,6 +7,7 @@ import { DiffCreated } from "./diff-created";
 import { DiffSplit } from "./diff-split";
 import { DiffUnified } from "./diff-unified";
 import { DiffUnilateral } from "./diff-unilateral";
+import { useDiffSelection } from "./hooks/use-diff-selection";
 
 export function DiffBody({
   spans,
@@ -17,6 +18,9 @@ export function DiffBody({
   layout?: "split" | "unified" | "heuristic";
   className?: string;
 }) {
+  const { containerRef, handleMouseDown, handleMouseMove, handleMouseUp } =
+    useDiffSelection();
+
   const useSplit =
     spans.kind === "split" &&
     (layout === "split" ||
@@ -24,7 +28,23 @@ export function DiffBody({
         preferSplit(spans.leftSpans, spans.rightSpans, spans.hunks)));
 
   return (
-    <div className={cn("w-full", className)}>
+    <div
+      ref={containerRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      className={cn(
+        "w-full cursor-default select-none relative",
+        "[&.is-dragging_.diff-token]:cursor-default",
+        "[&.has-selection_.diff-token:not(.token-selected)]:opacity-40",
+        "[&.has-selection_.diff-token:not(.token-selected)]:transition-opacity",
+        "[&.has-selection_.diff-token:not(.token-selected)]:duration-200",
+        "[&.has-selection_.diff-token.token-selected]:opacity-100",
+        "[&.has-selection_.diff-token.token-selected]:transition-opacity",
+        "[&.has-selection_.diff-token.token-selected]:duration-200",
+        className,
+      )}
+    >
       {spans.kind === "split" &&
         (useSplit ? (
           <DiffSplit

@@ -5,7 +5,6 @@ import type { Element } from "hast";
 import {
   type DiffHunk,
   diffFiles,
-  fileToHast,
   getChangedLines,
   inferLanguage,
   renderSpans,
@@ -136,21 +135,9 @@ async function renderDiff(
   } else if (right === null) {
     return { kind: "deleted" };
   } else if (left === null) {
-    const hast = await fileToHast(right, lang, "vitesse", [
-      {
-        line(node, lineNumber) {
-          node.type = "element";
-          node.tagName = "diffline";
-          node.properties["data-line-number"] = lineNumber;
-          node.properties["data-line-type"] = "added";
-        },
-      },
-    ]);
-    const pre = hast.children[0] as Element;
-    const code = pre.children[0] as Element;
-    const spans = code.children.filter(
-      (child): child is Element => child.type === "element",
-    );
+    const lineCount = right.split("\n").length;
+    const allLines = new Set(Array.from({ length: lineCount }, (_, i) => i));
+    const spans = await renderSpans("right", right, lang, allLines, "vitesse");
     return { kind: "created", spans };
   } else {
     return { kind: "no-change" };
