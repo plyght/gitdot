@@ -21,7 +21,11 @@ export function CommitHeader({
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <UserImage userId={commit.author.id} px={20} />
+        <UserImage
+          userId={commit.author.id}
+          username={commit.author.name}
+          px={20}
+        />
         <span>
           <Link
             href={`/${commit.author.name}`}

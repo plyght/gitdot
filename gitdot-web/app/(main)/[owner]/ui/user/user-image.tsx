@@ -7,10 +7,12 @@ import { cn } from "@/util";
 
 export function UserImage({
   userId,
+  username,
   px = 32,
   className,
 }: {
   userId?: string;
+  username?: string;
   px?: number;
   className?: string;
 }) {
@@ -19,7 +21,7 @@ export function UserImage({
   if (!userId || errored) {
     return (
       <AvatarBeam
-        name={userId ?? "anonymous"}
+        name={userId ?? username ?? "anonymous"}
         size={px}
         className={className}
       />
