@@ -21,7 +21,7 @@ const pathKey = (owner: string, repo: string, path: string) =>
 let dbPromise: Promise<IDBPDatabase> | null = null;
 function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = openDB("gitdot", 12, {
+    dbPromise = openDB("gitdot", 13, {
       upgrade(db, oldVersion) {
         if (oldVersion < 11) {
           if (db.objectStoreNames.contains("blobs"))
@@ -33,6 +33,11 @@ function getDb(): Promise<IDBPDatabase> {
           // dual-theme HASTs: drop entries highlighted before vitesse-dark was added.
           if (db.objectStoreNames.contains("hasts"))
             db.deleteObjectStore("hasts");
+        }
+        if (oldVersion < 13) {
+          // CommitAuthorResource shape change: name (now gitdot slug) + git_name.
+          if (db.objectStoreNames.contains("commits"))
+            db.deleteObjectStore("commits");
         }
         if (!db.objectStoreNames.contains("commits"))
           db.createObjectStore("commits");
