@@ -389,17 +389,39 @@ where
             .map_err(|_| AuthenticationError::Unauthorized)?;
 
         let github_token = self.github_client.exchange_code(&request.code).await?;
-        let email = self.github_client.get_user_email(&github_token).await?;
-        let (user, is_new) = match self.user_repo.get_by_email(&email).await? {
+        let github_emails = self.github_client.get_user_emails(&github_token).await?;
+        let primary_email = github_emails
+            .iter()
+            .find(|e| e.primary && e.verified)
+            .map(|e| e.email.clone())
+            .ok_or_else(|| {
+                AuthenticationError::GitHubError(crate::error::GitHubError::Other(
+                    "No verified primary email found".to_string(),
+                ))
+            })?;
+        let (user, is_new) = match self.user_repo.get_by_email(&primary_email).await? {
             Some(user) => (user, false),
             None => {
                 let user = self
                     .user_repo
-                    .create(&email, true, AuthProvider::GitHub)
+                    .create(&primary_email, true, AuthProvider::GitHub)
                     .await?;
                 (user, true)
             }
         };
+
+        if is_new {
+            let extras: Vec<String> = github_emails
+                .into_iter()
+                .filter(|e| e.verified && e.email != primary_email)
+                .map(|e| e.email)
+                .collect();
+            if !extras.is_empty() {
+                self.user_repo
+                    .upsert_verified_emails(user.id, &extras)
+                    .await?;
+            }
+        }
 
         let access_token = self.token_client.generate_gitdot_jwt(user.id, &user.name)?;
 

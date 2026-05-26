@@ -52,6 +52,12 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
 
     async fn list_emails(&self, user_id: Uuid) -> Result<Vec<UserEmail>, DatabaseError>;
 
+    async fn upsert_verified_emails(
+        &self,
+        user_id: Uuid,
+        emails: &[String],
+    ) -> Result<(), DatabaseError>;
+
     async fn list_starred_repositories(
         &self,
         user_id: Uuid,
@@ -273,6 +279,31 @@ impl UserRepository for UserRepositoryImpl {
         .await?;
 
         Ok(rows)
+    }
+
+    async fn upsert_verified_emails(
+        &self,
+        user_id: Uuid,
+        emails: &[String],
+    ) -> Result<(), DatabaseError> {
+        if emails.is_empty() {
+            return Ok(());
+        }
+
+        sqlx::query(
+            r#"
+            INSERT INTO core.user_emails (user_id, email, is_primary, is_verified, verified_at)
+            SELECT $1, e, FALSE, TRUE, NOW()
+            FROM UNNEST($2::text[]) AS e
+            ON CONFLICT (email) DO NOTHING
+            "#,
+        )
+        .bind(user_id)
+        .bind(emails)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
     }
 
     async fn list_starred_repositories(

@@ -9,7 +9,7 @@ use sha2::Sha256;
 use uuid::Uuid;
 
 use crate::{
-    dto::{GitHubAppInstallAction, InstallStatePayload},
+    dto::{GitHubAppInstallAction, GitHubEmail, GitHubMembership, GitHubUser, InstallStatePayload},
     error::GitHubError,
 };
 
@@ -20,14 +20,14 @@ pub trait GitHubClient: Send + Sync + Clone + 'static {
     // OAuth operations
     fn get_authorization_url(&self, state: &str) -> String;
     async fn exchange_code(&self, code: &str) -> Result<String, GitHubError>;
-    async fn get_user_name(&self, access_token: &str) -> Result<String, GitHubError>;
-    async fn get_user_email(&self, access_token: &str) -> Result<String, GitHubError>;
+    async fn get_user(&self, access_token: &str) -> Result<GitHubUser, GitHubError>;
+    async fn get_user_emails(&self, access_token: &str) -> Result<Vec<GitHubEmail>, GitHubError>;
     async fn get_user_membership(
         &self,
         org_name: &str,
         user_name: &str,
         access_token: &str,
-    ) -> Result<String, GitHubError>;
+    ) -> Result<GitHubMembership, GitHubError>;
 
     // GitHub App operations
     fn get_github_app_install_url(
@@ -132,37 +132,21 @@ impl GitHubClient for OctocrabClient {
         Ok(response.access_token)
     }
 
-    async fn get_user_name(&self, access_token: &str) -> Result<String, GitHubError> {
-        #[derive(Deserialize)]
-        struct GitHubUser {
-            login: String,
-        }
-
+    async fn get_user(&self, access_token: &str) -> Result<GitHubUser, GitHubError> {
         let crab = octocrab::Octocrab::builder()
             .personal_token(access_token.to_string())
             .build()?;
         let user: GitHubUser = crab.get("/user", None::<&()>).await?;
-        Ok(user.login)
+        Ok(user)
     }
 
-    async fn get_user_email(&self, access_token: &str) -> Result<String, GitHubError> {
-        #[derive(Deserialize)]
-        struct GitHubEmail {
-            email: String,
-            primary: bool,
-            verified: bool,
-        }
-
+    async fn get_user_emails(&self, access_token: &str) -> Result<Vec<GitHubEmail>, GitHubError> {
         let crab = octocrab::Octocrab::builder()
             .personal_token(access_token.to_string())
             .build()?;
 
         let emails: Vec<GitHubEmail> = crab.get("/user/emails", None::<&()>).await?;
-        emails
-            .into_iter()
-            .find(|e| e.primary && e.verified)
-            .map(|e| e.email)
-            .ok_or_else(|| GitHubError::Other("No verified primary email found".to_string()))
+        Ok(emails)
     }
 
     async fn get_user_membership(
@@ -170,23 +154,13 @@ impl GitHubClient for OctocrabClient {
         org_name: &str,
         user_name: &str,
         access_token: &str,
-    ) -> Result<String, GitHubError> {
-        #[derive(Deserialize)]
-        struct GitHubMembership {
-            state: String,
-            role: String,
-        }
-
+    ) -> Result<GitHubMembership, GitHubError> {
         let crab = octocrab::Octocrab::builder()
             .personal_token(access_token.to_string())
             .build()?;
         let path = format!("/orgs/{org_name}/memberships/{user_name}");
         let membership: GitHubMembership = crab.get(path, None::<&()>).await?;
-
-        if membership.state != "active" {
-            return Err(GitHubError::Unauthorized);
-        }
-        Ok(membership.role)
+        Ok(membership)
     }
 
     fn get_github_app_install_url(

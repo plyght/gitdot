@@ -281,7 +281,7 @@ where
         }
 
         let access_token = self.github_client.exchange_code(&request.code).await?;
-        let github_user_name = self.github_client.get_user_name(&access_token).await?;
+        let github_user_name = self.github_client.get_user(&access_token).await?.login;
 
         let installation = self
             .github_client
@@ -299,7 +299,7 @@ where
                 }
             }
             GitHubInstallationType::Organization => {
-                let role = self
+                let membership = self
                     .github_client
                     .get_user_membership(
                         &installation.account.login,
@@ -307,7 +307,7 @@ where
                         &access_token,
                     )
                     .await?;
-                if role != "admin" {
+                if membership.state != "active" || membership.role != "admin" {
                     return Err(GitHubError::Unauthorized.into());
                 }
             }
