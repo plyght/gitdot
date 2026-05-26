@@ -97,9 +97,12 @@ where
             .collect::<std::collections::HashSet<_>>()
             .into_iter()
             .collect();
-        let users = self.user_repo.get_by_emails(&emails).await?;
-        let email_to_id: HashMap<String, Uuid> =
-            users.into_iter().map(|u| (u.email.clone(), u.id)).collect();
+        let email_to_id: HashMap<String, Uuid> = self
+            .user_repo
+            .get_by_emails(&emails)
+            .await?
+            .into_iter()
+            .collect();
 
         let mut author_ids: Vec<Option<Uuid>> = Vec::new();
         let mut git_author_names = Vec::new();

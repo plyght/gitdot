@@ -44,7 +44,7 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
 
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DatabaseError>;
 
-    async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<User>, DatabaseError>;
+    async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<(String, Uuid)>, DatabaseError>;
 
     async fn verify_email(&self, id: Uuid) -> Result<(), DatabaseError>;
 
@@ -87,6 +87,9 @@ impl UserRepository for UserRepositoryImpl {
             hex::encode(bytes)
         };
         let name = format!("user_{suffix}");
+
+        let mut tx = self.pool.begin().await?;
+
         let user = sqlx::query_as::<_, User>(
             r#"
             INSERT INTO core.users (email, name, is_email_verified, provider, readme)
@@ -99,8 +102,22 @@ impl UserRepository for UserRepositoryImpl {
         .bind(is_email_verified)
         .bind(provider)
         .bind(DEFAULT_USER_README)
-        .fetch_one(&self.pool)
+        .fetch_one(&mut *tx)
         .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO core.user_emails (user_id, email, is_primary, is_verified, verified_at)
+            VALUES ($1, $2, TRUE, $3, CASE WHEN $3 THEN NOW() ELSE NULL END)
+            "#,
+        )
+        .bind(user.id)
+        .bind(email)
+        .bind(is_email_verified)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
 
         Ok(user)
     }
@@ -188,34 +205,49 @@ impl UserRepository for UserRepositoryImpl {
         Ok(user)
     }
 
-    async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<User>, DatabaseError> {
+    async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<(String, Uuid)>, DatabaseError> {
         if emails.is_empty() {
             return Ok(Vec::new());
         }
 
-        let users = sqlx::query_as::<_, User>(
+        let rows = sqlx::query_as::<_, (String, Uuid)>(
             r#"
-            SELECT id, email, name, is_email_verified, provider, created_at, location, readme, links, display_name
-            FROM core.users
-            WHERE email = ANY($1)
+            SELECT email, user_id
+            FROM core.user_emails
+            WHERE email = ANY($1) AND is_verified = TRUE
             "#,
         )
         .bind(emails)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(users)
+        Ok(rows)
     }
 
     async fn verify_email(&self, id: Uuid) -> Result<(), DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+
         sqlx::query(
             r#"
             UPDATE core.users SET is_email_verified = true WHERE id = $1
             "#,
         )
         .bind(id)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE core.user_emails
+            SET is_verified = TRUE, verified_at = COALESCE(verified_at, NOW())
+            WHERE user_id = $1 AND is_primary
+            "#,
+        )
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -240,7 +272,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn is_email_taken(&self, email: &str) -> Result<bool, DatabaseError> {
         let exists = sqlx::query_scalar::<_, bool>(
             r#"
-            SELECT EXISTS(SELECT 1 FROM core.users WHERE email = $1)
+            SELECT EXISTS(SELECT 1 FROM core.user_emails WHERE email = $1)
             "#,
         )
         .bind(email)

@@ -502,7 +502,7 @@ mod tests {
             async fn update(&self, id: Uuid, name: Option<String>, location: Option<String>, readme: Option<String>, links: Option<Vec<String>>, display_name: Option<String>) -> Result<User, crate::error::DatabaseError>;
             async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, crate::error::DatabaseError>;
             async fn get_by_email(&self, email: &str) -> Result<Option<User>, crate::error::DatabaseError>;
-            async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<User>, crate::error::DatabaseError>;
+            async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<(String, Uuid)>, crate::error::DatabaseError>;
             async fn verify_email(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
             async fn is_name_taken(&self, name: &str) -> Result<bool, crate::error::DatabaseError>;
             async fn is_email_taken(&self, email: &str) -> Result<bool, crate::error::DatabaseError>;
