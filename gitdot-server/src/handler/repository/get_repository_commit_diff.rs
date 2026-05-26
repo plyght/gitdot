@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -20,6 +22,7 @@ pub async fn get_repository_commit_diff(
     State(state): State<AppState>,
     Path((owner, repo, sha)): Path<(String, String, String)>,
 ) -> Result<AppResponse<api::GetRepositoryCommitDiffResponse>, AppError> {
+    let start = Instant::now();
     let request = RepositoryAuthorizationRequest::new(
         auth_user.map(|u| u.id),
         &owner,
@@ -32,10 +35,19 @@ pub async fn get_repository_commit_diff(
         .await?;
 
     let request = GetRepositoryCommitDiffRequest::new(&owner, &repo, sha)?;
-    state
+    let result = state
         .repo_service
         .get_repository_commit_diff(request)
         .await
         .map_err(AppError::from)
-        .map(|diff| AppResponse::new(StatusCode::OK, diff.into_api()))
+        .map(|diff| AppResponse::new(StatusCode::OK, diff.into_api()));
+
+    tracing::error!(
+        elapsed_ms = start.elapsed().as_millis() as u64,
+        %owner,
+        %repo,
+        "get_repository_commit_diff timing"
+    );
+
+    result
 }
