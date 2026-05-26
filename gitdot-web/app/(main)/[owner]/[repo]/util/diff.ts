@@ -215,7 +215,7 @@ export function preferSplit(
         const span = rightSpans[pair.rhs.line_number];
         if (span) maxLen = Math.max(maxLen, spanTextLength(span));
       }
-      
+
       // TODO: with context anchors now in every hunk, this match ratio is
       // inflated; count only non-anchor pairs against `total` if re-enabled.
       if (pair.lhs && pair.rhs) matched++;

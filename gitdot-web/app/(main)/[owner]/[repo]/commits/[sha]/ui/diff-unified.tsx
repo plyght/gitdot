@@ -10,6 +10,14 @@ import {
   pairLines,
 } from "@/(main)/[owner]/[repo]/util";
 import { cn } from "@/util";
+import { pluralize } from "@/util/string";
+
+function hiddenLineCount(prev: DiffHunk, next: DiffHunk): number {
+  const prevLine = prev[prev.length - 1]?.lhs?.line_number;
+  const nextLine = next[0]?.lhs?.line_number;
+  if (prevLine === undefined || nextLine === undefined) return 0;
+  return Math.max(0, nextLine - prevLine - 1);
+}
 
 export function DiffUnified({
   leftSpans,
@@ -27,9 +35,12 @@ export function DiffUnified({
           key={`${hunk[0].lhs?.line_number}-${hunk[0].rhs?.line_number}`}
         >
           {index > 0 && (
-            <span className="flex w-full h-20 items-center justify-center">
-              <div className="w-20 border-t border-border" />
-            </span>
+            <button
+              type="button"
+              className="flex w-full h-6 items-center justify-center bg-sidebar border-y border-border font-mono text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
+            >
+              {pluralize(hiddenLineCount(hunks[index - 1], hunk), "line")}...
+            </button>
           )}
           <DiffSection
             hunk={hunk}
@@ -183,6 +194,12 @@ function DiffLineUnified({
       className={cn(
         "diff-line",
         "flex items-center min-w-max w-full",
+        "[&_.diff-token]:cursor-pointer",
+        "[&_.diff-token]:[transition:background-color_200ms]",
+        "[&_.diff-token.token-selected]:bg-highlight/8",
+        "[&_.diff-token:hover]:bg-highlight/8",
+        "[&_.diff-token.token-active]:bg-diff-orange",
+        "[&_.diff-token.token-active.token-selected]:bg-diff-orange",
         lineType === "added" && "bg-diff-green",
         lineType === "removed" && "bg-diff-red",
       )}

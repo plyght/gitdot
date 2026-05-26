@@ -8,7 +8,22 @@ import {
   expandLines,
   pairLines,
 } from "@/(main)/[owner]/[repo]/util";
+import { pluralize } from "@/util/string";
 import { DiffLine } from "./diff-line";
+
+function hiddenLineCount(
+  prev: DiffHunk,
+  next: DiffHunk,
+  side: "left" | "right",
+): number {
+  const prevPair = prev[prev.length - 1];
+  const nextPair = next[0];
+  const key = side === "left" ? "lhs" : "rhs";
+  const prevLine = prevPair?.[key]?.line_number;
+  const nextLine = nextPair?.[key]?.line_number;
+  if (prevLine === undefined || nextLine === undefined) return 0;
+  return Math.max(0, nextLine - prevLine - 1);
+}
 
 export function DiffUnilateral({
   spans,
@@ -26,9 +41,13 @@ export function DiffUnilateral({
           key={`${hunk[0].lhs?.line_number}-${hunk[0].rhs?.line_number}`}
         >
           {index > 0 && (
-            <span className="flex w-full h-20 items-center justify-center">
-              <div className="w-20 border-t border-border" />
-            </span>
+            <button
+              type="button"
+              className="flex w-full h-6 items-center justify-center bg-sidebar border-y border-border font-mono text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
+            >
+              {pluralize(hiddenLineCount(hunks[index - 1], hunk, side), "line")}
+              ...
+            </button>
           )}
           <DiffSection hunk={hunk} spans={spans} side={side} />
         </Fragment>
