@@ -183,6 +183,7 @@ impl AppState {
                 migration_repo.clone(),
                 org_repo.clone(),
                 github_repo.clone(),
+                user_repo.clone(),
             )),
             webhook_service: Arc::new(WebhookServiceImpl::new(
                 webhook_repo.clone(),

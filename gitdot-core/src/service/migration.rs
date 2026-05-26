@@ -20,7 +20,7 @@ use crate::{
     repository::{
         GitHubRepository, GitHubRepositoryImpl, MigrationRepository, MigrationRepositoryImpl,
         OrganizationRepository, OrganizationRepositoryImpl, RepositoryRepository,
-        RepositoryRepositoryImpl,
+        RepositoryRepositoryImpl, UserRepository, UserRepositoryImpl,
     },
     util::{
         cursor,
@@ -73,7 +73,7 @@ pub trait MigrationService: Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct MigrationServiceImpl<G, GH, RR, MR, OR, GHR>
+pub struct MigrationServiceImpl<G, GH, RR, MR, OR, GHR, UR>
 where
     G: GitClient,
     GH: GitHubClient,
@@ -81,6 +81,7 @@ where
     MR: MigrationRepository,
     OR: OrganizationRepository,
     GHR: GitHubRepository,
+    UR: UserRepository,
 {
     git_client: G,
     github_client: GH,
@@ -88,6 +89,7 @@ where
     migration_repo: MR,
     org_repo: OR,
     github_repo: GHR,
+    user_repo: UR,
 }
 
 impl
@@ -98,6 +100,7 @@ impl
         MigrationRepositoryImpl,
         OrganizationRepositoryImpl,
         GitHubRepositoryImpl,
+        UserRepositoryImpl,
     >
 {
     pub fn new(
@@ -107,6 +110,7 @@ impl
         migration_repo: MigrationRepositoryImpl,
         org_repo: OrganizationRepositoryImpl,
         github_repo: GitHubRepositoryImpl,
+        user_repo: UserRepositoryImpl,
     ) -> Self {
         Self {
             git_client,
@@ -115,11 +119,12 @@ impl
             migration_repo,
             org_repo,
             github_repo,
+            user_repo,
         }
     }
 }
 
-impl<G, GH, RR, MR, OR, GHR> MigrationServiceImpl<G, GH, RR, MR, OR, GHR>
+impl<G, GH, RR, MR, OR, GHR, UR> MigrationServiceImpl<G, GH, RR, MR, OR, GHR, UR>
 where
     G: GitClient,
     GH: GitHubClient,
@@ -127,6 +132,7 @@ where
     MR: MigrationRepository,
     OR: OrganizationRepository,
     GHR: GitHubRepository,
+    UR: UserRepository,
 {
     async fn migrate_single_repository(
         &self,
@@ -234,7 +240,8 @@ where
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl<G, GH, RR, MR, OR, GHR> MigrationService for MigrationServiceImpl<G, GH, RR, MR, OR, GHR>
+impl<G, GH, RR, MR, OR, GHR, UR> MigrationService
+    for MigrationServiceImpl<G, GH, RR, MR, OR, GHR, UR>
 where
     G: GitClient,
     GH: GitHubClient,
@@ -242,6 +249,7 @@ where
     MR: MigrationRepository,
     OR: OrganizationRepository,
     GHR: GitHubRepository,
+    UR: UserRepository,
 {
     async fn get_migration(
         &self,
@@ -311,6 +319,18 @@ where
                     return Err(GitHubError::Unauthorized.into());
                 }
             }
+        }
+
+        let github_emails = self.github_client.get_user_emails(&access_token).await?;
+        let verified_emails: Vec<String> = github_emails
+            .into_iter()
+            .filter(|e| e.verified)
+            .map(|e| e.email)
+            .collect();
+        if !verified_emails.is_empty() {
+            self.user_repo
+                .upsert_verified_emails(request.owner_id, &verified_emails)
+                .await?;
         }
 
         let installation = self
