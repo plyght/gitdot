@@ -143,9 +143,23 @@ where
             .list_memberships_by_user_id(user.id, None, MAX_PER_PAGE_LIMIT as i64)
             .await?;
         let memberships = memberships.into_iter().map(Into::into).collect();
+        let emails = self
+            .user_repo
+            .list_emails(user.id)
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect();
         Ok(GetCurrentUserResponse {
-            user: user.into(),
-            memberships,
+            id: user.id,
+            name: user.name,
+            emails: emails,
+            memberships: memberships,
+            location: user.location,
+            readme: user.readme,
+            links: user.links,
+            display_name: user.display_name,
+            created_at: user.created_at,
         })
     }
 

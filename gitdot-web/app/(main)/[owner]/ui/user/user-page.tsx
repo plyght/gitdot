@@ -33,7 +33,7 @@ export default async function UserPage({ user }: { user: UserResource }) {
   const repos = reposResponse?.data ?? null;
   const memberships = membershipsResponse?.data ?? null;
   const stars = starsResponse?.data ?? null;
-  const isOwner = current?.user.name === user.name;
+  const isOwner = current?.name === user.name;
 
   return (
     <div className="grid grid-cols-[8rem_minmax(0,3fr)_minmax(0,2fr)] h-full">

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   if (installationId && code && state) {
     const current = await getCurrentUser(false);
-    const redirectUrl = current ? `/${current.user.name}` : "/login";
+    const redirectUrl = current ? `/${current.name}` : "/login";
 
     const result = await createInstallation(
       Number(installationId),

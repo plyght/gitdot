@@ -12,17 +12,36 @@ pub struct UserResource {
     pub id: Uuid,
     pub name: String,
     pub email: String,
-    pub created_at: DateTime<Utc>,
+
     pub location: Option<String>,
     pub readme: Option<String>,
     pub links: Vec<String>,
     pub display_name: Option<String>,
+
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserEmailResource {
+    pub email: String,
+    pub is_primary: bool,
+    pub is_verified: bool,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CurrentUserResource {
-    pub user: UserResource,
+    pub id: Uuid,
+    pub name: String,
+    pub emails: Vec<UserEmailResource>,
     pub memberships: Vec<OrganizationMemberResource>,
+
+    pub location: Option<String>,
+    pub readme: Option<String>,
+    pub links: Vec<String>,
+    pub display_name: Option<String>,
+
+    pub created_at: DateTime<Utc>,
 }
 
 /// A commit as surfaced on a user's profile. Most fields are optional so that

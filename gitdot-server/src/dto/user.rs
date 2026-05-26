@@ -1,5 +1,7 @@
 use gitdot_api::resource::{repository as repo_api, user as api};
-use gitdot_core::dto::{GetCurrentUserResponse, UserCommitResponse, UserResponse};
+use gitdot_core::dto::{
+    GetCurrentUserResponse, UserCommitResponse, UserEmailResponse, UserResponse,
+};
 
 use super::IntoApi;
 
@@ -19,12 +21,31 @@ impl IntoApi for UserResponse {
     }
 }
 
+impl IntoApi for UserEmailResponse {
+    type ApiType = api::UserEmailResource;
+    fn into_api(self) -> Self::ApiType {
+        api::UserEmailResource {
+            email: self.email,
+            is_primary: self.is_primary,
+            is_verified: self.is_verified,
+            created_at: self.created_at,
+        }
+    }
+}
+
 impl IntoApi for GetCurrentUserResponse {
     type ApiType = api::CurrentUserResource;
     fn into_api(self) -> Self::ApiType {
         api::CurrentUserResource {
-            user: self.user.into_api(),
+            id: self.id,
+            name: self.name,
+            emails: self.emails.into_api(),
             memberships: self.memberships.into_api(),
+            location: self.location,
+            readme: self.readme,
+            links: self.links,
+            display_name: self.display_name,
+            created_at: self.created_at,
         }
     }
 }

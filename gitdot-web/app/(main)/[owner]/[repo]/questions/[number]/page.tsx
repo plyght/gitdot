@@ -19,7 +19,7 @@ export default async function Page({
 
   const { answers } = question;
   const hasUserAnswer = answers.find(
-    (answer) => answer.author_id === current?.user.id,
+    (answer) => answer.author_id === current?.id,
   );
 
   return (

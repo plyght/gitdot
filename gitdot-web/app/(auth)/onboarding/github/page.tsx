@@ -15,7 +15,7 @@ export default async function Page({
   const parsed = installation_id ? Number(installation_id) : Number.NaN;
   const installationId = Number.isFinite(parsed) ? parsed : null;
 
-  const username = current.user.name;
+  const username = current.name;
   if (installationId !== null) {
     return (
       <MigrateRepositoriesForm

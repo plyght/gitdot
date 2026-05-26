@@ -26,3 +26,11 @@ pub enum AuthProvider {
     Email,
     GitHub,
 }
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct UserEmail {
+    pub email: String,
+    pub is_primary: bool,
+    pub is_verified: bool,
+    pub created_at: DateTime<Utc>,
+}

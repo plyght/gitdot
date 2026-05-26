@@ -11,7 +11,7 @@ export default async function Layout({
   const { owner, repo } = await params;
   const current = await getCurrentUser(false);
   const isAdmin =
-    current?.user.name === owner ||
+    current?.name === owner ||
     (current?.memberships ?? []).some(
       (m) => m.org_name === owner && m.role === "admin",
     );

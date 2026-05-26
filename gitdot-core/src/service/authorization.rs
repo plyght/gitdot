@@ -409,7 +409,7 @@ mod tests {
             Answer, AuthProvider, Comment, CommentSide, Diff, DiffStatus, Organization,
             OrganizationMember, OrganizationRole, Question, Repository, RepositoryOwnerType,
             RepositoryStar, RepositoryVisibility, Review, ReviewComment, ReviewStatus, Reviewer,
-            Revision, User, Verdict, VoteResult, VoteTarget,
+            Revision, User, UserEmail, Verdict, VoteResult, VoteTarget,
         },
         repository::{
             OrganizationRepository, QuestionRepository, RepositoryRepository, ReviewRepository,
@@ -506,6 +506,7 @@ mod tests {
             async fn verify_email(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
             async fn is_name_taken(&self, name: &str) -> Result<bool, crate::error::DatabaseError>;
             async fn is_email_taken(&self, email: &str) -> Result<bool, crate::error::DatabaseError>;
+            async fn list_emails(&self, user_id: Uuid) -> Result<Vec<UserEmail>, crate::error::DatabaseError>;
             async fn list_starred_repositories(&self, user_id: Uuid, viewer_id: Option<Uuid>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Repository>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
         }
     }

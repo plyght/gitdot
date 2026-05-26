@@ -54,10 +54,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     const current = await getCurrentUserAction();
-    setUser(current?.user ?? null);
-    setMemberships(current?.memberships ?? null);
-
-    if (!current?.user) {
+    if (current) {
+      const primaryEmail =
+        current.emails.find((e) => e.is_primary)?.email ?? "";
+      setUser({
+        id: current.id,
+        name: current.name,
+        email: primaryEmail,
+        created_at: current.created_at,
+        location: current.location,
+        readme: current.readme,
+        links: current.links,
+        display_name: current.display_name,
+      });
+      setMemberships(current.memberships);
+    } else {
+      setUser(null);
+      setMemberships(null);
       setInstallations(null);
       return;
     }
