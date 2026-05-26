@@ -50,8 +50,6 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
 
     async fn is_name_taken(&self, name: &str) -> Result<bool, DatabaseError>;
 
-    async fn is_email_taken(&self, email: &str) -> Result<bool, DatabaseError>;
-
     async fn list_emails(&self, user_id: Uuid) -> Result<Vec<UserEmail>, DatabaseError>;
 
     async fn list_starred_repositories(
@@ -255,19 +253,6 @@ impl UserRepository for UserRepositoryImpl {
             "#,
         )
         .bind(name)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(exists)
-    }
-
-    async fn is_email_taken(&self, email: &str) -> Result<bool, DatabaseError> {
-        let exists = sqlx::query_scalar::<_, bool>(
-            r#"
-            SELECT EXISTS(SELECT 1 FROM core.user_emails WHERE email = $1)
-            "#,
-        )
-        .bind(email)
         .fetch_one(&self.pool)
         .await?;
 
