@@ -3,18 +3,15 @@ import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
 import { Fragment } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
-import {
-  type DiffHunk,
-  expandLines,
-  pairLines,
-} from "@/(main)/[owner]/[repo]/util";
+import { type DiffHunk, pairLines } from "@/(main)/[owner]/[repo]/util";
 import { pluralize } from "@/util/string";
 import { DiffLine } from "./diff-line";
 
 function hiddenLineCount(prev: DiffHunk, next: DiffHunk): number {
-  const prevLine = prev[prev.length - 1]?.lhs?.line_number;
-  const nextLine = next[0]?.lhs?.line_number;
-  if (prevLine === undefined || nextLine === undefined) return 0;
+  const prevLine = prev[prev.length - 1]?.[0];
+  const nextLine = next[0]?.[0];
+  if (prevLine === undefined || prevLine === null) return 0;
+  if (nextLine === undefined || nextLine === null) return 0;
   return Math.max(0, nextLine - prevLine - 1);
 }
 
@@ -31,9 +28,7 @@ export function DiffSplit({
     <div className="flex flex-col w-full">
       {hunks.map((hunk, index) => {
         return (
-          <Fragment
-            key={`${hunk[0].lhs?.line_number}-${hunk[0].rhs?.line_number}`}
-          >
+          <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
             {index > 0 && (
               <button
                 type="button"
@@ -73,24 +68,19 @@ function DiffSection({
   leftSpans: Element[];
   rightSpans: Element[];
 }) {
-  const expandedLines = expandLines(
-    pairLines(hunk),
-    leftSpans.length,
-    rightSpans.length,
-  );
+  const pairs = pairLines(hunk);
 
   const getSpanOrSentinel = (index: number | null, spans: Element[]) =>
     index !== null && index < spans.length ? spans[index] : sentinelSpan;
-
   const withSide = (span: Element, side: "old" | "new"): Element => ({
     ...span,
     properties: { ...span.properties, "data-side": side },
   });
 
-  const leftSpansChunk = expandedLines.map(([left]) =>
+  const leftSpansChunk = pairs.map(([left]) =>
     withSide(getSpanOrSentinel(left, leftSpans), "old"),
   );
-  const rightSpansChunk = expandedLines.map(([, right]) =>
+  const rightSpansChunk = pairs.map(([, right]) =>
     withSide(getSpanOrSentinel(right, rightSpans), "new"),
   );
 

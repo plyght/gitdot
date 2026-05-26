@@ -3,10 +3,10 @@
 import type { RepositoryDiffFileResource } from "gitdot-api";
 import type { Element } from "hast";
 import {
-  createChangeMaps,
   type DiffHunk,
   diffFiles,
   fileToHast,
+  getChangedLines,
   inferLanguage,
   renderSpans,
 } from "@/(main)/[owner]/[repo]/util";
@@ -106,15 +106,13 @@ async function renderDiff(
     const hunks = diffFiles(left, right);
     if (hunks.length === 0) return { kind: "no-change" };
 
-    // anchor pairs (both lhs and rhs present) are context, not changes;
-    // a hunk is all-additions iff no pair is lhs-only, all-removals iff no pair is rhs-only
     const isAllAdditions = hunks.every((h) =>
-      h.every((p) => !(p.lhs && !p.rhs)),
+      h.every(([L, R]) => !(L !== null && R === null)),
     );
     const isAllRemovals = hunks.every((h) =>
-      h.every((p) => !(p.rhs && !p.lhs)),
+      h.every(([L, R]) => !(R !== null && L === null)),
     );
-    const { leftLines, rightLines } = createChangeMaps(hunks);
+    const { leftLines, rightLines } = getChangedLines(hunks);
 
     if (isAllAdditions || isAllRemovals) {
       const side = isAllAdditions ? "right" : "left";
@@ -135,10 +133,9 @@ async function renderDiff(
       renderSpans("right", right, lang, rightLines),
     ]);
     return { kind: "split", leftSpans, rightSpans, hunks };
-  }
-
-  if (left != null) return { kind: "deleted" };
-  if (right != null) {
+  } else if (right === null) {
+    return { kind: "deleted" };
+  } else if (left === null) {
     const hast = await fileToHast(right, lang, "vitesse", [
       {
         line(node, lineNumber) {
@@ -155,6 +152,7 @@ async function renderDiff(
       (child): child is Element => child.type === "element",
     );
     return { kind: "created", spans };
+  } else {
+    return { kind: "no-change" };
   }
-  return { kind: "no-change" };
 }

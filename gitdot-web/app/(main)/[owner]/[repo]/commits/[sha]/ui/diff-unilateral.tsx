@@ -3,11 +3,7 @@ import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
 import { Fragment } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
-import {
-  type DiffHunk,
-  expandLines,
-  pairLines,
-} from "@/(main)/[owner]/[repo]/util";
+import { type DiffHunk, pairLines } from "@/(main)/[owner]/[repo]/util";
 import { pluralize } from "@/util/string";
 import { DiffLine } from "./diff-line";
 
@@ -16,12 +12,11 @@ function hiddenLineCount(
   next: DiffHunk,
   side: "left" | "right",
 ): number {
-  const prevPair = prev[prev.length - 1];
-  const nextPair = next[0];
-  const key = side === "left" ? "lhs" : "rhs";
-  const prevLine = prevPair?.[key]?.line_number;
-  const nextLine = nextPair?.[key]?.line_number;
-  if (prevLine === undefined || nextLine === undefined) return 0;
+  const idx = side === "left" ? 0 : 1;
+  const prevLine = prev[prev.length - 1]?.[idx];
+  const nextLine = next[0]?.[idx];
+  if (prevLine === undefined || prevLine === null) return 0;
+  if (nextLine === undefined || nextLine === null) return 0;
   return Math.max(0, nextLine - prevLine - 1);
 }
 
@@ -37,9 +32,7 @@ export function DiffUnilateral({
   return (
     <div className="flex flex-col w-full">
       {hunks.map((hunk, index) => (
-        <Fragment
-          key={`${hunk[0].lhs?.line_number}-${hunk[0].rhs?.line_number}`}
-        >
+        <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
           {index > 0 && (
             <button
               type="button"
@@ -72,7 +65,7 @@ function DiffSection({
   spans: Element[];
   side: "left" | "right";
 }) {
-  const pairs = expandLines(pairLines(hunk), spans.length, spans.length);
+  const pairs = pairLines(hunk);
 
   const dataSide = side === "left" ? "old" : "new";
   const outputSpans: Element[] = [];

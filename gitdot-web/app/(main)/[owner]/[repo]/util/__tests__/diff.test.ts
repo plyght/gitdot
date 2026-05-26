@@ -1,10 +1,4 @@
-import {
-  type DiffHunk,
-  diffFiles,
-  expandLines,
-  type LinePair,
-  pairLines,
-} from "../diff";
+import { type DiffHunk, type DiffPair, diffFiles, pairLines } from "../diff";
 
 /**
  * Helper to build a DiffHunk from a readable shorthand.
@@ -17,10 +11,10 @@ function chunk(
     { lhs: number } | { rhs: number } | { lhs: number; rhs: number }
   >,
 ): DiffHunk {
-  return entries.map((entry) => ({
-    lhs: "lhs" in entry ? { line_number: entry.lhs } : undefined,
-    rhs: "rhs" in entry ? { line_number: entry.rhs } : undefined,
-  }));
+  return entries.map((entry) => [
+    "lhs" in entry ? entry.lhs : null,
+    "rhs" in entry ? entry.rhs : null,
+  ]);
 }
 
 describe("diffFiles", () => {
@@ -38,12 +32,12 @@ describe("diffFiles", () => {
     const hunks = diffFiles(left, right);
     expect(hunks).toHaveLength(1);
     expect(hunks[0]).toEqual([
-      { lhs: { line_number: 0 } },
-      { rhs: { line_number: 0 } },
-      { lhs: { line_number: 1 }, rhs: { line_number: 1 } },
-      { lhs: { line_number: 2 }, rhs: { line_number: 2 } },
-      { lhs: { line_number: 3 }, rhs: { line_number: 3 } },
-      { lhs: { line_number: 4 } },
+      [0, null],
+      [null, 0],
+      [1, 1],
+      [2, 2],
+      [3, 3],
+      [4, null],
     ]);
   });
 
@@ -54,7 +48,7 @@ describe("diffFiles", () => {
 });
 
 describe("pairLines", () => {
-  const cases: Array<{ name: string; input: DiffHunk; expected: LinePair[] }> =
+  const cases: Array<{ name: string; input: DiffHunk; expected: DiffPair[] }> =
     [
       {
         name: "lhs-only block: each removed becomes [lhs, null]",
@@ -148,115 +142,5 @@ describe("pairLines", () => {
       const rightRows = result.length;
       expect(leftRows).toEqual(rightRows);
     }
-  });
-});
-
-describe("expandLines", () => {
-  test("returns pairs unchanged when any anchor is present", () => {
-    const input: LinePair[] = [
-      [5, 5],
-      [6, null],
-      [7, 6],
-    ];
-    expect(expandLines(input, Infinity, Infinity)).toEqual([
-      [5, 5],
-      [6, null],
-      [7, 6],
-    ]);
-  });
-
-  test("lhs-only hunk: extrapolates context before and after", () => {
-    const input: LinePair[] = [
-      [5, null],
-      [6, null],
-      [7, null],
-    ];
-    const result = expandLines(input, Infinity, Infinity);
-    expect(result).toEqual([
-      [1, 1],
-      [2, 2],
-      [3, 3],
-      [4, 4],
-      [5, null],
-      [6, null],
-      [7, null],
-      [8, 5],
-      [9, 6],
-      [10, 7],
-      [11, 8],
-    ]);
-  });
-
-  test("rhs-only hunk: extrapolates context before and after", () => {
-    const input: LinePair[] = [
-      [null, 5],
-      [null, 6],
-      [null, 7],
-    ];
-    const result = expandLines(input, Infinity, Infinity);
-    expect(result).toEqual([
-      [1, 1],
-      [2, 2],
-      [3, 3],
-      [4, 4],
-      [null, 5],
-      [null, 6],
-      [null, 7],
-      [5, 8],
-      [6, 9],
-      [7, 10],
-      [8, 11],
-    ]);
-  });
-
-  test("lhs-only hunk at line 0: no context before, context after", () => {
-    const input: LinePair[] = [
-      [0, null],
-      [1, null],
-    ];
-    const result = expandLines(input, Infinity, Infinity);
-    expect(result).toEqual([
-      [0, null],
-      [1, null],
-      [2, 0],
-      [3, 1],
-      [4, 2],
-      [5, 3],
-    ]);
-  });
-
-  test("respects leftMax (lhs-only hunk near EOF)", () => {
-    const input: LinePair[] = [
-      [3, null],
-      [4, null],
-    ];
-    const result = expandLines(input, 5, Infinity);
-    expect(result).toEqual([
-      [0, 0],
-      [1, 1],
-      [2, 2],
-      [3, null],
-      [4, null],
-    ]);
-  });
-
-  test("respects rightMax (lhs-only hunk near EOF on rhs side)", () => {
-    const input: LinePair[] = [
-      [3, null],
-      [4, null],
-    ];
-    const result = expandLines(input, Infinity, 4);
-    expect(result).toEqual([
-      [0, 0],
-      [1, 1],
-      [2, 2],
-      [3, null],
-      [4, null],
-      [5, 3],
-    ]);
-  });
-
-  test("empty input is a no-op", () => {
-    expect(expandLines([], Infinity, Infinity)).toEqual([]);
   });
 });

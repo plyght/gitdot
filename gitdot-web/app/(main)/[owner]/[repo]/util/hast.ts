@@ -63,6 +63,7 @@ export async function fileToHast(
       transformers,
     });
   }
+
   return highlighter.codeToHast(content, {
     lang: lang ?? "plaintext",
     theme: "gitdot-light",

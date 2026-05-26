@@ -5,17 +5,17 @@ import { Fragment } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
 import {
   type DiffHunk,
-  expandLines,
-  type LinePair,
+  type DiffPair,
   pairLines,
 } from "@/(main)/[owner]/[repo]/util";
 import { cn } from "@/util";
 import { pluralize } from "@/util/string";
 
 function hiddenLineCount(prev: DiffHunk, next: DiffHunk): number {
-  const prevLine = prev[prev.length - 1]?.lhs?.line_number;
-  const nextLine = next[0]?.lhs?.line_number;
-  if (prevLine === undefined || nextLine === undefined) return 0;
+  const prevLine = prev[prev.length - 1]?.[0];
+  const nextLine = next[0]?.[0];
+  if (prevLine === undefined || prevLine === null) return 0;
+  if (nextLine === undefined || nextLine === null) return 0;
   return Math.max(0, nextLine - prevLine - 1);
 }
 
@@ -31,9 +31,7 @@ export function DiffUnified({
   return (
     <div className="flex flex-col w-full">
       {hunks.map((hunk, index) => (
-        <Fragment
-          key={`${hunk[0].lhs?.line_number}-${hunk[0].rhs?.line_number}`}
-        >
+        <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
           {index > 0 && (
             <button
               type="button"
@@ -89,13 +87,9 @@ function DiffSection({
   leftSpans: Element[];
   rightSpans: Element[];
 }) {
-  const pairs = expandLines(
-    pairLines(hunk),
-    leftSpans.length,
-    rightSpans.length,
-  );
+  const pairs = pairLines(hunk);
 
-  const isChanged = ([L, R]: LinePair): boolean =>
+  const isChanged = ([L, R]: DiffPair): boolean =>
     L === null ||
     R === null ||
     lineType(leftSpans, L) !== "normal" ||
@@ -111,7 +105,7 @@ function DiffSection({
 
   const outputSpans: Element[] = [];
 
-  const pushContext = ([L, R]: LinePair) => {
+  const pushContext = ([L, R]: DiffPair) => {
     if (L !== null && R !== null)
       outputSpans.push(
         makeSpan(
