@@ -182,7 +182,7 @@ function DiffLineUnified({
     <span
       className={cn(
         "diff-line",
-        "flex items-center w-full",
+        "flex items-center min-w-max w-full",
         lineType === "added" && "bg-diff-green",
         lineType === "removed" && "bg-diff-red",
       )}

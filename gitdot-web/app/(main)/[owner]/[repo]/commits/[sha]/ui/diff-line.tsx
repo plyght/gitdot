@@ -15,7 +15,7 @@ export function DiffLine({
     <span
       className={cn(
         "diff-line",
-        "flex items-center w-full",
+        "flex items-center min-w-max w-full",
         "[&_.diff-token]:cursor-pointer",
         "[&_.diff-token]:[transition:background-color_200ms]",
         "[&_.diff-token.token-selected]:bg-highlight/8",
