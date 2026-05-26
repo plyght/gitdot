@@ -124,8 +124,8 @@ async function renderDiff(
     }
 
     const [leftSpans, rightSpans] = await Promise.all([
-      renderSpans("left", left, lang, allRemovedLines),
-      renderSpans("right", right, lang, allAddedLines),
+      renderSpans("left", left, lang, allRemovedLines, "vitesse"),
+      renderSpans("right", right, lang, allAddedLines, "vitesse"),
     ]);
     return { kind: "split", leftSpans, rightSpans, hunks };
   } else if (right === null) {

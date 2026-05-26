@@ -97,7 +97,7 @@ export async function renderSpans(
   content: string,
   lang: BundledLanguage | undefined,
   changedLines: Set<number>,
-  theme: "vitesse" | "gitdot" = "gitdot",
+  theme: "vitesse" | "gitdot" = "vitesse",
 ): Promise<Element[]> {
   const hast = await fileToHast(content, lang, theme, [
     {
