@@ -1,7 +1,9 @@
+"use client";
+
 import type { Element } from "hast";
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
 import {
   type DiffHunk,
@@ -10,14 +12,6 @@ import {
 } from "@/(main)/[owner]/[repo]/util";
 import { cn } from "@/util";
 import { pluralize } from "@/util/string";
-
-function hiddenLineCount(prev: DiffHunk, next: DiffHunk): number {
-  const prevLine = prev[prev.length - 1]?.[0];
-  const nextLine = next[0]?.[0];
-  if (prevLine === undefined || prevLine === null) return 0;
-  if (nextLine === undefined || nextLine === null) return 0;
-  return Math.max(0, nextLine - prevLine - 1);
-}
 
 export function DiffUnified({
   leftSpans,
@@ -33,12 +27,11 @@ export function DiffUnified({
       {hunks.map((hunk, index) => (
         <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
           {index > 0 && (
-            <button
-              type="button"
-              className="flex w-full h-6 items-center justify-center bg-sidebar border-y border-border font-mono text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
-            >
-              {pluralize(hiddenLineCount(hunks[index - 1], hunk), "line")}...
-            </button>
+            <HiddenSection
+              prev={hunks[index - 1]}
+              next={hunk}
+              leftSpans={leftSpans}
+            />
           )}
           <DiffSection
             hunk={hunk}
@@ -152,6 +145,50 @@ function DiffSection({
   // output unchanged lines for context after the last change
   for (const pair of after) pushContext(pair);
 
+  return renderSpans(outputSpans);
+}
+
+function HiddenSection({
+  prev,
+  next,
+  leftSpans,
+}: {
+  prev: DiffHunk;
+  next: DiffHunk;
+  leftSpans: Element[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const last = prev[prev.length - 1];
+  const first = next[0];
+  const prevL = last?.[0];
+  const prevR = last?.[1];
+  const nextL = first?.[0];
+  if (prevL == null || prevR == null || nextL == null) return null;
+  const count = nextL - prevL - 1;
+  if (count <= 0) return null;
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="flex w-full h-6 items-center justify-center bg-sidebar border-y border-border font-mono text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
+      >
+        {pluralize(count, "line")}...
+      </button>
+    );
+  }
+
+  const outputSpans: Element[] = [];
+  for (let L = prevL + 1; L < nextL && L < leftSpans.length; L++) {
+    const R = prevR + (L - prevL);
+    outputSpans.push(makeSpan(leftSpans[L], L + 1, R + 1));
+  }
+
+  return renderSpans(outputSpans);
+}
+
+function renderSpans(outputSpans: Element[]) {
   const container: Element = {
     type: "element",
     tagName: "pre",

@@ -1,24 +1,13 @@
+"use client";
+
 import type { Element } from "hast";
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
 import { type DiffHunk, pairLines } from "@/(main)/[owner]/[repo]/util";
 import { pluralize } from "@/util/string";
 import { DiffLine } from "./diff-line";
-
-function hiddenLineCount(
-  prev: DiffHunk,
-  next: DiffHunk,
-  side: "left" | "right",
-): number {
-  const idx = side === "left" ? 0 : 1;
-  const prevLine = prev[prev.length - 1]?.[idx];
-  const nextLine = next[0]?.[idx];
-  if (prevLine === undefined || prevLine === null) return 0;
-  if (nextLine === undefined || nextLine === null) return 0;
-  return Math.max(0, nextLine - prevLine - 1);
-}
 
 export function DiffUnilateral({
   spans,
@@ -34,13 +23,12 @@ export function DiffUnilateral({
       {hunks.map((hunk, index) => (
         <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
           {index > 0 && (
-            <button
-              type="button"
-              className="flex w-full h-6 items-center justify-center bg-sidebar border-y border-border font-mono text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
-            >
-              {pluralize(hiddenLineCount(hunks[index - 1], hunk, side), "line")}
-              ...
-            </button>
+            <HiddenSection
+              prev={hunks[index - 1]}
+              next={hunk}
+              spans={spans}
+              side={side}
+            />
           )}
           <DiffSection hunk={hunk} spans={spans} side={side} />
         </Fragment>
@@ -56,6 +44,16 @@ const sentinelSpan: Element = {
   children: [],
 };
 
+function withSide(span: Element, side: "left" | "right"): Element {
+  return {
+    ...span,
+    properties: {
+      ...span.properties,
+      "data-side": side === "left" ? "old" : "new",
+    },
+  };
+}
+
 function DiffSection({
   hunk,
   spans,
@@ -67,18 +65,57 @@ function DiffSection({
 }) {
   const pairs = pairLines(hunk);
 
-  const dataSide = side === "left" ? "old" : "new";
   const outputSpans: Element[] = [];
   for (const [L, R] of pairs) {
     const idx = side === "left" ? L : R;
     if (idx === null) continue;
     const span = idx < spans.length ? spans[idx] : sentinelSpan;
-    outputSpans.push({
-      ...span,
-      properties: { ...span.properties, "data-side": dataSide },
-    });
+    outputSpans.push(withSide(span, side));
   }
 
+  return renderChunk(outputSpans);
+}
+
+function HiddenSection({
+  prev,
+  next,
+  spans,
+  side,
+}: {
+  prev: DiffHunk;
+  next: DiffHunk;
+  spans: Element[];
+  side: "left" | "right";
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const sideIdx = side === "left" ? 0 : 1;
+  const prevIdx = prev[prev.length - 1]?.[sideIdx];
+  const nextIdx = next[0]?.[sideIdx];
+  if (prevIdx == null || nextIdx == null) return null;
+  const count = nextIdx - prevIdx - 1;
+  if (count <= 0) return null;
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="flex w-full h-6 items-center justify-center bg-sidebar border-y border-border font-mono text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
+      >
+        {pluralize(count, "line")}...
+      </button>
+    );
+  }
+
+  const outputSpans: Element[] = [];
+  for (let i = prevIdx + 1; i < nextIdx && i < spans.length; i++) {
+    outputSpans.push(withSide(spans[i], side));
+  }
+
+  return renderChunk(outputSpans);
+}
+
+function renderChunk(outputSpans: Element[]) {
   const container: Element = {
     type: "element",
     tagName: "pre",

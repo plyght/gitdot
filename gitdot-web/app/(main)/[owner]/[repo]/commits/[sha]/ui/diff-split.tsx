@@ -1,19 +1,13 @@
+"use client";
+
 import type { Element } from "hast";
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
 import { type DiffHunk, pairLines } from "@/(main)/[owner]/[repo]/util";
 import { pluralize } from "@/util/string";
 import { DiffLine } from "./diff-line";
-
-function hiddenLineCount(prev: DiffHunk, next: DiffHunk): number {
-  const prevLine = prev[prev.length - 1]?.[0];
-  const nextLine = next[0]?.[0];
-  if (prevLine === undefined || prevLine === null) return 0;
-  if (nextLine === undefined || nextLine === null) return 0;
-  return Math.max(0, nextLine - prevLine - 1);
-}
 
 export function DiffSplit({
   leftSpans,
@@ -26,25 +20,23 @@ export function DiffSplit({
 }) {
   return (
     <div className="flex flex-col w-full">
-      {hunks.map((hunk, index) => {
-        return (
-          <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
-            {index > 0 && (
-              <button
-                type="button"
-                className="flex w-full h-6 items-center justify-center bg-sidebar border-y border-border font-mono text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
-              >
-                {pluralize(hiddenLineCount(hunks[index - 1], hunk), "line")}...
-              </button>
-            )}
-            <DiffSection
-              hunk={hunk}
+      {hunks.map((hunk, index) => (
+        <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
+          {index > 0 && (
+            <HiddenSection
+              prev={hunks[index - 1]}
+              next={hunk}
               leftSpans={leftSpans}
               rightSpans={rightSpans}
             />
-          </Fragment>
-        );
-      })}
+          )}
+          <DiffSection
+            hunk={hunk}
+            leftSpans={leftSpans}
+            rightSpans={rightSpans}
+          />
+        </Fragment>
+      ))}
     </div>
   );
 }
@@ -59,6 +51,14 @@ const sentinelSpan: Element = {
   children: [],
 };
 
+const withSide = (span: Element, side: "old" | "new"): Element => ({
+  ...span,
+  properties: { ...span.properties, "data-side": side },
+});
+
+const getSpanOrSentinel = (index: number | null, spans: Element[]) =>
+  index !== null && index < spans.length ? spans[index] : sentinelSpan;
+
 function DiffSection({
   hunk,
   leftSpans,
@@ -70,13 +70,6 @@ function DiffSection({
 }) {
   const pairs = pairLines(hunk);
 
-  const getSpanOrSentinel = (index: number | null, spans: Element[]) =>
-    index !== null && index < spans.length ? spans[index] : sentinelSpan;
-  const withSide = (span: Element, side: "old" | "new"): Element => ({
-    ...span,
-    properties: { ...span.properties, "data-side": side },
-  });
-
   const leftSpansChunk = pairs.map(([left]) =>
     withSide(getSpanOrSentinel(left, leftSpans), "old"),
   );
@@ -84,6 +77,53 @@ function DiffSection({
     withSide(getSpanOrSentinel(right, rightSpans), "new"),
   );
 
+  return renderChunks(leftSpansChunk, rightSpansChunk);
+}
+
+function HiddenSection({
+  prev,
+  next,
+  leftSpans,
+  rightSpans,
+}: {
+  prev: DiffHunk;
+  next: DiffHunk;
+  leftSpans: Element[];
+  rightSpans: Element[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const last = prev[prev.length - 1];
+  const first = next[0];
+  const prevL = last?.[0];
+  const prevR = last?.[1];
+  const nextL = first?.[0];
+  if (prevL == null || prevR == null || nextL == null) return null;
+  const count = nextL - prevL - 1;
+  if (count <= 0) return null;
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="flex w-full h-6 items-center justify-center bg-sidebar border-y border-border font-mono text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
+      >
+        {pluralize(count, "line")}...
+      </button>
+    );
+  }
+
+  const leftChunk: Element[] = [];
+  const rightChunk: Element[] = [];
+  for (let i = 1; prevL + i < nextL; i++) {
+    leftChunk.push(withSide(getSpanOrSentinel(prevL + i, leftSpans), "old"));
+    rightChunk.push(withSide(getSpanOrSentinel(prevR + i, rightSpans), "new"));
+  }
+
+  return renderChunks(leftChunk, rightChunk);
+}
+
+function renderChunks(leftChunk: Element[], rightChunk: Element[]) {
   const container: Element = {
     type: "element",
     tagName: "div",
@@ -98,7 +138,7 @@ function DiffSection({
           className:
             "flex flex-col w-1/2 overflow-auto scrollbar-none border-border border-r text-sm font-mono",
         },
-        children: leftSpansChunk,
+        children: leftChunk,
       },
       {
         type: "element",
@@ -107,7 +147,7 @@ function DiffSection({
           className:
             "flex flex-col w-1/2 overflow-auto scrollbar-none text-sm font-mono",
         },
-        children: rightSpansChunk,
+        children: rightChunk,
       },
     ],
   };
