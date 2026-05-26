@@ -215,7 +215,7 @@ function NewMigration({
                       width={13}
                       height={13}
                     />
-                    {installations === undefined
+                    {!installations
                       ? "loading..."
                       : installations.length === 0
                         ? "no accounts"
@@ -292,7 +292,7 @@ function NewMigration({
             </div>
           </div>
           <div className="flex flex-col h-84 overflow-y-auto scrollbar-thin">
-            {installations === undefined ||
+            {!installations ||
             (installations.length > 0 && sortedRepos === null) ? (
               <div className="px-2 py-1.5 text-xs font-mono text-muted-foreground">
                 loading...
