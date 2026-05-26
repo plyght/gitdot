@@ -5,7 +5,7 @@ import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
 import { Fragment, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
-import { type DiffHunk, pairLines } from "@/(main)/[owner]/[repo]/util";
+import type { DiffHunk } from "@/(main)/[owner]/[repo]/util";
 import { pluralize } from "@/util/string";
 import { DiffLine } from "./diff-line";
 
@@ -21,7 +21,7 @@ export function DiffSplit({
   return (
     <div className="flex flex-col w-full">
       {hunks.map((hunk, index) => (
-        <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
+        <Fragment key={`${hunk.pairs[0][0]}-${hunk.pairs[0][1]}`}>
           {index > 0 && (
             <HiddenSection
               prev={hunks[index - 1]}
@@ -68,8 +68,7 @@ function DiffSection({
   leftSpans: Element[];
   rightSpans: Element[];
 }) {
-  const pairs = pairLines(hunk);
-
+  const pairs = hunk.pairs;
   const leftSpansChunk = pairs.map(([left]) =>
     withSide(getSpanOrSentinel(left, leftSpans), "old"),
   );
@@ -92,8 +91,8 @@ function HiddenSection({
   rightSpans: Element[];
 }) {
   const [expanded, setExpanded] = useState(false);
-  const last = prev[prev.length - 1];
-  const first = next[0];
+  const last = prev.pairs.at(-1);
+  const first = next.pairs[0];
   const prevL = last?.[0];
   const prevR = last?.[1];
   const nextL = first?.[0];

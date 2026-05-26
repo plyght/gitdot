@@ -5,11 +5,7 @@ import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
 import { Fragment, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
-import {
-  type DiffHunk,
-  type DiffPair,
-  pairLines,
-} from "@/(main)/[owner]/[repo]/util";
+import type { DiffHunk, DiffPair } from "@/(main)/[owner]/[repo]/util";
 import { cn } from "@/util";
 import { pluralize } from "@/util/string";
 
@@ -25,7 +21,7 @@ export function DiffUnified({
   return (
     <div className="flex flex-col w-full">
       {hunks.map((hunk, index) => (
-        <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
+        <Fragment key={`${hunk.pairs[0][0]}-${hunk.pairs[0][1]}`}>
           {index > 0 && (
             <HiddenSection
               prev={hunks[index - 1]}
@@ -80,14 +76,13 @@ function DiffSection({
   leftSpans: Element[];
   rightSpans: Element[];
 }) {
-  const pairs = pairLines(hunk);
-
   const isChanged = ([L, R]: DiffPair): boolean =>
     L === null ||
     R === null ||
     lineType(leftSpans, L) !== "normal" ||
     lineType(rightSpans, R) !== "normal";
 
+  const pairs = hunk.pairs;
   const firstChangeIdx = pairs.findIndex(isChanged);
   if (firstChangeIdx < 0) return null;
   const lastChangeIdx = pairs.findLastIndex(isChanged);
@@ -158,8 +153,8 @@ function HiddenSection({
   leftSpans: Element[];
 }) {
   const [expanded, setExpanded] = useState(false);
-  const last = prev[prev.length - 1];
-  const first = next[0];
+  const last = prev.pairs.at(-1);
+  const first = next.pairs[0];
   const prevL = last?.[0];
   const prevR = last?.[1];
   const nextL = first?.[0];

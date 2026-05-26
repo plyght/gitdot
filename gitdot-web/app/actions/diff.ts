@@ -5,7 +5,6 @@ import type { Element } from "hast";
 import {
   type DiffHunk,
   diffFiles,
-  getChangedLines,
   inferLanguage,
   renderSpans,
 } from "@/(main)/[owner]/[repo]/util";
@@ -105,18 +104,15 @@ async function renderDiff(
     const hunks = diffFiles(left, right);
     if (hunks.length === 0) return { kind: "no-change" };
 
-    const isAllAdditions = hunks.every((h) =>
-      h.every(([L, R]) => !(L !== null && R === null)),
-    );
-    const isAllRemovals = hunks.every((h) =>
-      h.every(([L, R]) => !(R !== null && L === null)),
-    );
-    const { leftLines, rightLines } = getChangedLines(hunks);
+    const allRemovedLines = new Set(hunks.flatMap((h) => [...h.removedLines]));
+    const allAddedLines = new Set(hunks.flatMap((h) => [...h.addedLines]));
+    const isAllAdditions = allRemovedLines.size === 0;
+    const isAllRemovals = allAddedLines.size === 0;
 
     if (isAllAdditions || isAllRemovals) {
       const side = isAllAdditions ? "right" : "left";
       const content = isAllAdditions ? right : left;
-      const changedLines = isAllAdditions ? rightLines : leftLines;
+      const changedLines = isAllAdditions ? allAddedLines : allRemovedLines;
       const spans = await renderSpans(
         side,
         content,
@@ -128,8 +124,8 @@ async function renderDiff(
     }
 
     const [leftSpans, rightSpans] = await Promise.all([
-      renderSpans("left", left, lang, leftLines),
-      renderSpans("right", right, lang, rightLines),
+      renderSpans("left", left, lang, allRemovedLines),
+      renderSpans("right", right, lang, allAddedLines),
     ]);
     return { kind: "split", leftSpans, rightSpans, hunks };
   } else if (right === null) {

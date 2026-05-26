@@ -5,7 +5,7 @@ import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
 import { Fragment, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
-import { type DiffHunk, pairLines } from "@/(main)/[owner]/[repo]/util";
+import type { DiffHunk } from "@/(main)/[owner]/[repo]/util";
 import { pluralize } from "@/util/string";
 import { DiffLine } from "./diff-line";
 
@@ -21,7 +21,7 @@ export function DiffUnilateral({
   return (
     <div className="flex flex-col w-full">
       {hunks.map((hunk, index) => (
-        <Fragment key={`${hunk[0][0]}-${hunk[0][1]}`}>
+        <Fragment key={`${hunk.pairs[0][0]}-${hunk.pairs[0][1]}`}>
           {index > 0 && (
             <HiddenSection
               prev={hunks[index - 1]}
@@ -63,10 +63,8 @@ function DiffSection({
   spans: Element[];
   side: "left" | "right";
 }) {
-  const pairs = pairLines(hunk);
-
   const outputSpans: Element[] = [];
-  for (const [L, R] of pairs) {
+  for (const [L, R] of hunk.pairs) {
     const idx = side === "left" ? L : R;
     if (idx === null) continue;
     const span = idx < spans.length ? spans[idx] : sentinelSpan;
@@ -89,8 +87,8 @@ function HiddenSection({
 }) {
   const [expanded, setExpanded] = useState(false);
   const sideIdx = side === "left" ? 0 : 1;
-  const prevIdx = prev[prev.length - 1]?.[sideIdx];
-  const nextIdx = next[0]?.[sideIdx];
+  const prevIdx = prev.pairs.at(-1)?.[sideIdx];
+  const nextIdx = next.pairs[0]?.[sideIdx];
   if (prevIdx == null || nextIdx == null) return null;
   const count = nextIdx - prevIdx - 1;
   if (count <= 0) return null;

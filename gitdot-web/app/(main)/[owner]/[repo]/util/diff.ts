@@ -1,8 +1,15 @@
 import { structuredPatch } from "diff";
 import type { Element } from "hast";
 
+const CONTEXT_LINES = 4;
+const MERGE_THRESHOLD = 8;
+
 export type DiffPair = [number | null, number | null];
-export type DiffHunk = DiffPair[];
+export type DiffHunk = {
+  pairs: DiffPair[];
+  removedLines: Set<number>;
+  addedLines: Set<number>;
+};
 
 /**
  * jsdiff's structuredPath generally returns comparable output to unified patch algorithms
@@ -20,7 +27,7 @@ export function diffFiles(
     rightContent,
     undefined,
     undefined,
-    { context: 4 },
+    { context: CONTEXT_LINES },
   );
 
   const result: DiffHunk[] = [];
@@ -28,14 +35,18 @@ export function diffFiles(
     let oldLine = hunk.oldStart - 1;
     let newLine = hunk.newStart - 1;
     const pairs: DiffPair[] = [];
+    const removedLines = new Set<number>();
+    const addedLines = new Set<number>();
 
     for (const raw of hunk.lines) {
       const marker = raw[0];
       if (marker === "-") {
         pairs.push([oldLine, null]);
+        removedLines.add(oldLine);
         oldLine++;
       } else if (marker === "+") {
         pairs.push([null, newLine]);
+        addedLines.add(newLine);
         newLine++;
       } else if (marker === " ") {
         pairs.push([oldLine, newLine]);
@@ -43,10 +54,10 @@ export function diffFiles(
         newLine++;
       }
     }
-    result.push(pairs);
+    result.push({ pairs: alignPairs(pairs), removedLines, addedLines });
   }
 
-  return result;
+  return mergeHunks(result);
 }
 
 /**
@@ -54,7 +65,7 @@ export function diffFiles(
  * - zip lines (e.g., - a - b + c + d) => pairs a with c and b with d
  * - pad sentinels if line count mismatches (e.g., 3 removals, 4 additions)
  */
-export function pairLines(hunk: DiffHunk): DiffPair[] {
+export function alignPairs(pairs: DiffPair[]): DiffPair[] {
   const result: DiffPair[] = [];
   let pendingLhs: number[] = [];
   let pendingRhs: number[] = [];
@@ -71,7 +82,7 @@ export function pairLines(hunk: DiffHunk): DiffPair[] {
     pendingRhs = [];
   };
 
-  for (const [L, R] of hunk) {
+  for (const [L, R] of pairs) {
     if (L !== null && R !== null) {
       flush();
       result.push([L, R]);
@@ -87,24 +98,46 @@ export function pairLines(hunk: DiffHunk): DiffPair[] {
 }
 
 /**
- * collects the set of changed line numbers per side
+ * regardless of the context window we set, there are unfortunate cases
  *
- * used by renderSpans to tag added/removed lines for whole-line background
- * coloring. context (both-sided anchor) pairs are not changes and are excluded.
+ * where we will have a small hidden section in between two hunks (e.g,. hiding two lines)
+ * this is ugly, so we merge them
+ *
+ * since hunks are alraedy paired before this, we can just increment the counts in between each hunk
  */
-export function getChangedLines(hunks: DiffHunk[]): {
-  leftLines: Set<number>;
-  rightLines: Set<number>;
-} {
-  const leftLines = new Set<number>();
-  const rightLines = new Set<number>();
-  for (const hunk of hunks) {
-    for (const [L, R] of hunk) {
-      if (L !== null && R === null) leftLines.add(L);
-      if (R !== null && L === null) rightLines.add(R);
+export function mergeHunks(hunks: DiffHunk[]): DiffHunk[] {
+  if (hunks.length <= 1) return hunks;
+  const result: DiffHunk[] = [hunks[0]];
+  for (let i = 1; i < hunks.length; i++) {
+    const prev = result[result.length - 1];
+    const next = hunks[i];
+    const prevLast = prev.pairs.at(-1);
+    const nextFirst = next.pairs[0];
+    const prevL = prevLast?.[0];
+    const prevR = prevLast?.[1];
+    const nextL = nextFirst?.[0];
+
+    if (prevL == null || prevR == null || nextL == null) {
+      result.push(next);
+      continue;
     }
+
+    const gap = nextL - prevL - 1;
+    if (gap <= 0 || gap > MERGE_THRESHOLD) {
+      result.push(next);
+      continue;
+    }
+
+    const fill: DiffPair[] = [];
+    for (let k = 1; k <= gap; k++) fill.push([prevL + k, prevR + k]);
+
+    result[result.length - 1] = {
+      pairs: [...prev.pairs, ...fill, ...next.pairs],
+      removedLines: new Set([...prev.removedLines, ...next.removedLines]),
+      addedLines: new Set([...prev.addedLines, ...next.addedLines]),
+    };
   }
-  return { leftLines, rightLines };
+  return result;
 }
 
 // ============================================================================
@@ -125,7 +158,7 @@ export function preferSplit(
   let total = 0;
 
   for (const hunk of hunks) {
-    for (const [L, R] of hunk) {
+    for (const [L, R] of hunk.pairs) {
       if (L !== null) {
         const span = leftSpans[L];
         if (span) maxLen = Math.max(maxLen, spanTextLength(span));
