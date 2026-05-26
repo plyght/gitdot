@@ -11,7 +11,6 @@ use crate::resource::{
 pub struct UserResource {
     pub id: Uuid,
     pub name: String,
-    pub email: String,
 
     pub location: Option<String>,
     pub readme: Option<String>,

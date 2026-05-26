@@ -11,12 +11,11 @@ impl IntoApi for UserResponse {
         api::UserResource {
             id: self.id,
             name: self.name,
-            email: self.email,
-            created_at: self.created_at,
             location: self.location,
             readme: self.readme,
             links: self.links,
             display_name: self.display_name,
+            created_at: self.created_at,
         }
     }
 }

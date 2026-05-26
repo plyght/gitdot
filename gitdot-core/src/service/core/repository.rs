@@ -739,7 +739,10 @@ where
 
         Ok(stars
             .into_iter()
-            .map(|(user, at)| RepositoryActivityEvent::Starred { user, at })
+            .map(|(user, at)| RepositoryActivityEvent::Starred {
+                user: user.into(),
+                at,
+            })
             .collect())
     }
 

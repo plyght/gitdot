@@ -4,7 +4,6 @@ import { OrganizationMemberResource } from "./organization";
 export const UserResource = z.object({
   id: z.uuid(),
   name: z.string(),
-  email: z.string(),
   location: z.string().nullable().optional(),
   readme: z.string().nullable().optional(),
   links: z.array(z.string()).default([]),

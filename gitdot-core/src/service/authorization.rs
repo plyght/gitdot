@@ -403,7 +403,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        dto::{RepositoryAuthorizationRequest, RepositoryPermission, UserResponse},
+        dto::{RepositoryAuthorizationRequest, RepositoryPermission},
         error::AuthorizationError,
         model::{
             Answer, AuthProvider, Comment, CommentSide, Diff, DiffStatus, Organization,
@@ -458,7 +458,7 @@ mod tests {
             async fn disable_readonly(&self, owner: &str, repo: &str) -> Result<Option<Repository>, crate::error::DatabaseError>;
             async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, crate::error::DatabaseError>;
             async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, crate::error::DatabaseError>;
-            async fn list_recent_stars(&self, repository_id: Uuid, limit: i64) -> Result<Vec<(UserResponse, DateTime<Utc>)>, crate::error::DatabaseError>;
+            async fn list_recent_stars(&self, repository_id: Uuid, limit: i64) -> Result<Vec<(User, DateTime<Utc>)>, crate::error::DatabaseError>;
             async fn list_commit_filters(&self, repository_id: Uuid, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<crate::model::CommitFilter>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
             async fn create_commit_filter(&self, repository_id: Uuid, name: &str, authors: Option<Vec<String>>, tags: Option<Vec<String>>, paths: Option<Vec<String>>) -> Result<crate::model::CommitFilter, crate::error::DatabaseError>;
             async fn update_commit_filter(&self, filter_id: Uuid, name: &str, authors: Option<Vec<String>>, tags: Option<Vec<String>>, paths: Option<Vec<String>>) -> Result<Option<crate::model::CommitFilter>, crate::error::DatabaseError>;

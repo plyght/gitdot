@@ -32,12 +32,13 @@ pub use update_current_user_image::UpdateCurrentUserImageRequest;
 pub struct UserResponse {
     pub id: Uuid,
     pub name: String,
-    pub email: String,
-    pub created_at: DateTime<Utc>,
+
     pub location: Option<String>,
     pub readme: Option<String>,
     pub links: Vec<String>,
     pub display_name: Option<String>,
+
+    pub created_at: DateTime<Utc>,
 }
 
 impl From<User> for UserResponse {
@@ -45,12 +46,11 @@ impl From<User> for UserResponse {
         Self {
             id: user.id,
             name: user.name,
-            email: user.email,
-            created_at: user.created_at,
             location: user.location,
             readme: user.readme,
             links: user.links,
             display_name: user.display_name,
+            created_at: user.created_at,
         }
     }
 }

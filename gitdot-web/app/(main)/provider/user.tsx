@@ -3,6 +3,7 @@
 import type {
   GitHubInstallationResource,
   OrganizationMemberResource,
+  UserEmailResource,
   UserResource,
 } from "gitdot-api";
 import {
@@ -17,6 +18,7 @@ import { AuthDialog } from "../ui/auth-dialog";
 
 interface UserContext {
   user: UserResource | null | undefined;
+  emails: UserEmailResource[] | null | undefined;
   memberships: OrganizationMemberResource[] | null | undefined;
   installations: GitHubInstallationResource[] | null | undefined;
   refreshUser: () => Promise<void>;
@@ -33,6 +35,9 @@ const UserContext = createContext<UserContext | null>(null);
  */
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserResource | null | undefined>(undefined);
+  const [emails, setEmails] = useState<
+    UserEmailResource[] | null | undefined
+  >(undefined);
   const [memberships, setMemberships] = useState<
     OrganizationMemberResource[] | null | undefined
   >(undefined);
@@ -55,21 +60,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     const current = await getCurrentUserAction();
     if (current) {
-      const primaryEmail =
-        current.emails.find((e) => e.is_primary)?.email ?? "";
       setUser({
         id: current.id,
         name: current.name,
-        email: primaryEmail,
         created_at: current.created_at,
         location: current.location,
         readme: current.readme,
         links: current.links,
         display_name: current.display_name,
       });
+      setEmails(current.emails);
       setMemberships(current.memberships);
     } else {
       setUser(null);
+      setEmails(null);
       setMemberships(null);
       setInstallations(null);
       return;
@@ -87,6 +91,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     <UserContext
       value={{
         user,
+        emails,
         memberships,
         installations,
         refreshUser,

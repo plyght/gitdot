@@ -1,12 +1,14 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sqlx::{PgPool, Row};
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::{
-    dto::{Cursor, UserResponse},
+    dto::Cursor,
     error::DatabaseError,
-    model::{CommitFilter, Repository, RepositoryOwnerType, RepositoryStar, RepositoryVisibility},
+    model::{
+        CommitFilter, Repository, RepositoryOwnerType, RepositoryStar, RepositoryVisibility, User,
+    },
 };
 
 #[async_trait]
@@ -63,7 +65,7 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         &self,
         repository_id: Uuid,
         limit: i64,
-    ) -> Result<Vec<(UserResponse, DateTime<Utc>)>, DatabaseError>;
+    ) -> Result<Vec<(User, DateTime<Utc>)>, DatabaseError>;
 
     async fn list_commit_filters(
         &self,
@@ -403,10 +405,18 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         &self,
         repository_id: Uuid,
         limit: i64,
-    ) -> Result<Vec<(UserResponse, DateTime<Utc>)>, DatabaseError> {
-        let rows = sqlx::query(
+    ) -> Result<Vec<(User, DateTime<Utc>)>, DatabaseError> {
+        #[derive(FromRow)]
+        struct StarredUserRow {
+            #[sqlx(flatten)]
+            user: User,
+            starred_at: DateTime<Utc>,
+        }
+
+        let rows = sqlx::query_as::<_, StarredUserRow>(
             r#"
-            SELECT u.id, u.name, ue.email, u.created_at, u.display_name,
+            SELECT u.id, u.name, ue.email, ue.is_verified AS is_email_verified,
+                   u.provider, u.created_at, u.location, u.readme, u.links, u.display_name,
                    s.created_at AS starred_at
             FROM core.stars s
             JOIN core.users u ON s.user_id = u.id
@@ -421,22 +431,7 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         .fetch_all(&self.pool)
         .await?;
 
-        rows.into_iter()
-            .map(|row| {
-                let user = UserResponse {
-                    id: row.try_get("id")?,
-                    name: row.try_get("name")?,
-                    email: row.try_get("email")?,
-                    created_at: row.try_get("created_at")?,
-                    display_name: row.try_get("display_name")?,
-                    location: None,
-                    readme: None,
-                    links: vec![],
-                };
-                let starred_at: DateTime<Utc> = row.try_get("starred_at")?;
-                Ok((user, starred_at))
-            })
-            .collect()
+        Ok(rows.into_iter().map(|r| (r.user, r.starred_at)).collect())
     }
 
     async fn list_commit_filters(

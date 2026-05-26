@@ -81,7 +81,8 @@ export function SettingsProfile({ user }: { user: UserResource }) {
 
 function ProfilePrimary({ user }: { user: UserResource }) {
   const tz = useTimezone();
-  const { refreshUser } = useUserContext();
+  const { emails, refreshUser } = useUserContext();
+  const primaryEmail = emails?.find((e) => e.is_primary)?.email ?? "";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -137,7 +138,7 @@ function ProfilePrimary({ user }: { user: UserResource }) {
         </Tooltip>
         <span className="text-sm font-semibold mb-1.5">{user.name}</span>
         <span className="text-sm text-muted-foreground">email</span>
-        <span className="text-sm">{user.email}</span>
+        <span className="text-sm">{primaryEmail}</span>
         <span className="text-sm text-muted-foreground">joined</span>
         <span className="text-sm text-muted-foreground">
           {formatDate(new Date(user.created_at), tz)} (
