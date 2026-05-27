@@ -1,13 +1,13 @@
 "use client";
 
-import { Undo2 } from "lucide-react";
-import { useParams } from "next/navigation";
-import { Suspense, use } from "react";
 import {
   type ResourcePromisesType,
   type ResourceResultType,
   useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
+} from "gitdot-dal/client";
+import { Undo2 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Suspense, use } from "react";
 import Link from "@/ui/link";
 import { OverlayScroll } from "@/ui/scroll";
 import { Sidebar, SidebarContent } from "@/ui/sidebar";

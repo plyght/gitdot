@@ -9,8 +9,8 @@ import type {
   ReviewResource,
 } from "gitdot-api";
 import type { Root } from "hast";
-import { openIdb } from "@/db";
-import { RepoProvider, type ResourceRequestType } from "./types";
+import { openIdb } from "../db";
+import { GitdotProvider, type ResourceRequestType } from "./types";
 
 const pathsCache = new Map<string, RepositoryPathsResource>();
 const commitsCache = new Map<string, RepositoryCommitResource[]>();
@@ -19,7 +19,7 @@ function repoKey(owner: string, repo: string) {
   return `${owner}/${repo}`;
 }
 
-export class LocalProvider extends RepoProvider {
+export class LocalProvider extends GitdotProvider {
   private db = openIdb();
 
   replay(

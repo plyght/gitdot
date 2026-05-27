@@ -1,13 +1,12 @@
 "use client";
 
 import type { RepositoryPathsResource } from "gitdot-api";
+import { LocalProvider, openIdb } from "gitdot-dal/client";
 import type { Root } from "hast";
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
-import { openIdb } from "@/db";
-import { LocalProvider } from "@/provider/local";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import Link from "@/ui/link";
 import { Loading } from "@/ui/loading";

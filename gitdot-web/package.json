@@ -37,6 +37,7 @@
     "diff": "^8.0.4",
     "gitdot-api": "workspace:*",
     "gitdot-client": "workspace:*",
+    "gitdot-dal": "workspace:*",
     "hast-util-to-jsx-runtime": "^2.3.6",
     "idb": "^8.0.3",
     "lucide-react": "^0.562.0",

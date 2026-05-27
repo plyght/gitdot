@@ -1,5 +1,5 @@
 import type { QuestionResource } from "gitdot-api";
-import { fetchResources } from "@/provider/server";
+import { fetchResources } from "gitdot-dal/server";
 import { LayoutClient } from "./layout.client";
 
 export type Resources = {

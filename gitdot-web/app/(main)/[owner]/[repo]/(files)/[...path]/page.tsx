@@ -3,9 +3,9 @@ import type {
   RepositoryCommitResource,
   RepositoryPathsResource,
 } from "gitdot-api";
+import { fetchResources } from "gitdot-dal/server";
 import type { Root } from "hast";
 import { Suspense } from "react";
-import { fetchResources } from "@/provider/server";
 import { Loading } from "@/ui/loading";
 import { PageClient } from "./page.client";
 import { parseLineSelection } from "./util";

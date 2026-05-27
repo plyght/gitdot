@@ -4,6 +4,11 @@ import type {
   RepositoryPathResource,
   RepositoryPathsResource,
 } from "gitdot-api";
+import {
+  type ResourcePromisesType,
+  type ResourceResultType,
+  useResolvePromises,
+} from "gitdot-dal/client";
 import { Undo2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import {
@@ -15,11 +20,6 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  type ResourcePromisesType,
-  type ResourceResultType,
-  useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
 import { getFolderEntries } from "@/(main)/[owner]/[repo]/util";
 import Link from "@/ui/link";
 import { Loading } from "@/ui/loading";

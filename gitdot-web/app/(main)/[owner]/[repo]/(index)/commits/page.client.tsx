@@ -4,12 +4,12 @@ import type {
   RepositoryCommitFilterResource,
   RepositoryResource,
 } from "gitdot-api";
-import { Suspense, use, useState } from "react";
 import {
   type ResourcePromisesType,
   type ResourceResultType,
   useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
+} from "gitdot-dal/client";
+import { Suspense, use, useState } from "react";
 import { useTimezone } from "@/(main)/provider/timezone";
 import { Loading } from "@/ui/loading";
 import { dateInRange, formatDateIso } from "@/util/date";

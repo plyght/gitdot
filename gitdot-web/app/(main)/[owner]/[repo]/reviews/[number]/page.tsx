@@ -1,6 +1,6 @@
 import type { ReviewResource } from "gitdot-api";
+import { fetchResources } from "gitdot-dal/server";
 import { renderReviewDiffAction } from "@/actions";
-import { fetchResources } from "@/provider/server";
 import { PageClient } from "./page.client";
 
 export type Resources = {

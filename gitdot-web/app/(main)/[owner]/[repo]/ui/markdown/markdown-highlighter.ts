@@ -15,10 +15,10 @@ import tsx from "@shikijs/langs/tsx";
 import typescript from "@shikijs/langs/typescript";
 import yaml from "@shikijs/langs/yaml";
 import vitesseLight from "@shikijs/themes/vitesse-light";
+import { vitesseDark } from "gitdot-dal/client";
 import { addClassToHast, type ThemeRegistrationRaw } from "shiki";
 import { createHighlighterCoreSync } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
-import vitesseDark from "@/themes/vitesse-dark";
 
 const highlighter = createHighlighterCoreSync({
   themes: [vitesseLight as unknown as ThemeRegistrationRaw, vitesseDark],

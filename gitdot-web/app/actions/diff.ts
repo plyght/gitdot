@@ -6,11 +6,11 @@ import {
   getRepositoryCommitDiff,
   getReviewDiff,
 } from "gitdot-client";
+import { inferLanguage } from "gitdot-dal/client";
 import type { Element } from "hast";
 import {
   type DiffHunk,
   diffFiles,
-  inferLanguage,
   renderSpans,
 } from "@/(main)/[owner]/[repo]/util";
 

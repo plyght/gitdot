@@ -1,11 +1,8 @@
 "use client";
 
 import type { TaskResource } from "gitdot-api";
+import { type ResourceResultType, useResolvePromises } from "gitdot-dal/client";
 import { Suspense, use } from "react";
-import {
-  type ResourceResultType,
-  useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
 import type { S2Record } from "@/lib/s2/shared";
 import { Loading } from "@/ui/loading";
 import type { Resources } from "./page";

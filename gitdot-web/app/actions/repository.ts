@@ -13,15 +13,12 @@ import {
   createRepositoryCommitFilter,
   deleteRepository,
   deleteRepositoryCommitFilter,
-  getRepositoryBlob,
   starRepository,
   unstarRepository,
   updateRepositoryCommitFilter,
 } from "gitdot-client";
-import type { Root } from "hast";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import { fileToHast, inferLanguage } from "@/(main)/[owner]/[repo]/util";
 
 export type CreateRepositoryActionResult =
   | { repository: RepositoryResource }
@@ -92,21 +89,6 @@ export async function deleteRepositoryAction(
 
   redirect(`/${owner}`);
   return { success: true };
-}
-
-export async function getRepositoryHastAction(
-  owner: string,
-  repo: string,
-  path: string,
-  ref?: string,
-): Promise<Root | null> {
-  const blob = await getRepositoryBlob(owner, repo, {
-    path,
-    ...(ref && { ref_name: ref }),
-  });
-  if (!blob || blob.type === "folder") return null;
-  const lang = inferLanguage(path);
-  return fileToHast(blob.content, lang, "vitesse", []);
 }
 
 export type StarRepositoryActionResult = { success: true } | { error: string };

@@ -1,12 +1,12 @@
 "use client";
 
 import type { RepositoryCommitResource } from "gitdot-api";
-import { Suspense, use, useState } from "react";
 import {
   type ResourcePromisesType,
   type ResourceResultType,
   useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
+} from "gitdot-dal/client";
+import { Suspense, use, useState } from "react";
 import { Loading } from "@/ui/loading";
 import type { Resources } from "./page";
 import { BuildRow } from "./ui/build-row";

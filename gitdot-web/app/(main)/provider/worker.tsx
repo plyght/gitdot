@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  createShikiWorker,
+  createSyncWorker,
+  type ShikiResponse,
+  type SyncResponse,
+} from "gitdot-dal/client";
 import type { Root } from "hast";
 import {
   createContext,
@@ -8,9 +14,6 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { createShikiWorker, createSyncWorker } from "@/workers";
-import type { ShikiResponse } from "@/workers/shiki";
-import type { SyncResponse } from "@/workers/sync";
 
 interface SyncStatus {
   resources: () => void;

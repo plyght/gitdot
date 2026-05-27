@@ -7,7 +7,7 @@ import { getRepository } from "gitdot-client";
 import type {
   ResourcePromisesType,
   ResourceRequestsType,
-} from "@/provider/types";
+} from "gitdot-dal/client";
 import { RepoResources } from "./resources/context";
 import { RepoDialogs } from "./ui/dialog/repo-dialogs";
 import { RepoNotFound } from "./ui/repo-not-found";

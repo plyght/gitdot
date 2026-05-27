@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, use, useMemo, useState } from "react";
 import {
   type ResourcePromisesType,
   type ResourceResultType,
   useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
+} from "gitdot-dal/client";
+import { Suspense, use, useMemo, useState } from "react";
 import { Loading } from "@/ui/loading";
 import type { Resources } from "./page";
 import { ReviewRow } from "./ui/review-row";

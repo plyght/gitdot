@@ -11,7 +11,7 @@ import type { Root } from "hast";
 
 export type ResourceDefinition = Record<
   string,
-  (provider: RepoProvider) => Promise<unknown>
+  (provider: GitdotProvider) => Promise<unknown>
 >;
 
 export type ResourceRequestType = { method: string; args: unknown[] };
@@ -32,7 +32,7 @@ export type ShapeFromDefinition<T extends ResourceDefinition> = {
   [K in keyof T]: Awaited<ReturnType<T[K]>>;
 };
 
-export abstract class RepoProvider {
+export abstract class GitdotProvider {
   protected owner: string;
   protected repo: string;
 

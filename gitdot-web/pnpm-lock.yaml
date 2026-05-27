@@ -98,6 +98,9 @@ importers:
       gitdot-client:
         specifier: workspace:*
         version: link:packages/gitdot-client
+      gitdot-dal:
+        specifier: workspace:*
+        version: link:packages/gitdot-dal
       hast-util-to-jsx-runtime:
         specifier: ^2.3.6
         version: 2.3.6
@@ -242,6 +245,43 @@ importers:
       '@biomejs/biome':
         specifier: 'catalog:'
         version: 2.3.11
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/gitdot-dal:
+    dependencies:
+      '@shikijs/langs':
+        specifier: ^3.21.0
+        version: 3.23.0
+      '@shikijs/themes':
+        specifier: ^3.21.0
+        version: 3.23.0
+      '@shikijs/transformers':
+        specifier: ^3.21.0
+        version: 3.23.0
+      gitdot-api:
+        specifier: workspace:*
+        version: link:../gitdot-api
+      gitdot-client:
+        specifier: workspace:*
+        version: link:../gitdot-client
+      idb:
+        specifier: ^8.0.3
+        version: 8.0.3
+      next:
+        specifier: 16.2.1
+        version: 16.2.1(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      shiki:
+        specifier: ^3.21.0
+        version: 3.23.0
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 'catalog:'
+        version: 2.3.11
+      '@types/hast':
+        specifier: ^3.0.4
+        version: 3.0.4
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

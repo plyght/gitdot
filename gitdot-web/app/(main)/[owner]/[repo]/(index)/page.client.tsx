@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, use } from "react";
 import {
   type ResourcePromisesType,
   type ResourceResultType,
   useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
+} from "gitdot-dal/client";
+import { Suspense, use } from "react";
 import { Loading } from "@/ui/loading";
 import { MarkdownBody } from "../ui/markdown/markdown-body";
 import type { Resources } from "./page";

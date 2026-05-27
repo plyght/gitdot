@@ -1,6 +1,6 @@
 import type { RepositoryBlobResource } from "gitdot-api";
 import { getRepository, getRepositoryActivity } from "gitdot-client";
-import { fetchResources } from "@/provider/server";
+import { fetchResources } from "gitdot-dal/server";
 import { PageClient } from "./page.client";
 import { RepoPanel } from "./ui/repo-panel";
 

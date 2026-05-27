@@ -2,7 +2,7 @@
 declare const self: SharedWorkerGlobalScope;
 
 import { GetRepositoryResourcesResponse } from "gitdot-api";
-import { openIdb } from "@/db/idb";
+import { openIdb } from "../db/idb";
 import { createHighlighter, inferLanguage } from "./util";
 
 export interface SyncRequest {

@@ -5,8 +5,8 @@ import {
   getRepositoryBlob,
   issueTaskToken,
 } from "gitdot-client";
+import { fetchResources } from "gitdot-dal/server";
 import { getTaskLogs } from "@/lib/s2/server";
-import { fetchResources } from "@/provider/server";
 import { renderFileToHtml } from "../../util/hast";
 import { PageClient } from "./page.client";
 

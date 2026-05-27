@@ -22,24 +22,17 @@ import {
   listReviews,
 } from "gitdot-client";
 import type { Root } from "hast";
-import { getRepositoryHastAction } from "@/actions/repository";
+import { fileToHast } from "../hast";
+import { inferLanguage } from "../language";
 import {
-  RepoProvider,
+  GitdotProvider,
   type ResourceDefinition,
   type ResourceRequestType,
   type ResourceResultType,
   type ShapeFromDefinition,
 } from "./types";
 
-export function fetchResources<T extends ResourceDefinition>(
-  owner: string,
-  repo: string,
-  resources: T,
-) {
-  return new ServerProvider(owner, repo).fetch(resources);
-}
-
-export class ServerProvider extends RepoProvider {
+export class ServerProvider extends GitdotProvider {
   fetch<T extends ResourceDefinition>(
     def: T,
   ): ResourceResultType<ShapeFromDefinition<T>> {
@@ -99,7 +92,13 @@ export class ServerProvider extends RepoProvider {
   }
 
   async getHast(path: string, ref?: string): Promise<Root | null> {
-    return await getRepositoryHastAction(this.owner, this.repo, path, ref);
+    const blob = await getRepositoryBlob(this.owner, this.repo, {
+      path,
+      ...(ref && { ref_name: ref }),
+    });
+    if (!blob || blob.type === "folder") return null;
+    const lang = inferLanguage(path);
+    return fileToHast(blob.content, lang, "vitesse", []);
   }
 
   async getCommit(sha: string): Promise<RepositoryCommitResource | null> {

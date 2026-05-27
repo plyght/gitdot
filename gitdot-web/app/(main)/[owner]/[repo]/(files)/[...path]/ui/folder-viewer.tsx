@@ -1,10 +1,10 @@
 "use client";
 
 import type { RepositoryPathsResource } from "gitdot-api";
+import { LocalProvider } from "gitdot-dal/client";
 import type { Root } from "hast";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
-import { LocalProvider } from "@/provider/local";
 import { FolderPathPreview } from "./folder-path-preview";
 import { FolderTree } from "./folder-tree";
 import { FolderViewerProvider } from "./folder-viewer-context";

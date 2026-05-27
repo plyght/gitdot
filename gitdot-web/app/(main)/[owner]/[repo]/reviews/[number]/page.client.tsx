@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, use, useMemo, useState } from "react";
 import {
   type ResourcePromisesType,
   type ResourceResultType,
   useResolvePromises,
-} from "@/(main)/[owner]/[repo]/resources";
+} from "gitdot-dal/client";
+import { Suspense, use, useMemo, useState } from "react";
 import { useShortcuts } from "@/(main)/provider/shortcuts";
 import type { DiffEntry } from "@/actions";
 import { Loading } from "@/ui/loading";
