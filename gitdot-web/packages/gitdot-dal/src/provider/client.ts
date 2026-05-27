@@ -9,7 +9,7 @@ import { openIdb } from "../db";
 import { createShikiWorker, createSyncWorker } from "../workers";
 import type { ShikiRequest, ShikiResponse } from "../workers/shiki";
 import type { SyncResponse } from "../workers/sync";
-import { GitdotProvider, type ResourceRequestType } from "./types";
+import { GitdotProvider } from "./types";
 
 export class ClientProvider extends GitdotProvider {
   private static _instance: ClientProvider | null = null;
@@ -61,29 +61,11 @@ export class ClientProvider extends GitdotProvider {
     const id = crypto.randomUUID();
     this.syncRequests.set(id, resolve);
     this.syncWorker?.port.postMessage({ id, owner, repo });
-    done.then(() => this.initializeRepo(owner, repo));
+    done.then(() => {
+      this.getPaths(owner, repo);
+      this.getCommits(owner, repo);
+    });
     return done;
-  }
-
-  replay(
-    requests: Record<string, ResourceRequestType>,
-  ): Record<string, Promise<unknown>> {
-    const results: Record<string, Promise<unknown>> = {};
-    for (const [key, { method, args }] of Object.entries(requests)) {
-      const func = this[method as keyof this];
-      if (typeof func !== "function") {
-        throw new Error(`ClientProvider has no method "${method}"`);
-      }
-      results[key] = func.apply(this, args);
-    }
-    return results;
-  }
-
-  async initializeRepo(owner: string, repo: string) {
-    await Promise.all([
-      this.getPaths(owner, repo),
-      this.getCommits(owner, repo),
-    ]);
   }
 
   async getPaths(owner: string, repo: string) {

@@ -1,6 +1,7 @@
 import { ClientProvider } from "./provider/client";
 import type {
   ResourcePromisesType,
+  ResourceRequestType,
   ResourceResultType,
 } from "./provider/types";
 
@@ -17,22 +18,35 @@ export type { SyncRequest, SyncResponse } from "./workers/sync";
 export function useResources<S>(
   resources: ResourceResultType<S>,
 ): ResourcePromisesType<S> {
-  const localPromises = ClientProvider.instance.replay(resources.requests);
-  const keys = Object.keys(resources.requests);
-  const start = performance.now();
+  const provider = ClientProvider.instance;
+  const localPromises: Record<string, Promise<unknown>> = {};
+  const requests = resources.requests as Record<string, ResourceRequestType>;
+
+  for (const [key, { method, args }] of Object.entries(requests)) {
+    const func = provider[method as keyof ClientProvider];
+    if (typeof func !== "function") {
+      throw new Error(`ClientProvider has no method "${method}"`);
+    }
+    localPromises[key] = (func as (...a: unknown[]) => Promise<unknown>).apply(
+      provider,
+      args,
+    );
+  }
+  const requestKeys = Object.keys(requests);
   const timings: Record<
     string,
     { client: number | null; server: number | null }
-  > = {};
-  for (const key of keys) timings[key] = { client: null, server: null };
+    > = {};
 
-  let remaining = keys.length * 2;
+  for (const key of requestKeys) timings[key] = { client: null, server: null };
+  let remaining = requestKeys.length * 2;
   const tick = () => {
     if (--remaining === 0) console.log("[useResources]", timings);
   };
 
+  const start = performance.now();
   const result: Record<string, Promise<unknown>> = {};
-  for (const key of keys) {
+  for (const key of requestKeys) {
     const serverPromise = resources.promises[key as keyof S];
     const clientPromise = localPromises[key];
     Promise.resolve(clientPromise).finally(() => {
