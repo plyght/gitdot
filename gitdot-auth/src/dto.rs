@@ -1,10 +1,11 @@
 use gitdot_api::resource::{
     auth::{AuthTokensResource, DeviceCodeResource, GitHubAuthRedirectResource, TokenResource},
     slack::SlackAccountResource,
+    user::UserEmailResource,
 };
 use gitdot_core::dto::{
     AuthTokensResponse, DeviceCodeResponse, LinkSlackAccountResponse, OAuthRedirectResponse,
-    TokenResponse,
+    TokenResponse, UserEmailResponse,
 };
 
 pub trait IntoApi {
@@ -31,6 +32,18 @@ impl IntoApi for OAuthRedirectResponse {
         GitHubAuthRedirectResource {
             authorize_url: self.authorize_url,
             state: self.state,
+        }
+    }
+}
+
+impl IntoApi for UserEmailResponse {
+    type ApiType = UserEmailResource;
+    fn into_api(self) -> Self::ApiType {
+        UserEmailResource {
+            email: self.email,
+            is_primary: self.is_primary,
+            is_verified: self.is_verified,
+            created_at: self.created_at,
         }
     }
 }

@@ -12,12 +12,12 @@ use gitdot_core::{
         SlackBotClientImpl, SmtpClient, TokenClientImpl,
     },
     repository::{
-        DeviceRepositoryImpl, SessionRepositoryImpl, SlackRepositoryImpl, TokenRepositoryImpl,
-        UserRepositoryImpl,
+        DeviceRepositoryImpl, EmailVerificationRepositoryImpl, SessionRepositoryImpl,
+        SlackRepositoryImpl, TokenRepositoryImpl, UserRepositoryImpl,
     },
     service::{
-        DeviceService, DeviceServiceImpl, SessionService, SessionServiceImpl, SlackService,
-        SlackServiceImpl,
+        DeviceService, DeviceServiceImpl, EmailVerificationService, EmailVerificationServiceImpl,
+        SessionService, SessionServiceImpl, SlackService, SlackServiceImpl,
     },
 };
 
@@ -30,6 +30,7 @@ pub struct AppState {
     pub session_service: Arc<dyn SessionService>,
     pub device_service: Arc<dyn DeviceService>,
     pub slack_service: Arc<dyn SlackService>,
+    pub email_verification_service: Arc<dyn EmailVerificationService>,
 
     pub auth_config: AuthConfig,
     pub vercel_oidc_config: VercelOidcConfig,
@@ -42,6 +43,7 @@ impl AppState {
         let user_repo = UserRepositoryImpl::new(pool.clone());
         let device_repo = DeviceRepositoryImpl::new(pool.clone());
         let slack_repo = SlackRepositoryImpl::new(pool.clone());
+        let email_verification_repo = EmailVerificationRepositoryImpl::new(pool.clone());
 
         let email_client = SmtpClient::new(
             &settings.smtp_host,
@@ -84,7 +86,7 @@ impl AppState {
         let session_service = Arc::new(SessionServiceImpl::new(
             session_repo,
             user_repo.clone(),
-            email_client,
+            email_client.clone(),
             github_client,
             token_client.clone(),
             image_client,
@@ -94,10 +96,16 @@ impl AppState {
         let device_service = Arc::new(DeviceServiceImpl::new(
             device_repo,
             token_repo,
-            user_repo,
-            token_client,
+            user_repo.clone(),
+            token_client.clone(),
         ));
         let slack_service = Arc::new(SlackServiceImpl::new(slack_repo, slack_bot_client));
+        let email_verification_service = Arc::new(EmailVerificationServiceImpl::new(
+            user_repo,
+            email_verification_repo,
+            email_client,
+            token_client,
+        ));
 
         let vercel_jwks = {
             let jwks_url = format!("{}/.well-known/jwks", settings.vercel_oidc_url);
@@ -116,6 +124,7 @@ impl AppState {
             session_service,
             device_service,
             slack_service,
+            email_verification_service,
             auth_config,
             vercel_oidc_config,
         })

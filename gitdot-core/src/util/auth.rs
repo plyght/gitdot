@@ -36,3 +36,10 @@ pub fn get_auth_email(code: &str) -> (String, String) {
         CODE_TEMPLATE.replace("{{code}}", code),
     )
 }
+
+pub fn get_verify_email_email(code: &str) -> (String, String) {
+    (
+        format!("Verify your email — code: {}", code),
+        CODE_TEMPLATE.replace("{{code}}", code),
+    )
+}

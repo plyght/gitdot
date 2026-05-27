@@ -1,4 +1,3 @@
-pub mod add_user_email;
 pub mod get_current_user;
 pub mod get_user;
 pub mod has_user;

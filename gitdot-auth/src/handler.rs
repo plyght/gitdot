@@ -14,7 +14,7 @@ use gitdot_axum::middleware::verify_vercel_oidc;
 use crate::app::AppState;
 
 use device::{authorize_device, create_device_code, poll_token};
-use email::{send_auth_email, verify_auth_code};
+use email::{add_user_email, send_auth_email, verify_auth_code, verify_user_email};
 use github::{exchange_github_code, redirect_to_github_auth};
 use logout::logout;
 use refresh_session::refresh_session;
@@ -29,6 +29,8 @@ pub fn create_auth_router(state: AppState) -> Router<AppState> {
         .route("/auth/device/authorize", post(authorize_device))
         .route("/auth/email/send", post(send_auth_email))
         .route("/auth/email/verify", post(verify_auth_code))
+        .route("/auth/email/add-email", post(add_user_email))
+        .route("/auth/email/verify-email", post(verify_user_email))
         .route("/auth/github/redirect", get(redirect_to_github_auth))
         .route("/auth/github/exchange", post(exchange_github_code))
         .route("/auth/slack/link", post(link_slack_account))

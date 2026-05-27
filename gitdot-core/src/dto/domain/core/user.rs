@@ -1,4 +1,3 @@
-mod add_user_email;
 mod get_current_user;
 mod get_user;
 mod has_user;
@@ -18,7 +17,6 @@ use crate::{
     model::{User, UserEmail},
 };
 
-pub use add_user_email::AddUserEmailRequest;
 pub use get_current_user::GetCurrentUserRequest;
 pub use get_user::GetUserRequest;
 pub use has_user::HasUserRequest;

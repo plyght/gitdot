@@ -54,6 +54,15 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
 
     async fn create_email(&self, user_id: Uuid, email: &str) -> Result<UserEmail, DatabaseError>;
 
+    /// Looks up a `user_emails` row by `email`. Returns `(id, user_id, is_verified)`
+    /// if a row exists, or `None`. Used by the email-verification flow to decide
+    /// between insert (new email), resend (this user's unverified row), and
+    /// conflict (verified, or owned by another user).
+    async fn get_email_owner(
+        &self,
+        email: &str,
+    ) -> Result<Option<(Uuid, Uuid, bool)>, DatabaseError>;
+
     async fn upsert_verified_emails(
         &self,
         user_id: Uuid,
@@ -294,6 +303,24 @@ impl UserRepository for UserRepositoryImpl {
         .bind(user_id)
         .bind(email)
         .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    async fn get_email_owner(
+        &self,
+        email: &str,
+    ) -> Result<Option<(Uuid, Uuid, bool)>, DatabaseError> {
+        let row = sqlx::query_as::<_, (Uuid, Uuid, bool)>(
+            r#"
+            SELECT id, user_id, is_verified
+            FROM core.user_emails
+            WHERE email = $1
+            "#,
+        )
+        .bind(email)
+        .fetch_optional(&self.pool)
         .await?;
 
         Ok(row)
