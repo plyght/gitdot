@@ -11,7 +11,6 @@ import type {
   UpdateReviewDiffRequest,
   UpdateReviewRequest,
 } from "gitdot-api";
-import { refresh } from "next/cache";
 import {
   ApiError,
   addReviewer,
@@ -25,7 +24,8 @@ import {
   updateDiff,
   updateReview,
   updateReviewComment,
-} from "@/dal";
+} from "gitdot-client";
+import { refresh } from "next/cache";
 
 export type AddReviewerActionResult =
   | { reviewer: ReviewerResource }

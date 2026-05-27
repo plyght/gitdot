@@ -7,29 +7,27 @@ import type {
   UserEmailResource,
   UserResource,
 } from "gitdot-api";
-import { refresh } from "next/cache";
-import { redirect } from "next/navigation";
 import {
   ApiError,
+  type AuthSignInResult,
+  addUserEmail,
   getCurrentUser,
+  getGitHubRedirectUrl,
   hasUser,
   linkSlackAccount,
   listUserOrganizations,
   listUserRepositories,
   listUserStars,
-  updateCurrentUser,
-  uploadUserImage,
-} from "@/dal";
-import {
-  type AuthSignInResult,
-  addUserEmail,
-  getGitHubRedirectUrl,
   logout,
   resendUserEmailCode,
   sendAuthEmail,
+  updateCurrentUser,
+  uploadUserImage,
   verifyAuthCode,
   verifyUserEmail,
-} from "@/lib/auth";
+} from "gitdot-client";
+import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { delay, validateEmail } from "../util";
 
 // ============

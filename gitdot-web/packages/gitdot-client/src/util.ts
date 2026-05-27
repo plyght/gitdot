@@ -2,7 +2,7 @@ import "server-only";
 
 import { getVercelOidcToken } from "@vercel/oidc";
 import type { ZodType } from "zod";
-import { getSession } from "@/lib/auth";
+import { getSession } from "./auth";
 
 export const GITDOT_SERVER_URL =
   process.env.GITDOT_SERVER_URL || "http://localhost:8080";
@@ -117,4 +117,24 @@ export async function handleEmptyResponse(response: Response): Promise<void> {
     console.error(`${response.url} failed:`, response.status, message);
     throw new ApiError(response.status, message);
   }
+}
+
+/**
+ * helper to serialize objects that have non-string values into url parameter queries
+ */
+export function toQueryString(
+  params:
+    | Record<string, string | number | boolean | undefined | null>
+    | undefined,
+): string {
+  if (!params) {
+    return "";
+  }
+
+  const stringParams = Object.fromEntries(
+    Object.entries(params)
+      .filter(([_, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => [key, String(value)]),
+  );
+  return new URLSearchParams(stringParams).toString();
 }

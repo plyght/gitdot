@@ -1,4 +1,4 @@
-import { getCurrentUser, getQuestion } from "@/dal";
+import { getCurrentUser, getQuestion } from "gitdot-client";
 import { cn } from "@/util";
 import { AnswerCard } from "./ui/answer-card";
 import { AnswerForm } from "./ui/answer-form";

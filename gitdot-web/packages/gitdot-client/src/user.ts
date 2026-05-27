@@ -9,14 +9,14 @@ import {
   UserResource,
 } from "gitdot-api";
 import { notFound } from "next/navigation";
-import { getSession } from "@/lib/auth";
-import { toQueryString } from "@/util";
+import { getSession } from "./auth";
 import {
   authFetch,
   authHead,
   authPatch,
   GITDOT_SERVER_URL,
   handleResponse,
+  toQueryString,
 } from "./util";
 
 export async function getCurrentUser(

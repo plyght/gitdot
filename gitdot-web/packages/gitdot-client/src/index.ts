@@ -10,5 +10,15 @@ export * from "./review";
 export * from "./runner";
 export * from "./task";
 export * from "./user";
-export { ApiError } from "./util";
+export {
+  ApiError,
+  authDelete,
+  authFetch,
+  authHead,
+  authPatch,
+  authPost,
+  GITDOT_SERVER_URL,
+  handleEmptyResponse,
+  handleResponse,
+} from "./util";
 export * from "./webhook";

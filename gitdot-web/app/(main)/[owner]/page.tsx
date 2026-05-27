@@ -1,4 +1,4 @@
-import { getOrganization, getUser } from "@/dal";
+import { getOrganization, getUser } from "gitdot-client";
 
 import OrgPage from "./ui/org/org-page";
 import { OwnerNotFound } from "./ui/owner-not-found";

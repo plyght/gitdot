@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   type AddUserEmailRequest,
+  type AuthorizeDeviceRequest,
   AuthTokensResource,
   type ExchangeGitHubCodeRequest,
   GitHubAuthRedirectResource,
@@ -9,13 +10,14 @@ import {
   type RefreshSessionRequest,
   type ResendVerificationCodeRequest,
   type SendAuthEmailRequest,
+  SlackAccountResource,
   UserEmailResource,
   type VerifyAuthCodeRequest,
   type VerifyUserEmailRequest,
 } from "gitdot-api";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
-import { authFetch, handleResponse } from "@/dal/util";
+import { authFetch, authPost, handleResponse } from "./util";
 
 export const GITDOT_AUTH_SERVER_URL =
   process.env.GITDOT_AUTH_SERVER_URL ?? "http://localhost:8082";
@@ -213,6 +215,29 @@ export async function exchangeGitHubCode(
   const username: string = payload.user_metadata?.username ?? "";
 
   return { is_new: tokens.is_new, username };
+}
+
+// --- Device flow & Slack linking ---
+
+export async function authorizeDevice(
+  request: AuthorizeDeviceRequest,
+): Promise<boolean> {
+  const response = await authPost(
+    `${GITDOT_AUTH_SERVER_URL}/auth/device/authorize`,
+    request,
+  );
+
+  return response.ok;
+}
+
+export async function linkSlackAccount(
+  state: string,
+): Promise<SlackAccountResource | null> {
+  const response = await authPost(`${GITDOT_AUTH_SERVER_URL}/auth/slack/link`, {
+    state,
+  });
+
+  return await handleResponse(response, SlackAccountResource);
 }
 
 // --- Logout ---

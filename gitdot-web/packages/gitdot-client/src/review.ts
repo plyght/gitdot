@@ -15,7 +15,6 @@ import {
   ReviewerResource,
   ReviewResource,
 } from "gitdot-api";
-import { toQueryString } from "@/util";
 import {
   authDelete,
   authFetch,
@@ -24,6 +23,7 @@ import {
   GITDOT_SERVER_URL,
   handleEmptyResponse,
   handleResponse,
+  toQueryString,
 } from "./util";
 
 export async function listReviews(

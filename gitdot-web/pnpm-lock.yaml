@@ -95,6 +95,9 @@ importers:
       gitdot-api:
         specifier: workspace:*
         version: link:packages/gitdot-api
+      gitdot-client:
+        specifier: workspace:*
+        version: link:packages/gitdot-client
       hast-util-to-jsx-runtime:
         specifier: ^2.3.6
         version: 2.3.6
@@ -210,6 +213,28 @@ importers:
 
   packages/gitdot-api:
     dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 'catalog:'
+        version: 2.3.11
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/gitdot-client:
+    dependencies:
+      '@vercel/oidc':
+        specifier: ^3.2.0
+        version: 3.2.0
+      gitdot-api:
+        specifier: workspace:*
+        version: link:../gitdot-api
+      next:
+        specifier: 16.2.1
+        version: 16.2.1(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       zod:
         specifier: 'catalog:'
         version: 4.3.6

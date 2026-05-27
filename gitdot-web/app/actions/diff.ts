@@ -1,6 +1,11 @@
 "use server";
 
 import type { RepositoryDiffFileResource } from "gitdot-api";
+import {
+  getRepositoryBlobDiffs,
+  getRepositoryCommitDiff,
+  getReviewDiff,
+} from "gitdot-client";
 import type { Element } from "hast";
 import {
   type DiffHunk,
@@ -8,11 +13,6 @@ import {
   inferLanguage,
   renderSpans,
 } from "@/(main)/[owner]/[repo]/util";
-import {
-  getRepositoryBlobDiffs,
-  getRepositoryCommitDiff,
-  getReviewDiff,
-} from "@/dal";
 
 export type DiffSpans =
   | {

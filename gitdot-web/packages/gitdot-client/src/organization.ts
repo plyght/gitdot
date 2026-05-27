@@ -6,13 +6,13 @@ import {
   OrganizationMemberResource,
   OrganizationResource,
 } from "gitdot-api";
-import { toQueryString } from "@/util";
 import {
   authFetch,
   authPatch,
   authPost,
   GITDOT_SERVER_URL,
   handleResponse,
+  toQueryString,
 } from "./util";
 
 export async function getOrganization(

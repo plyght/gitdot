@@ -5,7 +5,7 @@ import {
   listUserOrganizations,
   listUserRepositories,
   listUserStars,
-} from "@/dal";
+} from "gitdot-client";
 import { UserActions } from "./user-actions";
 import { UserCommits } from "./user-commits";
 import { UserLinks } from "./user-links";

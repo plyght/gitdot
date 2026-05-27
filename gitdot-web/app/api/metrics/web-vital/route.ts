@@ -1,9 +1,8 @@
 import { getVercelOidcToken } from "@vercel/oidc";
 import { LogWebVitalRequest } from "gitdot-api";
+import { getSession } from "gitdot-client";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
-import { getSession } from "@/lib/auth";
 
 const METRICS_URL = process.env.GITDOT_METRICS_URL ?? "http://localhost:8084";
 

@@ -1,8 +1,8 @@
 import { promisify } from "node:util";
 import { gzip } from "node:zlib";
 import { GetRepositoryResourcesRequest } from "gitdot-api";
+import { getRepositoryResources } from "gitdot-client";
 import type { NextRequest } from "next/server";
-import { getRepositoryResources } from "@/dal";
 
 const gzipAsync = promisify(gzip);
 

@@ -4,7 +4,7 @@ import {
   getBuildTasks,
   getRepositoryBlob,
   issueTaskToken,
-} from "@/dal";
+} from "gitdot-client";
 import { getTaskLogs } from "@/lib/s2/server";
 import { fetchResources } from "@/provider/server";
 import { renderFileToHtml } from "../../util/hast";

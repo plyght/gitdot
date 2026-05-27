@@ -3,7 +3,7 @@ import type {
   RepositoryCommitResource,
   RepositoryPathsResource,
 } from "gitdot-api";
-import { getRepository } from "@/dal/repository";
+import { getRepository } from "gitdot-client";
 import type {
   ResourcePromisesType,
   ResourceRequestsType,

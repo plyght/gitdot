@@ -13,7 +13,7 @@ import {
   listInstallations,
   listMigrations,
   migrateGitHubRepositories,
-} from "@/dal";
+} from "gitdot-client";
 
 export async function listInstallationsAction(): Promise<
   GitHubInstallationResource[]

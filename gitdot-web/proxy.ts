@@ -1,5 +1,5 @@
+import { updateSession } from "gitdot-client";
 import { type NextRequest, NextResponse } from "next/server";
-import { updateSession } from "@/lib/auth";
 
 const IS_BETA = process.env.NEXT_PUBLIC_GITDOT_BETA === "true";
 const BETA_PATHS = new Set(["questions", "reviews", "builds"]);

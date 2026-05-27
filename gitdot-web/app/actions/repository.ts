@@ -6,10 +6,6 @@ import type {
   RepositoryResource,
   UpdateRepositoryCommitFilterRequest,
 } from "gitdot-api";
-import type { Root } from "hast";
-import { refresh } from "next/cache";
-import { redirect } from "next/navigation";
-import { fileToHast, inferLanguage } from "@/(main)/[owner]/[repo]/util";
 import {
   ApiError,
   convertReadonlyRepository,
@@ -21,7 +17,11 @@ import {
   starRepository,
   unstarRepository,
   updateRepositoryCommitFilter,
-} from "@/dal";
+} from "gitdot-client";
+import type { Root } from "hast";
+import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
+import { fileToHast, inferLanguage } from "@/(main)/[owner]/[repo]/util";
 
 export type CreateRepositoryActionResult =
   | { repository: RepositoryResource }

@@ -6,7 +6,6 @@ import type {
   QuestionResource,
   VoteResource,
 } from "gitdot-api";
-import { refresh } from "next/cache";
 import {
   createAnswer,
   createAnswerComment,
@@ -18,7 +17,8 @@ import {
   voteAnswer,
   voteComment,
   voteQuestion,
-} from "@/dal";
+} from "gitdot-client";
+import { refresh } from "next/cache";
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 // note that the actions here use refresh() as opposed to revalidatePath()

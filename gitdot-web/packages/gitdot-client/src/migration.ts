@@ -9,8 +9,13 @@ import {
   MigrationResource,
 } from "gitdot-api";
 import { z } from "zod";
-import { toQueryString } from "@/util";
-import { authFetch, authPost, GITDOT_SERVER_URL, handleResponse } from "./util";
+import {
+  authFetch,
+  authPost,
+  GITDOT_SERVER_URL,
+  handleResponse,
+  toQueryString,
+} from "./util";
 
 export async function listInstallations(opts?: {
   cursor?: string;

@@ -17,13 +17,13 @@ import {
   type VoteQuestionRequest,
   VoteResource,
 } from "gitdot-api";
-import { toQueryString } from "@/util";
 import {
   authFetch,
   authPatch,
   authPost,
   GITDOT_SERVER_URL,
   handleResponse,
+  toQueryString,
 } from "./util";
 
 export async function createQuestion(

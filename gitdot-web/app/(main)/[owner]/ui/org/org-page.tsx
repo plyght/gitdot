@@ -3,7 +3,7 @@ import {
   getCurrentUser,
   listOrganizationMembers,
   listOrganizationRepositories,
-} from "@/dal";
+} from "gitdot-client";
 import { OrgActions } from "./org-actions";
 import { OrgLinks } from "./org-links";
 import { OrgMembers } from "./org-members";

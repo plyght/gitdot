@@ -1,5 +1,5 @@
+import { getCurrentUser } from "gitdot-client";
 import { notFound } from "next/navigation";
-import { getCurrentUser } from "@/dal";
 import InstallGithubAppForm from "../../ui/install-github-app-form";
 import MigrateRepositoriesForm from "../../ui/migrate-repositories-form";
 

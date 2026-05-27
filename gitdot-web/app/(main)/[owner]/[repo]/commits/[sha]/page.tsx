@@ -1,6 +1,6 @@
+import { getRepositoryCommit } from "gitdot-client";
 import { notFound } from "next/navigation";
 import { renderCommitDiffAction } from "@/actions";
-import { getRepositoryCommit } from "@/dal";
 import { PageClient } from "./page.client";
 
 export default async function Page({

@@ -1,6 +1,5 @@
+import { getCurrentUser, listRunners, listWebhooks } from "gitdot-client";
 import { notFound } from "next/navigation";
-
-import { getCurrentUser, listRunners, listWebhooks } from "@/dal";
 import { RepositorySettingsGeneral } from "./ui/repository-settings-general";
 import { RepositorySettingsRunners } from "./ui/repository-settings-runners";
 import { RepositorySettingsWebhooks } from "./ui/repository-settings-webhooks";

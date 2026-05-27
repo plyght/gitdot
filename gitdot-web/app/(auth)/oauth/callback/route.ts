@@ -1,7 +1,10 @@
+import {
+  createInstallation,
+  exchangeGitHubCode,
+  getCurrentUser,
+} from "gitdot-client";
 import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
-import { createInstallation, getCurrentUser } from "@/dal";
-import { exchangeGitHubCode } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

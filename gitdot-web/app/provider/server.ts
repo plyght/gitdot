@@ -9,21 +9,20 @@ import type {
   RepositoryPathsResource,
   ReviewResource,
 } from "gitdot-api";
-import type { Root } from "hast";
-import { getRepositoryHastAction } from "@/actions/repository";
 import {
   getBuild as dalGetBuild,
   getBuilds as dalGetBuilds,
-} from "@/dal/build";
-import { listQuestions } from "@/dal/question";
-import {
+  getReview as dalGetReview,
   getRepositoryBlob,
   getRepositoryCommit,
   getRepositoryPaths,
+  listQuestions,
   listRepositoryCommitFilters,
   listRepositoryCommits,
-} from "@/dal/repository";
-import { getReview as dalGetReview, listReviews } from "@/dal/review";
+  listReviews,
+} from "gitdot-client";
+import type { Root } from "hast";
+import { getRepositoryHastAction } from "@/actions/repository";
 import {
   RepoProvider,
   type ResourceDefinition,

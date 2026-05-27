@@ -6,7 +6,6 @@ import {
   type UpdateWebhookRequest,
   WebhookResource,
 } from "gitdot-api";
-import { toQueryString } from "@/util";
 import {
   authDelete,
   authFetch,
@@ -14,6 +13,7 @@ import {
   authPost,
   GITDOT_SERVER_URL,
   handleResponse,
+  toQueryString,
 } from "./util";
 
 export async function createWebhook(

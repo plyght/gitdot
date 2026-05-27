@@ -1,6 +1,6 @@
 "use server";
 
-import { authorizeDevice } from "@/dal";
+import { authorizeDevice } from "gitdot-client";
 
 export type AuthorizeDeviceActionResult =
   | { success: true }

@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/dal";
+import { getCurrentUser } from "gitdot-client";
 import { LayoutClient } from "./layout.client";
 
 export default async function Layout({

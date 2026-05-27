@@ -1,7 +1,7 @@
 import {
   listLatestRepositories,
   listTrendingRepositories,
-} from "@/dal/repository";
+} from "gitdot-client";
 import { PageClient } from "./page.client";
 
 export default async function Page() {

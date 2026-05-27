@@ -5,16 +5,16 @@ import type {
   OrganizationResource,
   RepositoryResource,
 } from "gitdot-api";
-import { refresh } from "next/cache";
-import { ApiError } from "@/dal";
 import {
+  ApiError,
   addOrganizationMember,
   createOrganization,
   listOrganizationRepositories,
   updateOrganization,
   updateOrganizationMember,
   uploadOrganizationImage,
-} from "@/dal/organization";
+} from "gitdot-client";
+import { refresh } from "next/cache";
 
 export type CreateOrganizationActionResult =
   | { organization: OrganizationResource }

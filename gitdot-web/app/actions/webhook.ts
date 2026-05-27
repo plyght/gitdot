@@ -1,8 +1,13 @@
 "use server";
 
 import type { WebhookResource } from "gitdot-api";
+import {
+  ApiError,
+  createWebhook,
+  deleteWebhook,
+  updateWebhook,
+} from "gitdot-client";
 import { refresh } from "next/cache";
-import { ApiError, createWebhook, deleteWebhook, updateWebhook } from "@/dal";
 
 export type CreateWebhookActionResult =
   | { webhook: WebhookResource }
