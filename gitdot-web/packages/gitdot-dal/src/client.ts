@@ -36,7 +36,7 @@ export function useResources<S>(
   const timings: Record<
     string,
     { client: number | null; server: number | null }
-    > = {};
+  > = {};
 
   for (const key of requestKeys) timings[key] = { client: null, server: null };
   let remaining = requestKeys.length * 2;

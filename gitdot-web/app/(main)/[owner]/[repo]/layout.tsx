@@ -1,26 +1,15 @@
-import type {
-  RepositoryBlobsResource,
-  RepositoryCommitResource,
-  RepositoryPathsResource,
-} from "gitdot-api";
+import type { RepositoryPathsResource } from "gitdot-api";
 import { getRepository } from "gitdot-client";
-import type {
-  ResourcePromisesType,
-  ResourceRequestsType,
-} from "gitdot-dal/client";
+import { fetchResources } from "gitdot-dal/server";
 import { RepoResources } from "./resources/context";
 import { RepoDialogs } from "./ui/dialog/repo-dialogs";
 import { RepoNotFound } from "./ui/repo-not-found";
 import { RepoTracker } from "./ui/repo-tracker";
 import { RepoShortcuts } from "./ui/shortcuts";
 
-type Resources = {
+export type Resources = {
   paths: RepositoryPathsResource | null;
-  commits: RepositoryCommitResource[] | null;
-  blobs: RepositoryBlobsResource | null;
 };
-export type ResourcePromises = ResourcePromisesType<Resources>;
-export type ResourceRequests = ResourceRequestsType<Resources>;
 
 export default async function Layout({
   children,
@@ -33,6 +22,10 @@ export default async function Layout({
   const repository = await getRepository(owner, repo);
   if (!repository) return <RepoNotFound owner={owner} repo={repo} />;
 
+  const resources = fetchResources({
+    paths: (p) => p.getPaths(owner, repo),
+  });
+
   return (
     <RepoResources owner={owner} repo={repo}>
       <RepoTracker owner={owner} repo={repo} />
@@ -43,7 +36,7 @@ export default async function Layout({
 
       <div className="hidden md:flex h-full">{children}</div>
 
-      <RepoDialogs owner={owner} repo={repo} />
+      <RepoDialogs owner={owner} repo={repo} resources={resources} />
     </RepoResources>
   );
 }

@@ -5,7 +5,7 @@ import { ClientProvider } from "gitdot-dal/client";
 import type { Root } from "hast";
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, use, useEffect, useMemo, useRef, useState } from "react";
 import { jsx, jsxs } from "react/jsx-runtime";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import Link from "@/ui/link";
@@ -15,21 +15,20 @@ import { fuzzyMatch } from "../../util";
 export function RepoFileDialog({
   owner,
   repo,
+  pathsPromise,
 }: {
   owner: string;
   repo: string;
+  pathsPromise: Promise<RepositoryPathsResource | null>;
 }) {
-  const [paths, setPaths] = useState<RepositoryPathsResource | null>(null);
+  const paths = use(pathsPromise);
+
   const [hast, setHast] = useState<Root | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [enableHover, setEnableHover] = useState(false);
   const [mouseMoved, setMouseMoved] = useState(false);
-
-  useEffect(() => {
-    ClientProvider.instance.getPaths(owner, repo).then(setPaths);
-  }, [owner, repo]);
 
   const files = useMemo(
     () => paths?.entries.filter((entry) => entry.path_type === "blob") ?? [],
@@ -40,12 +39,11 @@ export function RepoFileDialog({
   const selectedItemRef = useRef<HTMLAnchorElement | null>(null);
 
   useEffect(() => {
-    if (!paths) return;
     const handleOpenFileSearch = () => setOpen(true);
     window.addEventListener("openFileSearch", handleOpenFileSearch);
     return () =>
       window.removeEventListener("openFileSearch", handleOpenFileSearch);
-  }, [paths]);
+  }, []);
 
   const filteredFiles = useMemo(() => {
     if (!query) return files;
