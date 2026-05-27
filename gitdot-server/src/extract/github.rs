@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use gitdot_core::{
     dto::VerifyGithubSignatureRequest,
-    error::{AuthenticationError, InputError, WebhookError},
+    error::{InputError, TokenExtractionError, WebhookError},
 };
 
 use crate::app::{AppError, AppState};
@@ -64,7 +64,10 @@ where
         let signature = header_value(&parts, GITHUB_SIGNATURE_HEADER)?;
         let body_bytes = read_body(body).await?;
         let request = VerifyGithubSignatureRequest::new(body_bytes.clone(), signature);
-        app_state.token_service.verify_github_signature(request)?;
+        app_state
+            .token_service
+            .verify_github_signature(request)
+            .map_err(|_| TokenExtractionError::Unauthorized)?;
 
         let event = GithubEvent::from_str(&event_str)
             .map_err(|reason| WebhookError::Input(InputError::new(GITHUB_EVENT_HEADER, reason)))?;
@@ -86,12 +89,12 @@ fn header_value(parts: &Parts, name: &'static str) -> Result<String, AppError> {
         .get(name)
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string())
-        .ok_or_else(|| AuthenticationError::Unauthorized.into())
+        .ok_or_else(|| TokenExtractionError::Unauthorized.into())
 }
 
 async fn read_body(body: Body) -> Result<Vec<u8>, AppError> {
     let bytes = axum::body::to_bytes(body, MAX_BODY_BYTES)
         .await
-        .map_err(|_| AuthenticationError::Unauthorized)?;
+        .map_err(|_| TokenExtractionError::Unauthorized)?;
     Ok(bytes.to_vec())
 }

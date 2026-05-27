@@ -1,7 +1,7 @@
 use nutype::nutype;
 use uuid::Uuid;
 
-use crate::error::{AuthenticationError, InputError};
+use crate::error::{DeviceError, InputError};
 
 #[derive(Debug, Clone)]
 pub struct AuthorizeDeviceRequest {
@@ -10,7 +10,7 @@ pub struct AuthorizeDeviceRequest {
 }
 
 impl AuthorizeDeviceRequest {
-    pub fn new(user_code: &str, user_id: Uuid) -> Result<Self, AuthenticationError> {
+    pub fn new(user_code: &str, user_id: Uuid) -> Result<Self, DeviceError> {
         Ok(Self {
             user_code: UserCode::try_new(user_code)
                 .map_err(|e| InputError::new("user_code", e.to_string()))?,
@@ -89,7 +89,7 @@ mod tests {
             let user_id = Uuid::new_v4();
             let result = AuthorizeDeviceRequest::new("invalid", user_id);
 
-            assert!(matches!(result, Err(AuthenticationError::Input(_))));
+            assert!(matches!(result, Err(DeviceError::Input(_))));
         }
     }
 }

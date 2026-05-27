@@ -10,7 +10,7 @@ use crate::{
         IssueTaskJwtRequest, IssueTaskJwtResponse, JwtClaims, ValidateTokenRequest,
         ValidateTokenResponse, VerifyGithubSignatureRequest, VerifySlackBotSignatureRequest,
     },
-    error::AuthenticationError,
+    error::TokenServiceError,
     repository::{TokenRepository, TokenRepositoryImpl},
     util::{
         auth::{GITDOT_SERVER_ID, S2_SERVER_ID},
@@ -23,22 +23,22 @@ pub trait TokenService: Send + Sync + 'static {
     async fn validate_token(
         &self,
         request: ValidateTokenRequest,
-    ) -> Result<ValidateTokenResponse, AuthenticationError>;
+    ) -> Result<ValidateTokenResponse, TokenServiceError>;
 
     async fn issue_task_token(
         &self,
         request: IssueTaskJwtRequest,
-    ) -> Result<IssueTaskJwtResponse, AuthenticationError>;
+    ) -> Result<IssueTaskJwtResponse, TokenServiceError>;
 
     fn verify_github_signature(
         &self,
         request: VerifyGithubSignatureRequest,
-    ) -> Result<(), AuthenticationError>;
+    ) -> Result<(), TokenServiceError>;
 
     fn verify_slack_bot_signature(
         &self,
         request: VerifySlackBotSignatureRequest,
-    ) -> Result<(), AuthenticationError>;
+    ) -> Result<(), TokenServiceError>;
 }
 
 #[derive(Debug, Clone)]
@@ -83,12 +83,12 @@ where
     async fn validate_token(
         &self,
         request: ValidateTokenRequest,
-    ) -> Result<ValidateTokenResponse, AuthenticationError> {
+    ) -> Result<ValidateTokenResponse, TokenServiceError> {
         if !self.token_client.validate_token_format(&request.token) {
-            return Err(AuthenticationError::Unauthorized);
+            return Err(TokenServiceError::Unauthorized);
         }
         if !&request.token.starts_with(request.token_type.prefix()) {
-            return Err(AuthenticationError::Unauthorized);
+            return Err(TokenServiceError::Unauthorized);
         }
 
         let token_hash = hash_string(&request.token);
@@ -96,7 +96,7 @@ where
             .token_repo
             .get_token_by_hash(&token_hash)
             .await?
-            .ok_or(AuthenticationError::Unauthorized)?;
+            .ok_or(TokenServiceError::Unauthorized)?;
 
         self.token_repo.touch_token(access_token.id).await?;
 
@@ -108,7 +108,7 @@ where
     async fn issue_task_token(
         &self,
         request: IssueTaskJwtRequest,
-    ) -> Result<IssueTaskJwtResponse, AuthenticationError> {
+    ) -> Result<IssueTaskJwtResponse, TokenServiceError> {
         let now = Utc::now().timestamp() as usize;
         let claims = JwtClaims {
             iss: GITDOT_SERVER_ID.to_string(),
@@ -125,18 +125,18 @@ where
     fn verify_github_signature(
         &self,
         request: VerifyGithubSignatureRequest,
-    ) -> Result<(), AuthenticationError> {
+    ) -> Result<(), TokenServiceError> {
         self.github_client
             .verify_webhook_signature(&request.body, &request.signature)
-            .map_err(|_| AuthenticationError::Unauthorized)
+            .map_err(|_| TokenServiceError::Unauthorized)
     }
 
     fn verify_slack_bot_signature(
         &self,
         request: VerifySlackBotSignatureRequest,
-    ) -> Result<(), AuthenticationError> {
+    ) -> Result<(), TokenServiceError> {
         self.slack_bot_client
             .verify_request_signature(&request.timestamp, &request.body, &request.signature)
-            .map_err(|_| AuthenticationError::Unauthorized)
+            .map_err(|_| TokenServiceError::Unauthorized)
     }
 }

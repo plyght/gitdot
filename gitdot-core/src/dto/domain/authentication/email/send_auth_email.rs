@@ -1,6 +1,6 @@
 use crate::{
     dto::Email,
-    error::{AuthenticationError, InputError},
+    error::{InputError, SessionError},
 };
 
 #[derive(Debug, Clone)]
@@ -9,7 +9,7 @@ pub struct SendAuthEmailRequest {
 }
 
 impl SendAuthEmailRequest {
-    pub fn new(email: &str) -> Result<Self, AuthenticationError> {
+    pub fn new(email: &str) -> Result<Self, SessionError> {
         Ok(Self {
             email: Email::try_new(email).map_err(|e| InputError::new("email", e))?,
         })

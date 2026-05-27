@@ -7,10 +7,7 @@ use axum::{
 };
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 
-use gitdot_core::{
-    dto::JwtClaims,
-    error::{AuthenticationError, TokenExtractionError},
-};
+use gitdot_core::{dto::JwtClaims, error::TokenExtractionError};
 
 use crate::app::{AppError, AppState};
 
@@ -41,14 +38,14 @@ where
 
 #[async_trait]
 pub trait Authenticator: Send + Sync + 'static {
-    async fn authenticate(parts: &Parts, app_state: &AppState) -> Result<(), AuthenticationError>;
+    async fn authenticate(parts: &Parts, app_state: &AppState) -> Result<(), TokenExtractionError>;
 }
 
 pub struct Vercel;
 
 #[async_trait]
 impl Authenticator for Vercel {
-    async fn authenticate(parts: &Parts, app_state: &AppState) -> Result<(), AuthenticationError> {
+    async fn authenticate(parts: &Parts, app_state: &AppState) -> Result<(), TokenExtractionError> {
         let token = parts
             .headers
             .get("x-vercel-oidc-token")

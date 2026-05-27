@@ -7,9 +7,9 @@ use thiserror::Error;
 
 use gitdot_api::ApiResource;
 use gitdot_core::error::{
-    AuthenticationError, AuthorizationError, BuildError, CommitError, GitHttpError, MigrationError,
-    OrganizationError, QuestionError, RepositoryError, ReviewError, RunnerError, TaskError,
-    UserError, WebhookError,
+    AuthorizationError, BuildError, CommitError, GitHttpError, MigrationError, OrganizationError,
+    QuestionError, RepositoryError, ReviewError, RunnerError, TaskError, TokenExtractionError,
+    TokenServiceError, UserError, WebhookError,
 };
 
 use super::AppResponse;
@@ -17,7 +17,10 @@ use super::AppResponse;
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error(transparent)]
-    Authentication(#[from] AuthenticationError),
+    TokenExtraction(#[from] TokenExtractionError),
+
+    #[error(transparent)]
+    TokenService(#[from] TokenServiceError),
 
     #[error(transparent)]
     Authorization(#[from] AuthorizationError),
@@ -72,21 +75,23 @@ pub trait HttpStatus {
     fn status_code(&self) -> StatusCode;
 }
 
-impl HttpStatus for AuthenticationError {
+impl HttpStatus for TokenExtractionError {
     fn status_code(&self) -> StatusCode {
         match self {
-            Self::Input(_) | Self::TokenPending(_) => StatusCode::BAD_REQUEST,
-            Self::NotFound(_) => StatusCode::NOT_FOUND,
-            Self::Extraction(_)
-            | Self::TokenExpired(_)
-            | Self::TokenRevoked(_)
+            Self::MissingHeader
+            | Self::InvalidHeaderFormat
+            | Self::InvalidPublicKey(_)
+            | Self::InvalidToken(_)
             | Self::Unauthorized => StatusCode::UNAUTHORIZED,
-            Self::TokenError(_)
-            | Self::EmailError(_)
-            | Self::GitHubError(_)
-            | Self::SlackBotError(_)
-            | Self::CacheError(_)
-            | Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+impl HttpStatus for TokenServiceError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::Unauthorized => StatusCode::UNAUTHORIZED,
+            Self::TokenError(_) | Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -257,7 +262,8 @@ fn error_response(status_code: StatusCode, message: String) -> Response {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {
-            AppError::Authentication(e) => error_response(e.status_code(), e.to_string()),
+            AppError::TokenExtraction(e) => error_response(e.status_code(), e.to_string()),
+            AppError::TokenService(e) => error_response(e.status_code(), e.to_string()),
             AppError::Authorization(e) => error_response(e.status_code(), e.to_string()),
             AppError::User(e) => error_response(e.status_code(), e.to_string()),
             AppError::Organization(e) => error_response(e.status_code(), e.to_string()),

@@ -6,15 +6,26 @@ use axum::{
 use serde::Serialize;
 use thiserror::Error;
 
-use gitdot_core::error::{AuthenticationError, EmailVerificationError};
+use gitdot_core::error::{
+    DeviceError, EmailVerificationError, SessionError, SlackError, TokenExtractionError,
+};
 
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error(transparent)]
-    Authentication(#[from] AuthenticationError),
+    Session(#[from] SessionError),
+
+    #[error(transparent)]
+    Device(#[from] DeviceError),
+
+    #[error(transparent)]
+    Slack(#[from] SlackError),
 
     #[error(transparent)]
     EmailVerification(#[from] EmailVerificationError),
+
+    #[error(transparent)]
+    TokenExtraction(#[from] TokenExtractionError),
 }
 
 #[derive(Debug, Serialize)]
@@ -22,42 +33,82 @@ struct ErrorMessage {
     message: String,
 }
 
+trait HttpStatus {
+    fn status_code(&self) -> StatusCode;
+}
+
+impl HttpStatus for SessionError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::Input(_) => StatusCode::BAD_REQUEST,
+            Self::NotFound(_) => StatusCode::NOT_FOUND,
+            Self::Unauthorized | Self::TokenExpired(_) | Self::TokenRevoked(_) => {
+                StatusCode::UNAUTHORIZED
+            }
+            Self::EmailError(_)
+            | Self::GitHubError(_)
+            | Self::TokenError(_)
+            | Self::CacheError(_)
+            | Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+impl HttpStatus for DeviceError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::Input(_) | Self::TokenPending(_) => StatusCode::BAD_REQUEST,
+            Self::NotFound(_) => StatusCode::NOT_FOUND,
+            Self::TokenExpired(_) => StatusCode::UNAUTHORIZED,
+            Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+impl HttpStatus for SlackError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::Unauthorized => StatusCode::UNAUTHORIZED,
+            Self::SlackBotError(_) | Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+impl HttpStatus for EmailVerificationError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::Input(_) | Self::InvalidCode => StatusCode::BAD_REQUEST,
+            Self::NotFound(_) => StatusCode::NOT_FOUND,
+            Self::Conflict(_) => StatusCode::CONFLICT,
+            Self::EmailError(_) | Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+impl HttpStatus for TokenExtractionError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::MissingHeader
+            | Self::InvalidHeaderFormat
+            | Self::InvalidPublicKey(_)
+            | Self::InvalidToken(_)
+            | Self::Unauthorized => StatusCode::UNAUTHORIZED,
+        }
+    }
+}
+
+fn error_response(status_code: StatusCode, message: String) -> Response {
+    (status_code, Json(ErrorMessage { message })).into_response()
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status_code, message) = match self {
-            AppError::Authentication(e) => {
-                let status_code = match &e {
-                    AuthenticationError::Input(_) | AuthenticationError::TokenPending(_) => {
-                        StatusCode::BAD_REQUEST
-                    }
-                    AuthenticationError::NotFound(_) => StatusCode::NOT_FOUND,
-                    AuthenticationError::Extraction(_)
-                    | AuthenticationError::TokenExpired(_)
-                    | AuthenticationError::TokenRevoked(_)
-                    | AuthenticationError::Unauthorized => StatusCode::UNAUTHORIZED,
-                    AuthenticationError::TokenError(_)
-                    | AuthenticationError::GitHubError(_)
-                    | AuthenticationError::SlackBotError(_)
-                    | AuthenticationError::EmailError(_)
-                    | AuthenticationError::CacheError(_)
-                    | AuthenticationError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-                };
-                (status_code, e.to_string())
-            }
-            AppError::EmailVerification(e) => {
-                let status_code = match &e {
-                    EmailVerificationError::Input(_) | EmailVerificationError::InvalidCode => {
-                        StatusCode::BAD_REQUEST
-                    }
-                    EmailVerificationError::NotFound(_) => StatusCode::NOT_FOUND,
-                    EmailVerificationError::Conflict(_) => StatusCode::CONFLICT,
-                    EmailVerificationError::EmailError(_)
-                    | EmailVerificationError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-                };
-                (status_code, e.to_string())
-            }
-        };
-        let body = ErrorMessage { message };
-        (status_code, Json(body)).into_response()
+        match self {
+            AppError::Session(e) => error_response(e.status_code(), e.to_string()),
+            AppError::Device(e) => error_response(e.status_code(), e.to_string()),
+            AppError::Slack(e) => error_response(e.status_code(), e.to_string()),
+            AppError::EmailVerification(e) => error_response(e.status_code(), e.to_string()),
+            AppError::TokenExtraction(e) => error_response(e.status_code(), e.to_string()),
+        }
     }
 }

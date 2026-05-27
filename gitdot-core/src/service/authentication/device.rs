@@ -7,7 +7,7 @@ use crate::{
         AuthorizeDeviceRequest, DeviceCodeRequest, DeviceCodeResponse, PollTokenRequest,
         TokenResponse,
     },
-    error::{AuthenticationError, InputError, OptionNotFoundExt},
+    error::{DeviceError, InputError, OptionNotFoundExt},
     model::{DeviceAuthorizationStatus, TokenType},
     repository::{
         DeviceRepository, DeviceRepositoryImpl, TokenRepository, TokenRepositoryImpl,
@@ -21,17 +21,11 @@ pub trait DeviceService: Send + Sync + 'static {
     async fn request_device_code(
         &self,
         request: DeviceCodeRequest,
-    ) -> Result<DeviceCodeResponse, AuthenticationError>;
+    ) -> Result<DeviceCodeResponse, DeviceError>;
 
-    async fn poll_token(
-        &self,
-        request: PollTokenRequest,
-    ) -> Result<TokenResponse, AuthenticationError>;
+    async fn poll_token(&self, request: PollTokenRequest) -> Result<TokenResponse, DeviceError>;
 
-    async fn authorize_device(
-        &self,
-        request: AuthorizeDeviceRequest,
-    ) -> Result<(), AuthenticationError>;
+    async fn authorize_device(&self, request: AuthorizeDeviceRequest) -> Result<(), DeviceError>;
 }
 
 #[derive(Debug, Clone)]
@@ -83,7 +77,7 @@ where
     async fn request_device_code(
         &self,
         request: DeviceCodeRequest,
-    ) -> Result<DeviceCodeResponse, AuthenticationError> {
+    ) -> Result<DeviceCodeResponse, DeviceError> {
         let (device_code, device_code_hash) = self.token_client.generate_high_entropic_code();
         let user_code = self.token_client.generate_readable_code();
         let expiry_secs = self.token_client.get_device_code_expiry_in_seconds();
@@ -107,10 +101,7 @@ where
         })
     }
 
-    async fn poll_token(
-        &self,
-        request: PollTokenRequest,
-    ) -> Result<TokenResponse, AuthenticationError> {
+    async fn poll_token(&self, request: PollTokenRequest) -> Result<TokenResponse, DeviceError> {
         let device_code_hash = hash_string(&request.device_code);
         let device_auth = self
             .device_repo
@@ -124,15 +115,15 @@ where
             self.device_repo
                 .expire_device_authorization(device_auth.id)
                 .await?;
-            return Err(AuthenticationError::TokenExpired("device_code".into()));
+            return Err(DeviceError::TokenExpired("device_code".into()));
         }
 
         match device_auth.status {
             DeviceAuthorizationStatus::Pending => {
-                Err(AuthenticationError::TokenPending("device_code".into()))
+                Err(DeviceError::TokenPending("device_code".into()))
             }
             DeviceAuthorizationStatus::Expired => {
-                Err(AuthenticationError::TokenExpired("device_code".into()))
+                Err(DeviceError::TokenExpired("device_code".into()))
             }
             DeviceAuthorizationStatus::Authorized => {
                 let user_id = device_auth
@@ -171,10 +162,7 @@ where
         }
     }
 
-    async fn authorize_device(
-        &self,
-        request: AuthorizeDeviceRequest,
-    ) -> Result<(), AuthenticationError> {
+    async fn authorize_device(&self, request: AuthorizeDeviceRequest) -> Result<(), DeviceError> {
         self.device_repo
             .authorize_device(&request.user_code, request.user_id)
             .await?

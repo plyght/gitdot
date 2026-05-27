@@ -8,7 +8,7 @@ use serde::de::DeserializeOwned;
 use gitdot_core::{
     client::{SLACK_BOT_SIGNATURE_HEADER, SLACK_BOT_TIMESTAMP_HEADER},
     dto::VerifySlackBotSignatureRequest,
-    error::AuthenticationError,
+    error::TokenExtractionError,
 };
 
 use crate::app::{AppError, AppState};
@@ -35,13 +35,14 @@ where
         let body_bytes = read_body(body).await?;
 
         let parsed = serde_json::from_slice::<T>(&body_bytes)
-            .map_err(|_| AuthenticationError::Unauthorized)?;
+            .map_err(|_| TokenExtractionError::Unauthorized)?;
 
         app_state
             .token_service
             .verify_slack_bot_signature(VerifySlackBotSignatureRequest::new(
                 timestamp, body_bytes, signature,
-            ))?;
+            ))
+            .map_err(|_| TokenExtractionError::Unauthorized)?;
 
         Ok(SlackBotSigned(parsed))
     }
@@ -53,12 +54,12 @@ fn header_value(parts: &Parts, name: &'static str) -> Result<String, AppError> {
         .get(name)
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string())
-        .ok_or_else(|| AuthenticationError::Unauthorized.into())
+        .ok_or_else(|| TokenExtractionError::Unauthorized.into())
 }
 
 async fn read_body(body: Body) -> Result<Vec<u8>, AppError> {
     let bytes = axum::body::to_bytes(body, MAX_BODY_BYTES)
         .await
-        .map_err(|_| AuthenticationError::Unauthorized)?;
+        .map_err(|_| TokenExtractionError::Unauthorized)?;
     Ok(bytes.to_vec())
 }

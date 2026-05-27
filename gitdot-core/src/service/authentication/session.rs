@@ -11,7 +11,7 @@ use crate::{
         AuthTokensResponse, ExchangeGitHubCodeRequest, LogoutRequest, OAuthRedirectResponse,
         RefreshSessionRequest, SendAuthEmailRequest, VerifyAuthCodeRequest,
     },
-    error::{AuthenticationError, OptionNotFoundExt},
+    error::{OptionNotFoundExt, SessionError},
     model::AuthProvider,
     repository::{SessionRepository, SessionRepositoryImpl, UserRepository, UserRepositoryImpl},
     util::{
@@ -31,15 +31,12 @@ struct GraceEntry {
 
 #[async_trait]
 pub trait SessionService: Send + Sync + 'static {
-    async fn send_auth_email(
-        &self,
-        request: SendAuthEmailRequest,
-    ) -> Result<(), AuthenticationError>;
+    async fn send_auth_email(&self, request: SendAuthEmailRequest) -> Result<(), SessionError>;
 
     async fn verify_auth_code(
         &self,
         request: VerifyAuthCodeRequest,
-    ) -> Result<AuthTokensResponse, AuthenticationError>;
+    ) -> Result<AuthTokensResponse, SessionError>;
 
     /// Rotates a refresh token and returns a new access/refresh pair.
     ///
@@ -58,25 +55,25 @@ pub trait SessionService: Send + Sync + 'static {
     /// Reuse detection is preserved: a replay outside the grace window
     /// (or one with no cache entry — e.g., a token revoked by an explicit
     /// `logout`) revokes the entire session family and returns
-    /// [`AuthenticationError::TokenRevoked`].
+    /// [`SessionError::TokenRevoked`].
     ///
     /// # Errors
-    /// - [`AuthenticationError::NotFound`] — token never existed
-    /// - [`AuthenticationError::TokenExpired`] — past the session's `expires_at`
-    /// - [`AuthenticationError::TokenRevoked`] — reuse detected; family revoked
+    /// - [`SessionError::NotFound`] — token never existed
+    /// - [`SessionError::TokenExpired`] — past the session's `expires_at`
+    /// - [`SessionError::TokenRevoked`] — reuse detected; family revoked
     async fn refresh_session(
         &self,
         request: RefreshSessionRequest,
-    ) -> Result<AuthTokensResponse, AuthenticationError>;
+    ) -> Result<AuthTokensResponse, SessionError>;
 
-    async fn logout(&self, request: LogoutRequest) -> Result<(), AuthenticationError>;
+    async fn logout(&self, request: LogoutRequest) -> Result<(), SessionError>;
 
     fn get_github_authorization_url(&self) -> OAuthRedirectResponse;
 
     async fn exchange_github_code(
         &self,
         request: ExchangeGitHubCodeRequest,
-    ) -> Result<AuthTokensResponse, AuthenticationError>;
+    ) -> Result<AuthTokensResponse, SessionError>;
 }
 
 #[derive(Debug, Clone)]
@@ -166,10 +163,7 @@ where
     RC: R2Client,
     RD: RedisClient,
 {
-    async fn send_auth_email(
-        &self,
-        request: SendAuthEmailRequest,
-    ) -> Result<(), AuthenticationError> {
+    async fn send_auth_email(&self, request: SendAuthEmailRequest) -> Result<(), SessionError> {
         let email = request.email.as_ref().to_string();
         let user = match self.user_repo.get_by_email(&email).await? {
             Some(user) => user,
@@ -207,7 +201,7 @@ where
     async fn verify_auth_code(
         &self,
         request: VerifyAuthCodeRequest,
-    ) -> Result<AuthTokensResponse, AuthenticationError> {
+    ) -> Result<AuthTokensResponse, SessionError> {
         let auth_code = self
             .session_repo
             .get_auth_code(&request.code)
@@ -215,10 +209,10 @@ where
             .or_not_found("auth_code", &request.code)?;
 
         if auth_code.used_at.is_some() {
-            return Err(AuthenticationError::TokenRevoked("auth_code".into()));
+            return Err(SessionError::TokenRevoked("auth_code".into()));
         }
         if auth_code.expires_at < Utc::now() {
-            return Err(AuthenticationError::TokenExpired("auth_code".into()));
+            return Err(SessionError::TokenExpired("auth_code".into()));
         }
 
         self.session_repo.mark_auth_code_used(auth_code.id).await?;
@@ -259,7 +253,7 @@ where
     async fn refresh_session(
         &self,
         request: RefreshSessionRequest,
-    ) -> Result<AuthTokensResponse, AuthenticationError> {
+    ) -> Result<AuthTokensResponse, SessionError> {
         let token_hash = hash_string(&request.refresh_token);
         let session = self
             .session_repo
@@ -268,7 +262,7 @@ where
             .or_not_found("session", &token_hash)?;
 
         if session.expires_at < Utc::now() {
-            return Err(AuthenticationError::TokenExpired("session".into()));
+            return Err(SessionError::TokenExpired("session".into()));
         }
 
         let user = self
@@ -297,7 +291,7 @@ where
             self.session_repo
                 .revoke_sessions_by_family(session.refresh_token_family)
                 .await?;
-            return Err(AuthenticationError::TokenRevoked("session".into()));
+            return Err(SessionError::TokenRevoked("session".into()));
         }
 
         // Happy path: try to claim the rotation for this old token via SET NX.
@@ -331,7 +325,7 @@ where
                     self.session_repo
                         .revoke_sessions_by_family(session.refresh_token_family)
                         .await?;
-                    return Err(AuthenticationError::TokenRevoked("session".into()));
+                    return Err(SessionError::TokenRevoked("session".into()));
                 }
             }
         }
@@ -358,7 +352,7 @@ where
         })
     }
 
-    async fn logout(&self, request: LogoutRequest) -> Result<(), AuthenticationError> {
+    async fn logout(&self, request: LogoutRequest) -> Result<(), SessionError> {
         let token_hash = hash_string(&request.refresh_token);
         let session = self
             .session_repo
@@ -383,10 +377,10 @@ where
     async fn exchange_github_code(
         &self,
         request: ExchangeGitHubCodeRequest,
-    ) -> Result<AuthTokensResponse, AuthenticationError> {
+    ) -> Result<AuthTokensResponse, SessionError> {
         self.token_client
             .verify_oauth_state(&request.state)
-            .map_err(|_| AuthenticationError::Unauthorized)?;
+            .map_err(|_| SessionError::Unauthorized)?;
 
         let github_token = self.github_client.exchange_code(&request.code).await?;
         let github_emails = self.github_client.get_user_emails(&github_token).await?;
@@ -395,7 +389,7 @@ where
             .find(|e| e.primary && e.verified)
             .map(|e| e.email.clone())
             .ok_or_else(|| {
-                AuthenticationError::GitHubError(crate::error::GitHubError::Other(
+                SessionError::GitHubError(crate::error::GitHubError::Other(
                     "No verified primary email found".to_string(),
                 ))
             })?;

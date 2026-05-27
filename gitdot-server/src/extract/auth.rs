@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use gitdot_core::{
     dto::{JwtClaims, ValidateTokenRequest},
-    error::{AuthenticationError, TokenExtractionError},
+    error::TokenExtractionError,
     model::TokenType,
     util::auth::GITDOT_SERVER_ID,
 };
@@ -71,7 +71,7 @@ pub trait Authenticator: Send + Sync + 'static {
     async fn authenticate(
         parts: &Parts,
         app_state: &AppState,
-    ) -> Result<Principal<Self>, AuthenticationError>
+    ) -> Result<Principal<Self>, TokenExtractionError>
     where
         Self: Sized;
 }
@@ -83,7 +83,7 @@ impl Authenticator for User {
     async fn authenticate(
         parts: &Parts,
         app_state: &AppState,
-    ) -> Result<Principal<Self>, AuthenticationError> {
+    ) -> Result<Principal<Self>, TokenExtractionError> {
         let header = extract_auth_header(parts)?;
 
         if header.starts_with("Bearer ") {
@@ -95,7 +95,7 @@ impl Authenticator for User {
             return Ok(Principal::new(token_user.id));
         }
 
-        Err(TokenExtractionError::InvalidHeaderFormat.into())
+        Err(TokenExtractionError::InvalidHeaderFormat)
     }
 }
 
@@ -106,7 +106,7 @@ impl Authenticator for UserJwt {
     async fn authenticate(
         parts: &Parts,
         app_state: &AppState,
-    ) -> Result<Principal<Self>, AuthenticationError> {
+    ) -> Result<Principal<Self>, TokenExtractionError> {
         let header = extract_auth_header(parts)?;
         let jwt = header
             .strip_prefix("Bearer ")
@@ -133,7 +133,7 @@ impl Authenticator for UserToken {
     async fn authenticate(
         parts: &Parts,
         app_state: &AppState,
-    ) -> Result<Principal<Self>, AuthenticationError> {
+    ) -> Result<Principal<Self>, TokenExtractionError> {
         let header = extract_auth_header(parts)?;
         let token = extract_token(header)?;
 
@@ -145,7 +145,7 @@ impl Authenticator for UserToken {
             .token_service
             .validate_token(request)
             .await
-            .map_err(|_| AuthenticationError::Unauthorized)?;
+            .map_err(|_| TokenExtractionError::Unauthorized)?;
 
         Ok(Principal::new(response.principal_id))
     }
@@ -158,7 +158,7 @@ impl Authenticator for RunnerToken {
     async fn authenticate(
         parts: &Parts,
         app_state: &AppState,
-    ) -> Result<Principal<Self>, AuthenticationError> {
+    ) -> Result<Principal<Self>, TokenExtractionError> {
         let header = extract_auth_header(parts)?;
         let token = extract_token(header)?;
 
@@ -170,7 +170,7 @@ impl Authenticator for RunnerToken {
             .token_service
             .validate_token(request)
             .await
-            .map_err(|_| AuthenticationError::Unauthorized)?;
+            .map_err(|_| TokenExtractionError::Unauthorized)?;
 
         Ok(Principal::new(response.principal_id))
     }
@@ -183,7 +183,7 @@ impl Authenticator for TaskJwt {
     async fn authenticate(
         parts: &Parts,
         app_state: &AppState,
-    ) -> Result<Principal<Self>, AuthenticationError> {
+    ) -> Result<Principal<Self>, TokenExtractionError> {
         let header = extract_auth_header(parts)?;
         let jwt = header
             .strip_prefix("Bearer ")
@@ -203,7 +203,7 @@ impl Authenticator for TaskJwt {
     }
 }
 
-fn extract_token(header: &str) -> Result<String, AuthenticationError> {
+fn extract_token(header: &str) -> Result<String, TokenExtractionError> {
     let token = header
         .strip_prefix("Basic ")
         .ok_or(TokenExtractionError::InvalidHeaderFormat)?;
@@ -223,12 +223,10 @@ fn extract_token(header: &str) -> Result<String, AuthenticationError> {
     Ok(token.to_string())
 }
 
-fn extract_auth_header(parts: &Parts) -> Result<&str, AuthenticationError> {
+fn extract_auth_header(parts: &Parts) -> Result<&str, TokenExtractionError> {
     parts
         .headers
         .get("Authorization")
         .and_then(|value| value.to_str().ok())
-        .ok_or(AuthenticationError::Extraction(
-            TokenExtractionError::MissingHeader,
-        ))
+        .ok_or(TokenExtractionError::MissingHeader)
 }

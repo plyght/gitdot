@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use crate::{
     client::{SlackBotClient, SlackBotClientImpl},
     dto::{LinkSlackAccountRequest, LinkSlackAccountResponse},
-    error::AuthenticationError,
+    error::SlackError,
     repository::{SlackRepository, SlackRepositoryImpl},
 };
 
@@ -12,7 +12,7 @@ pub trait SlackService: Send + Sync + 'static {
     async fn link_slack_account(
         &self,
         request: LinkSlackAccountRequest,
-    ) -> Result<LinkSlackAccountResponse, AuthenticationError>;
+    ) -> Result<LinkSlackAccountResponse, SlackError>;
 }
 
 #[derive(Debug, Clone)]
@@ -44,11 +44,11 @@ where
     async fn link_slack_account(
         &self,
         request: LinkSlackAccountRequest,
-    ) -> Result<LinkSlackAccountResponse, AuthenticationError> {
+    ) -> Result<LinkSlackAccountResponse, SlackError> {
         let payload = self
             .slack_bot_client
             .verify_slack_state(&request.state)
-            .map_err(|_| AuthenticationError::Unauthorized)?;
+            .map_err(|_| SlackError::Unauthorized)?;
 
         let account = self
             .slack_repo

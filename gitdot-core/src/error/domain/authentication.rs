@@ -1,63 +1,13 @@
-use thiserror::Error;
+mod device;
+mod email_verification;
+mod extraction;
+mod session;
+mod slack;
+mod token;
 
-use crate::error::{
-    DatabaseError, EmailError, GitHubError, InputError, NotFoundError, RedisError, SlackBotError,
-    TokenError,
-};
-
-#[derive(Debug, Error)]
-pub enum AuthenticationError {
-    #[error(transparent)]
-    Input(#[from] InputError),
-
-    #[error(transparent)]
-    NotFound(#[from] NotFoundError),
-
-    #[error(transparent)]
-    Extraction(#[from] TokenExtractionError),
-
-    #[error("Unauthorized")]
-    Unauthorized,
-
-    #[error("Token expired: {0}")]
-    TokenExpired(String),
-
-    #[error("Token revoked: {0}")]
-    TokenRevoked(String),
-
-    #[error("Token pending: {0}")]
-    TokenPending(String),
-
-    #[error(transparent)]
-    EmailError(#[from] EmailError),
-
-    #[error(transparent)]
-    GitHubError(#[from] GitHubError),
-
-    #[error(transparent)]
-    SlackBotError(#[from] SlackBotError),
-
-    #[error(transparent)]
-    TokenError(#[from] TokenError),
-
-    #[error(transparent)]
-    CacheError(#[from] RedisError),
-
-    #[error(transparent)]
-    DatabaseError(#[from] DatabaseError),
-}
-
-#[derive(Debug, Error)]
-pub enum TokenExtractionError {
-    #[error("Missing authorization header")]
-    MissingHeader,
-
-    #[error("Invalid authorization header format")]
-    InvalidHeaderFormat,
-
-    #[error("Invalid public key: {0}")]
-    InvalidPublicKey(String),
-
-    #[error("Invalid token: {0}")]
-    InvalidToken(String),
-}
+pub use device::DeviceError;
+pub use email_verification::EmailVerificationError;
+pub use extraction::TokenExtractionError;
+pub use session::SessionError;
+pub use slack::SlackError;
+pub use token::TokenServiceError;
