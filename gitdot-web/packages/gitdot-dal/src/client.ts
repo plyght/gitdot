@@ -16,6 +16,30 @@ export { createShikiWorker, createSyncWorker } from "./workers";
 export type { ShikiRequest, ShikiResponse } from "./workers/shiki";
 export type { SyncRequest, SyncResponse } from "./workers/sync";
 
+export function useResources<S>(
+  owner: string,
+  repo: string,
+  resources: ResourceResultType<S>,
+): ResourcePromisesType<S> {
+  const local = new LocalProvider(owner, repo);
+  return raceRequests([local], resources.requests, resources.promises);
+}
+
+function raceRequests<S>(
+  providers: LocalProvider[],
+  requests: ResourceRequestsType<S>,
+  promises: ResourcePromisesType<S>,
+): ResourcePromisesType<S> {
+  const result: Record<string, Promise<unknown>> = {};
+
+  for (const key of Object.keys(requests)) {
+    const replayed = providers.map((p) => p.replay(requests)[key]);
+    result[key] = racePromises(promises[key as keyof S], ...replayed);
+  }
+
+  return result as ResourcePromisesType<S>;
+}
+
 function racePromises<T>(
   first: Promise<T>,
   ...rest: Promise<unknown>[]
@@ -42,28 +66,4 @@ function racePromises<T>(
         });
     }
   });
-}
-
-export function useResolvePromises<S>(
-  owner: string,
-  repo: string,
-  resources: ResourceResultType<S>,
-): ResourcePromisesType<S> {
-  const local = new LocalProvider(owner, repo);
-  return raceRequests([local], resources.requests, resources.promises);
-}
-
-function raceRequests<S>(
-  providers: LocalProvider[],
-  requests: ResourceRequestsType<S>,
-  promises: ResourcePromisesType<S>,
-): ResourcePromisesType<S> {
-  const result: Record<string, Promise<unknown>> = {};
-
-  for (const key of Object.keys(requests)) {
-    const replayed = providers.map((p) => p.replay(requests)[key]);
-    result[key] = racePromises(promises[key as keyof S], ...replayed);
-  }
-
-  return result as ResourcePromisesType<S>;
 }

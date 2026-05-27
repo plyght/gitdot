@@ -304,8 +304,8 @@ const { requests, promises } = fetchResources(owner, repo, {
 return <PageClient owner={owner} repo={repo} requests={requests} promises={promises} />;
 
 // page.client.tsx (client component)
-const resolvedPromises = resolveResources(owner, repo, requests, promises);
-const readme = use(resolvedPromises.readme);
+const resourcePromises = resolveResources(owner, repo, requests, promises);
+const readme = use(resourcePromises.readme);
 ```
 
 ---

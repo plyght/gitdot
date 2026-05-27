@@ -1,18 +1,10 @@
 "use client";
 
-import {
-  type ResourcePromisesType,
-  type ResourceResultType,
-  useResolvePromises,
-} from "gitdot-dal/client";
-import { Suspense, use, useMemo, useState } from "react";
-import { Loading } from "@/ui/loading";
-import type { Resources } from "./page";
+import type { QuestionResource } from "gitdot-api";
+import { useMemo, useState } from "react";
 import { QuestionRow } from "./ui/question-row";
 import { QuestionsHeader } from "./ui/questions-header";
 import { processQuestions } from "./util";
-
-type ResourcePromises = ResourcePromisesType<Resources>;
 
 export type QuestionsFilter = "popular" | "unanswered" | "all";
 export type QuestionsSort =
@@ -26,30 +18,12 @@ export type QuestionsSort =
 export function PageClient({
   owner,
   repo,
-  resources,
+  questions,
 }: {
   owner: string;
   repo: string;
-  resources: ResourceResultType<Resources>;
+  questions: QuestionResource[] | null;
 }) {
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
-  return (
-    <Suspense fallback={<Loading />}>
-      <PageContent owner={owner} repo={repo} promises={resolvedPromises} />
-    </Suspense>
-  );
-}
-
-function PageContent({
-  owner,
-  repo,
-  promises,
-}: {
-  owner: string;
-  repo: string;
-  promises: ResourcePromises;
-}) {
-  const questions = use(promises.questions);
   const [filter, setFilter] = useState<QuestionsFilter>("popular");
   const [sort, setSort] = useState<QuestionsSort>("created-asc");
 

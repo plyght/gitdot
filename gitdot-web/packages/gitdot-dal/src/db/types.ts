@@ -1,11 +1,8 @@
 import type {
-  BuildResource,
-  QuestionResource,
   RepositoryBlobResource,
   RepositoryBlobsResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  ReviewResource,
 } from "gitdot-api";
 import type { Root } from "hast";
 
@@ -14,7 +11,7 @@ export type RepositoryMetadata = {
   last_updated: string;
 };
 
-export interface Database {
+export interface GitdotDatabase {
   getPaths(
     owner: string,
     repo: string,
@@ -69,14 +66,6 @@ export interface Database {
 
   putHast(owner: string, repo: string, path: string, hast: Root): Promise<void>;
 
-  getQuestions(owner: string, repo: string): Promise<QuestionResource[] | null>;
-
-  putQuestions(
-    owner: string,
-    repo: string,
-    questions: QuestionResource[],
-  ): Promise<void>;
-
   getMetadata(owner: string, repo: string): Promise<RepositoryMetadata | null>;
 
   putMetadata(
@@ -84,32 +73,4 @@ export interface Database {
     repo: string,
     metadata: RepositoryMetadata,
   ): Promise<void>;
-
-  getReview(
-    owner: string,
-    repo: string,
-    number: number,
-  ): Promise<ReviewResource | null>;
-
-  getReviews(owner: string, repo: string): Promise<ReviewResource[]>;
-
-  putReview(
-    owner: string,
-    repo: string,
-    number: number,
-    review: ReviewResource,
-  ): Promise<void>;
-
-  getBuilds(owner: string, repo: string): Promise<BuildResource[] | null>;
-  putBuilds(
-    owner: string,
-    repo: string,
-    builds: BuildResource[],
-  ): Promise<void>;
-  getBuild(
-    owner: string,
-    repo: string,
-    number: number,
-  ): Promise<BuildResource | null>;
-  putBuild(owner: string, repo: string, build: BuildResource): Promise<void>;
 }

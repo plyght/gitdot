@@ -1,12 +1,8 @@
 "use client";
 
 import type {
-  BuildResource,
-  QuestionResource,
-  RepositoryCommitFilterResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  ReviewResource,
 } from "gitdot-api";
 import type { Root } from "hast";
 import { openIdb } from "../db";
@@ -75,30 +71,5 @@ export class LocalProvider extends GitdotProvider {
     const hit = cached?.find((c) => c.sha === sha || c.sha.startsWith(sha));
     if (hit) return hit;
     return this.db.getCommit(this.owner, this.repo, sha);
-  }
-
-  async getCommitFilters(): Promise<RepositoryCommitFilterResource[] | null> {
-    return null;
-  }
-
-  async getQuestions(): Promise<QuestionResource[] | null> {
-    return this.db.getQuestions(this.owner, this.repo);
-  }
-
-  async getReview(number: number): Promise<ReviewResource | null> {
-    return this.db.getReview(this.owner, this.repo, number);
-  }
-
-  async getReviews(): Promise<ReviewResource[] | null> {
-    const reviews = await this.db.getReviews(this.owner, this.repo);
-    return reviews.length === 0 ? null : reviews;
-  }
-
-  async getBuilds(): Promise<BuildResource[] | null> {
-    return this.db.getBuilds(this.owner, this.repo);
-  }
-
-  async getBuild(number: number): Promise<BuildResource | null> {
-    return this.db.getBuild(this.owner, this.repo, number);
   }
 }

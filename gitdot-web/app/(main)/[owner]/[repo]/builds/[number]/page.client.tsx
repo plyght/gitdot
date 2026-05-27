@@ -1,7 +1,7 @@
 "use client";
 
-import type { TaskResource } from "gitdot-api";
-import { type ResourceResultType, useResolvePromises } from "gitdot-dal/client";
+import type { BuildResource, TaskResource } from "gitdot-api";
+import { type ResourceResultType, useResources } from "gitdot-dal/client";
 import { Suspense, use } from "react";
 import type { S2Record } from "@/lib/s2/shared";
 import { Loading } from "@/ui/loading";
@@ -13,6 +13,7 @@ export function PageClient({
   owner,
   repo,
   resources,
+  build,
   tasks,
   tokens,
   taskLogs,
@@ -21,19 +22,20 @@ export function PageClient({
   owner: string;
   repo: string;
   resources: ResourceResultType<Resources>;
+  build: BuildResource;
   tasks: TaskResource[];
   tokens: (string | null)[];
   taskLogs: S2Record[][];
   configHtml: string | null;
 }) {
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
+  const resourcePromises = useResources(owner, repo, resources);
   return (
     <Suspense fallback={<Loading />}>
       <PageContent
         owner={owner}
         repo={repo}
-        buildPromise={resolvedPromises.build}
-        commitPromise={resolvedPromises.commit}
+        build={build}
+        commitPromise={resourcePromises.commit}
         tasks={tasks}
         tokens={tokens}
         taskLogs={taskLogs}
@@ -46,7 +48,7 @@ export function PageClient({
 function PageContent({
   owner,
   repo,
-  buildPromise,
+  build,
   commitPromise,
   tasks,
   tokens,
@@ -55,16 +57,14 @@ function PageContent({
 }: {
   owner: string;
   repo: string;
-  buildPromise: Promise<Resources["build"]>;
+  build: BuildResource;
   commitPromise: Promise<Resources["commit"]>;
   tasks: TaskResource[];
   tokens: (string | null)[];
   taskLogs: S2Record[][];
   configHtml: string | null;
 }) {
-  const build = use(buildPromise);
   const commit = use(commitPromise);
-  if (!build) return null;
 
   return (
     <div className="flex flex-col w-full flex-1 min-w-0 overflow-y-auto scrollbar-thin">

@@ -1,46 +1,35 @@
 "use client";
 
-import {
-  type ResourcePromisesType,
-  type ResourceResultType,
-  useResolvePromises,
-} from "gitdot-dal/client";
+import type { QuestionResource } from "gitdot-api";
 import { Undo2 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { Suspense, use } from "react";
 import Link from "@/ui/link";
 import { OverlayScroll } from "@/ui/scroll";
 import { Sidebar, SidebarContent } from "@/ui/sidebar";
 import { timeAgo } from "@/util";
-import type { Resources } from "./layout";
-
-type ResourcePromises = ResourcePromisesType<Resources>;
 
 export function LayoutClient({
   owner,
   repo,
-  resources,
+  questions,
   children,
 }: {
   owner: string;
   repo: string;
-  resources: ResourceResultType<Resources>;
+  questions: QuestionResource[] | null;
   children: React.ReactNode;
 }) {
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
   return (
     <>
       <Sidebar>
         <SidebarContent className="overflow-auto">
           <div className="flex flex-col w-full">
             <QuestionSidebarHeader owner={owner} repo={repo} />
-            <Suspense>
-              <QuestionSidebarContent
-                owner={owner}
-                repo={repo}
-                promises={resolvedPromises}
-              />
-            </Suspense>
+            <QuestionSidebarContent
+              owner={owner}
+              repo={repo}
+              questions={questions}
+            />
           </div>
         </SidebarContent>
       </Sidebar>
@@ -72,11 +61,11 @@ function QuestionSidebarHeader({
 function QuestionSidebarContent({
   owner,
   repo,
-  promises,
+  questions,
 }: {
   owner: string;
   repo: string;
-  promises: ResourcePromises;
+  questions: QuestionResource[] | null;
 }) {
   const { number } = useParams<{
     owner: string;
@@ -84,7 +73,6 @@ function QuestionSidebarContent({
     number: string | undefined;
   }>();
 
-  const questions = use(promises.questions);
   if (!questions) return null;
 
   return questions.map((question) => {

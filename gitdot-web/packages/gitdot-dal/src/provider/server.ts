@@ -1,25 +1,15 @@
 import "server-only";
 
 import type {
-  BuildResource,
-  QuestionResource,
   RepositoryBlobResource,
-  RepositoryCommitFilterResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  ReviewResource,
 } from "gitdot-api";
 import {
-  getBuild as dalGetBuild,
-  getBuilds as dalGetBuilds,
-  getReview as dalGetReview,
   getRepositoryBlob,
   getRepositoryCommit,
   getRepositoryPaths,
-  listQuestions,
-  listRepositoryCommitFilters,
   listRepositoryCommits,
-  listReviews,
 } from "gitdot-client";
 import type { Root } from "hast";
 import { fileToHast } from "../hast";
@@ -103,33 +93,5 @@ export class ServerProvider extends GitdotProvider {
 
   async getCommit(sha: string): Promise<RepositoryCommitResource | null> {
     return await getRepositoryCommit(this.owner, this.repo, sha);
-  }
-
-  async getCommitFilters(): Promise<RepositoryCommitFilterResource[] | null> {
-    const result = await listRepositoryCommitFilters(this.owner, this.repo);
-    return result?.data ?? null;
-  }
-
-  async getQuestions(): Promise<QuestionResource[] | null> {
-    const result = await listQuestions(this.owner, this.repo);
-    return result?.data ?? null;
-  }
-
-  async getReview(number: number): Promise<ReviewResource | null> {
-    return await dalGetReview(this.owner, this.repo, number);
-  }
-
-  async getReviews(): Promise<ReviewResource[] | null> {
-    const result = await listReviews(this.owner, this.repo);
-    return result?.data ?? null;
-  }
-
-  async getBuilds(): Promise<BuildResource[] | null> {
-    const result = await dalGetBuilds(this.owner, this.repo);
-    return result?.data ?? null;
-  }
-
-  async getBuild(number: number): Promise<BuildResource | null> {
-    return await dalGetBuild(this.owner, this.repo, number);
   }
 }

@@ -1,23 +1,15 @@
 "use client";
 
-import {
-  type ResourcePromisesType,
-  type ResourceResultType,
-  useResolvePromises,
-} from "gitdot-dal/client";
-import { Suspense, use, useMemo, useState } from "react";
-import { Loading } from "@/ui/loading";
-import type { Resources } from "./page";
+import type { ReviewResource } from "gitdot-api";
+import { useMemo, useState } from "react";
 import { ReviewRow } from "./ui/review-row";
-
-type ResourcePromises = ResourcePromisesType<Resources>;
 
 export type ReviewsFilter = "draft" | "open" | "closed" | "all";
 
 function filterReviews(
-  reviews: NonNullable<Resources["reviews"]>,
+  reviews: ReviewResource[],
   filter: ReviewsFilter,
-): NonNullable<Resources["reviews"]> {
+): ReviewResource[] {
   const filtered =
     filter === "all" ? reviews : reviews.filter((r) => r.status === filter);
 
@@ -30,30 +22,12 @@ function filterReviews(
 export function PageClient({
   owner,
   repo,
-  resources,
+  reviews,
 }: {
   owner: string;
   repo: string;
-  resources: ResourceResultType<Resources>;
+  reviews: ReviewResource[] | null;
 }) {
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
-  return (
-    <Suspense fallback={<Loading />}>
-      <PageContent owner={owner} repo={repo} promises={resolvedPromises} />
-    </Suspense>
-  );
-}
-
-function PageContent({
-  owner,
-  repo,
-  promises,
-}: {
-  owner: string;
-  repo: string;
-  promises: ResourcePromises;
-}) {
-  const reviews = use(promises.reviews);
   const [filter, setFilter] = useState<ReviewsFilter>("all");
 
   const filteredReviews = useMemo(

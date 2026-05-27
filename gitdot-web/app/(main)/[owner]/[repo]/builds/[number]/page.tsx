@@ -1,4 +1,4 @@
-import type { BuildResource, RepositoryCommitResource } from "gitdot-api";
+import type { RepositoryCommitResource } from "gitdot-api";
 import {
   getBuild,
   getBuildTasks,
@@ -11,7 +11,6 @@ import { renderFileToHtml } from "../../util/hast";
 import { PageClient } from "./page.client";
 
 export type Resources = {
-  build: BuildResource | null;
   commit: RepositoryCommitResource | null;
 };
 
@@ -28,7 +27,6 @@ export default async function Page({
   if (!build) return null;
 
   const resources = fetchResources(owner, repo, {
-    build: (p) => p.getBuild(number),
     commit: (p) => p.getCommit(build.commit_sha),
   });
 
@@ -64,6 +62,7 @@ export default async function Page({
       owner={owner}
       repo={repo}
       resources={resources}
+      build={build}
       tasks={tasks}
       tokens={tokens}
       taskLogs={taskLogs}

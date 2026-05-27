@@ -1,50 +1,24 @@
 "use client";
 
-import type { RepositoryCommitResource } from "gitdot-api";
-import {
-  type ResourcePromisesType,
-  type ResourceResultType,
-  useResolvePromises,
-} from "gitdot-dal/client";
-import { Suspense, use, useState } from "react";
-import { Loading } from "@/ui/loading";
-import type { Resources } from "./page";
+import type { BuildResource, RepositoryCommitResource } from "gitdot-api";
+import { useState } from "react";
 import { BuildRow } from "./ui/build-row";
 import { BuildsHeader } from "./ui/builds-header";
 
 export type BuildsFilter = "main" | "pull-request";
 
-type ResourcePromises = ResourcePromisesType<Resources>;
-
 export function PageClient({
   owner,
   repo,
-  resources,
+  builds,
+  commits,
 }: {
   owner: string;
   repo: string;
-  resources: ResourceResultType<Resources>;
-}) {
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
-  return (
-    <Suspense fallback={<Loading />}>
-      <PageContent owner={owner} repo={repo} promises={resolvedPromises} />
-    </Suspense>
-  );
-}
-
-function PageContent({
-  owner,
-  repo,
-  promises,
-}: {
-  owner: string;
-  repo: string;
-  promises: ResourcePromises;
+  builds: BuildResource[] | null;
+  commits: RepositoryCommitResource[] | null;
 }) {
   const [filter, setFilter] = useState<BuildsFilter>("main");
-  const builds = use(promises.builds);
-  const commits = use(promises.commits);
   if (!builds || !commits) return null;
   const commitsBySha: Record<string, RepositoryCommitResource> = {};
   for (const commit of commits) {

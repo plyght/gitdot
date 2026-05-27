@@ -83,14 +83,6 @@ async function process({ id, owner, repo }: SyncRequest, port: MessagePort) {
     for (const c of result.commits.commits)
       writes.push(db.putCommit(owner, repo, c));
   }
-  if (result.questions)
-    writes.push(db.putQuestions(owner, repo, result.questions.questions));
-  if (result.reviews) {
-    for (const r of result.reviews.reviews)
-      writes.push(db.putReview(owner, repo, r.number, r));
-  }
-  if (result.builds)
-    writes.push(db.putBuilds(owner, repo, result.builds.builds));
   await Promise.all(writes);
 
   console.log(`[gitdot-sync] idb write took ${performance.now() - t}ms`);

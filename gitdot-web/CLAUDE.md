@@ -90,10 +90,10 @@ type ResourceRequests = ResourceRequestsType<Resources>;
 type ResourcePromises = ResourcePromisesType<Resources>;
 
 export function PageClient({ owner, repo, requests, promises }) {
-  const resolvedPromises = resolveResources(owner, repo, requests, promises);
+  const resourcePromises = resolveResources(owner, repo, requests, promises);
   return (
     <Suspense>
-      <PageContent promises={resolvedPromises} />
+      <PageContent promises={resourcePromises} />
     </Suspense>
   );
 }

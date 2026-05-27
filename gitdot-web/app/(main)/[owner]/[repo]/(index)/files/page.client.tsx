@@ -3,7 +3,7 @@
 import {
   type ResourcePromisesType,
   type ResourceResultType,
-  useResolvePromises,
+  useResources,
 } from "gitdot-dal/client";
 import { Suspense, use } from "react";
 import { Loading } from "@/ui/loading";
@@ -21,10 +21,10 @@ export function PageClient({
   repo: string;
   resources: ResourceResultType<Resources>;
 }) {
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
+  const resourcePromises = useResources(owner, repo, resources);
   return (
     <Suspense fallback={<Loading />}>
-      <PageContent promises={resolvedPromises} />
+      <PageContent promises={resourcePromises} />
     </Suspense>
   );
 }

@@ -7,7 +7,7 @@ import type {
 import {
   type ResourcePromisesType,
   type ResourceResultType,
-  useResolvePromises,
+  useResources,
 } from "gitdot-dal/client";
 import { Undo2 } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -43,7 +43,7 @@ export function LayoutClient({
 }) {
   const { path } = useParams<{ path: string[] }>();
   const filePath = path.join("/") ?? "";
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
+  const resourcePromises = useResources(owner, repo, resources);
 
   return (
     <>
@@ -56,7 +56,7 @@ export function LayoutClient({
                 owner={owner}
                 repo={repo}
                 filePath={filePath}
-                promises={resolvedPromises}
+                promises={resourcePromises}
               />
             </Suspense>
           </div>

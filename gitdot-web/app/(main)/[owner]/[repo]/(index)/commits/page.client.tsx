@@ -7,7 +7,7 @@ import type {
 import {
   type ResourcePromisesType,
   type ResourceResultType,
-  useResolvePromises,
+  useResources,
 } from "gitdot-dal/client";
 import { Suspense, use, useState } from "react";
 import { useTimezone } from "@/(main)/context/timezone";
@@ -31,20 +31,23 @@ export function PageClient({
   repo,
   resources,
   repository,
+  commitFilters,
 }: {
   owner: string;
   repo: string;
   resources: ResourceResultType<Resources>;
   repository: RepositoryResource | null;
+  commitFilters: RepositoryCommitFilterResource[] | null;
 }) {
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
+  const resourcePromises = useResources(owner, repo, resources);
   return (
     <Suspense fallback={<Loading />}>
       <PageContent
         owner={owner}
         repo={repo}
-        promises={resolvedPromises}
+        promises={resourcePromises}
         repository={repository}
+        commitFilters={commitFilters}
       />
     </Suspense>
   );
@@ -55,16 +58,17 @@ function PageContent({
   repo,
   promises,
   repository,
+  commitFilters,
 }: {
   owner: string;
   repo: string;
   promises: ResourcePromises;
   repository: RepositoryResource | null;
+  commitFilters: RepositoryCommitFilterResource[] | null;
 }) {
   const tz = useTimezone();
   const commits = use(promises.commits);
   const paths = use(promises.paths);
-  const commitFilters = use(promises.commitFilters);
 
   const [windowStart, setWindowStart] = useState(() =>
     recentWindowStart(commits, tz),

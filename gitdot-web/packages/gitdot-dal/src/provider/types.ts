@@ -1,11 +1,7 @@
 import type {
-  BuildResource,
-  QuestionResource,
   RepositoryBlobResource,
-  RepositoryCommitFilterResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
-  ReviewResource,
 } from "gitdot-api";
 import type { Root } from "hast";
 
@@ -49,10 +45,4 @@ export abstract class GitdotProvider {
   ): Promise<RepositoryBlobResource | null>;
   abstract getHast(path: string, ref?: string): Promise<Root | null>;
   abstract getCommit(sha: string): Promise<RepositoryCommitResource | null>;
-  abstract getCommitFilters(): Promise<RepositoryCommitFilterResource[] | null>;
-  abstract getQuestions(): Promise<QuestionResource[] | null>;
-  abstract getReview(number: number): Promise<ReviewResource | null>;
-  abstract getReviews(): Promise<ReviewResource[] | null>;
-  abstract getBuilds(): Promise<BuildResource[] | null>;
-  abstract getBuild(number: number): Promise<BuildResource | null>;
 }

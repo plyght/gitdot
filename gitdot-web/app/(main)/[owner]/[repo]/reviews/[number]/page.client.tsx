@@ -1,21 +1,13 @@
 "use client";
 
-import {
-  type ResourcePromisesType,
-  type ResourceResultType,
-  useResolvePromises,
-} from "gitdot-dal/client";
-import { Suspense, use, useMemo, useState } from "react";
+import type { ReviewResource } from "gitdot-api";
+import { useMemo, useState } from "react";
 import { useShortcuts } from "@/(main)/context/shortcuts";
 import type { DiffEntry } from "@/actions";
-import { Loading } from "@/ui/loading";
 import { cn } from "@/util";
 import { ReviewProvider, useReviewContext } from "./context";
-import type { Resources } from "./page";
 import { ReviewDiff } from "./ui/review-diff";
 import { ReviewSummary } from "./ui/review-summary";
-
-type ResourcePromises = ResourcePromisesType<Resources>;
 
 export type PageLayout = "split" | "summary" | "diffs";
 
@@ -23,42 +15,14 @@ export function PageClient({
   owner,
   repo,
   position,
-  resources,
+  review,
   diffEntriesPromise,
 }: {
   owner: string;
   repo: string;
   number: number;
   position: number;
-  resources: ResourceResultType<Resources>;
-  diffEntriesPromise: Promise<DiffEntry[]>;
-}) {
-  const resolvedPromises = useResolvePromises(owner, repo, resources);
-
-  return (
-    <Suspense fallback={<Loading className="px-6!" />}>
-      <PageContent
-        owner={owner}
-        repo={repo}
-        position={position}
-        promises={resolvedPromises}
-        diffEntriesPromise={diffEntriesPromise}
-      />
-    </Suspense>
-  );
-}
-
-function PageContent({
-  owner,
-  repo,
-  position,
-  promises,
-  diffEntriesPromise,
-}: {
-  owner: string;
-  repo: string;
-  position: number;
-  promises: ResourcePromises;
+  review: ReviewResource;
   diffEntriesPromise: Promise<DiffEntry[]>;
 }) {
   const [layout, setLayout] = useState<PageLayout>("split");
@@ -84,11 +48,8 @@ function PageContent({
     ),
   );
 
-  const initialReview = use(promises.review);
-  if (!initialReview) return null;
-
   return (
-    <ReviewProvider owner={owner} repo={repo} review={initialReview}>
+    <ReviewProvider owner={owner} repo={repo} review={review}>
       <ReviewPage
         layout={layout}
         setLayout={setLayout}

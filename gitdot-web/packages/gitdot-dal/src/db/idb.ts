@@ -1,19 +1,15 @@
 "use client";
 
 import type {
-  QuestionResource,
   RepositoryBlobResource,
   RepositoryBlobsResource,
-  ReviewResource,
 } from "gitdot-api";
 import type { Root } from "hast";
 import { type IDBPDatabase, openDB } from "idb";
-import type { Database, RepositoryMetadata } from "./types";
+import type { GitdotDatabase, RepositoryMetadata } from "./types";
 
 const commitKey = (owner: string, repo: string, sha: string) =>
   `${owner}/${repo}/${sha}`;
-const reviewKey = (owner: string, repo: string, number: number) =>
-  `${owner}/${repo}/${number}`;
 const repoKey = (owner: string, repo: string) => `${owner}/${repo}`;
 const pathKey = (owner: string, repo: string, path: string) =>
   `${owner}/${repo}/${path}`;
@@ -21,7 +17,7 @@ const pathKey = (owner: string, repo: string, path: string) =>
 let dbPromise: Promise<IDBPDatabase> | null = null;
 function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = openDB("gitdot", 13, {
+    dbPromise = openDB("gitdot", 14, {
       upgrade(db, oldVersion) {
         if (oldVersion < 11) {
           if (db.objectStoreNames.contains("blobs"))
@@ -39,6 +35,14 @@ function getDb(): Promise<IDBPDatabase> {
           if (db.objectStoreNames.contains("commits"))
             db.deleteObjectStore("commits");
         }
+        if (oldVersion < 14) {
+          if (db.objectStoreNames.contains("questions"))
+            db.deleteObjectStore("questions");
+          if (db.objectStoreNames.contains("reviews"))
+            db.deleteObjectStore("reviews");
+          if (db.objectStoreNames.contains("builds"))
+            db.deleteObjectStore("builds");
+        }
         if (!db.objectStoreNames.contains("commits"))
           db.createObjectStore("commits");
         if (!db.objectStoreNames.contains("paths"))
@@ -51,19 +55,13 @@ function getDb(): Promise<IDBPDatabase> {
           db.deleteObjectStore("settings");
         if (!db.objectStoreNames.contains("metadata"))
           db.createObjectStore("metadata");
-        if (!db.objectStoreNames.contains("questions"))
-          db.createObjectStore("questions");
-        if (!db.objectStoreNames.contains("reviews"))
-          db.createObjectStore("reviews");
-        if (!db.objectStoreNames.contains("builds"))
-          db.createObjectStore("builds");
       },
     });
   }
   return dbPromise;
 }
 
-function withTimings(db: Database): Database {
+function withTimings(db: GitdotDatabase): GitdotDatabase {
   return new Proxy(db, {
     get(target, prop, receiver) {
       const value = Reflect.get(target, prop, receiver);
@@ -85,9 +83,9 @@ function withTimings(db: Database): Database {
   });
 }
 
-export function openIdb(): Database {
+export function openIdb(): GitdotDatabase {
   if (typeof indexedDB === "undefined") {
-    return new Proxy({} as Database, {
+    return new Proxy({} as GitdotDatabase, {
       get: () => () => Promise.resolve(null),
     });
   }
@@ -98,7 +96,7 @@ export function openIdb(): Database {
     async getPaths(owner, repo) {
       const db = await getDb();
       const prefix = `${repoKey(owner, repo)}/`;
-      const range = IDBKeyRange.bound(prefix, `${prefix}\uffff`);
+      const range = IDBKeyRange.bound(prefix, `${prefix}￿`);
       const rows = await db.getAll("paths", range);
       if (rows.length === 0) return null;
       const { ref_name, commit_sha } = rows[0];
@@ -132,7 +130,7 @@ export function openIdb(): Database {
     async getCommits(owner, repo) {
       const db = await getDb();
       const prefix = `${owner}/${repo}/`;
-      const range = IDBKeyRange.bound(prefix, `${prefix}\uffff`);
+      const range = IDBKeyRange.bound(prefix, `${prefix}￿`);
       return db.getAll("commits", range);
     },
 
@@ -190,16 +188,6 @@ export function openIdb(): Database {
       await db.put("hasts", hast, pathKey(owner, repo, path));
     },
 
-    async getQuestions(owner, repo): Promise<QuestionResource[] | null> {
-      const db = await getDb();
-      return (await db.get("questions", repoKey(owner, repo))) ?? null;
-    },
-
-    async putQuestions(owner, repo, questions: QuestionResource[]) {
-      const db = await getDb();
-      await db.put("questions", questions, repoKey(owner, repo));
-    },
-
     async getMetadata(owner, repo) {
       const db = await getDb();
       return (await db.get("metadata", repoKey(owner, repo))) ?? null;
@@ -208,46 +196,6 @@ export function openIdb(): Database {
     async putMetadata(owner, repo, metadata: RepositoryMetadata) {
       const db = await getDb();
       await db.put("metadata", metadata, repoKey(owner, repo));
-    },
-
-    async getReview(owner, repo, number) {
-      const db = await getDb();
-      return (await db.get("reviews", reviewKey(owner, repo, number))) ?? null;
-    },
-
-    async getReviews(owner, repo) {
-      const db = await getDb();
-      const prefix = `${repoKey(owner, repo)}/`;
-      const range = IDBKeyRange.bound(prefix, `${prefix}\uffff`);
-      return db.getAll("reviews", range);
-    },
-
-    async putReview(owner, repo, number, review: ReviewResource) {
-      const db = await getDb();
-      await db.put("reviews", review, reviewKey(owner, repo, number));
-    },
-
-    async getBuilds(owner, repo) {
-      const db = await getDb();
-      return (await db.get("builds", repoKey(owner, repo))) ?? null;
-    },
-
-    async putBuilds(owner, repo, builds) {
-      const db = await getDb();
-      await db.put("builds", builds, repoKey(owner, repo));
-    },
-
-    async getBuild(owner, repo, number) {
-      const builds = await this.getBuilds(owner, repo);
-      return builds?.find((b) => b.number === number) ?? null;
-    },
-
-    async putBuild(owner, repo, build) {
-      const builds = (await this.getBuilds(owner, repo)) ?? [];
-      const idx = builds.findIndex((b) => b.number === build.number);
-      if (idx >= 0) builds[idx] = build;
-      else builds.push(build);
-      await this.putBuilds(owner, repo, builds);
     },
   });
 }

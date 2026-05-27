@@ -1,10 +1,5 @@
-import type { QuestionResource } from "gitdot-api";
-import { fetchResources } from "gitdot-dal/server";
+import { listQuestions } from "gitdot-client";
 import { LayoutClient } from "./layout.client";
-
-export type Resources = {
-  questions: QuestionResource[] | null;
-};
 
 export default async function Layout({
   params,
@@ -14,12 +9,11 @@ export default async function Layout({
   children: React.ReactNode;
 }) {
   const { owner, repo } = await params;
-  const resources = fetchResources(owner, repo, {
-    questions: (p) => p.getQuestions(),
-  });
+  const result = await listQuestions(owner, repo);
+  const questions = result?.data ?? null;
 
   return (
-    <LayoutClient owner={owner} repo={repo} resources={resources}>
+    <LayoutClient owner={owner} repo={repo} questions={questions}>
       {children}
     </LayoutClient>
   );
