@@ -43,7 +43,15 @@ export function getParentPath(currentPath: string): string {
   }
 }
 
-export type FolderFile = {
-  path: string;
-  type: "file" | "folder";
-};
+export function getAncestorFolders(
+  filePath: string,
+  paths: RepositoryPathsResource,
+): string[] {
+  if (filePath === "") return [];
+  const isFolder = paths.entries.some(
+    (e) => e.path === filePath && e.path_type === "tree",
+  );
+  const segments = filePath.split("/");
+  const targetSegments = isFolder ? segments : segments.slice(0, -1);
+  return targetSegments.map((_, i) => targetSegments.slice(0, i + 1).join("/"));
+}

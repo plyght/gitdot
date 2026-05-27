@@ -20,7 +20,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { getFolderEntries } from "@/(main)/[owner]/[repo]/util";
+import {
+  getAncestorFolders,
+  getFolderEntries,
+} from "@/(main)/[owner]/[repo]/util";
 import Link from "@/ui/link";
 import { Loading } from "@/ui/loading";
 import { OverlayScroll } from "@/ui/scroll";
@@ -115,7 +118,7 @@ function FileTreeRows({
   paths: RepositoryPathsResource;
 }) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-    new Set(),
+    () => new Set(getAncestorFolders(filePath, paths)),
   );
   const expandedFoldersRef = useRef(expandedFolders);
   expandedFoldersRef.current = expandedFolders;
@@ -141,16 +144,7 @@ function FileTreeRows({
   }, []);
 
   useLayoutEffect(() => {
-    if (filePath === "") return;
-
-    const isFolder = paths.entries.some(
-      (e) => e.path === filePath && e.path_type === "tree",
-    );
-    const segments = filePath.split("/");
-    const targetSegments = isFolder ? segments : segments.slice(0, -1);
-    const ancestors = targetSegments.map((_, i) =>
-      targetSegments.slice(0, i + 1).join("/"),
-    );
+    const ancestors = getAncestorFolders(filePath, paths);
     if (
       ancestors.length > 0 &&
       !ancestors.every((a) => expandedFoldersRef.current.has(a))
