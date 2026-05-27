@@ -223,7 +223,7 @@ where
             .get_by_id(auth_code.user_id)
             .await?
             .or_not_found("user", auth_code.user_id)?;
-        let is_new = !user.is_email_verified;
+        let is_new = !user.primary_email().is_some_and(|e| e.is_verified);
 
         self.user_repo.verify_email(auth_code.user_id).await?;
         let access_token = self.token_client.generate_gitdot_jwt(user.id, &user.name)?;

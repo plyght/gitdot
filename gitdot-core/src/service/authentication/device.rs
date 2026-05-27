@@ -135,6 +135,11 @@ where
                     .get_by_id(user_id)
                     .await?
                     .or_not_found("user", user_id)?;
+                let user_email = user
+                    .primary_email()
+                    .or_not_found("user_email", user_id)?
+                    .email
+                    .clone();
 
                 let (access_token, token_hash) = self
                     .token_client
@@ -156,7 +161,7 @@ where
                 Ok(TokenResponse {
                     access_token,
                     user_name: user.name,
-                    user_email: user.email,
+                    user_email,
                 })
             }
         }

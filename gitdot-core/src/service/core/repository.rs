@@ -227,6 +227,11 @@ where
             .get_by_id(request.user_id)
             .await?
             .or_not_found("user", request.user_id.to_string())?;
+        let primary_email = user
+            .primary_email()
+            .or_not_found("user_email", request.user_id.to_string())?
+            .email
+            .clone();
 
         let diffs: Vec<CommitDiff> = files
             .iter()
@@ -245,7 +250,7 @@ where
                 repo_name,
                 files,
                 &user.name,
-                &user.email,
+                &primary_email,
                 committed_at,
             )
             .await?;
@@ -255,7 +260,7 @@ where
             .create_bulk(
                 &[Some(user.id)],
                 &[user.name.clone()],
-                &[user.email.clone()],
+                &[primary_email],
                 &[repo_id],
                 &[ref_name],
                 &[sha],

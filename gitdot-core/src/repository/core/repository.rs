@@ -7,7 +7,8 @@ use crate::{
     dto::Cursor,
     error::DatabaseError,
     model::{
-        CommitFilter, Repository, RepositoryOwnerType, RepositoryStar, RepositoryVisibility, User,
+        AuthProvider, CommitFilter, Repository, RepositoryOwnerType, RepositoryStar,
+        RepositoryVisibility, User, UserEmail,
     },
 };
 
@@ -408,19 +409,24 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
     ) -> Result<Vec<(User, DateTime<Utc>)>, DatabaseError> {
         #[derive(FromRow)]
         struct StarredUserRow {
-            #[sqlx(flatten)]
-            user: User,
+            id: Uuid,
+            name: String,
+            provider: AuthProvider,
+            created_at: DateTime<Utc>,
+            display_name: Option<String>,
+            location: Option<String>,
+            readme: Option<String>,
+            links: Vec<String>,
             starred_at: DateTime<Utc>,
         }
 
         let rows = sqlx::query_as::<_, StarredUserRow>(
             r#"
-            SELECT u.id, u.name, ue.email, ue.is_verified AS is_email_verified,
-                   u.provider, u.created_at, u.location, u.readme, u.links, u.display_name,
+            SELECT u.id, u.name, u.provider, u.created_at, u.display_name,
+                   u.location, u.readme, u.links,
                    s.created_at AS starred_at
             FROM core.stars s
             JOIN core.users u ON s.user_id = u.id
-            JOIN core.user_emails ue ON ue.user_id = u.id AND ue.is_primary
             WHERE s.repository_id = $1
             ORDER BY s.created_at DESC
             LIMIT $2
@@ -431,7 +437,46 @@ impl RepositoryRepository for RepositoryRepositoryImpl {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| (r.user, r.starred_at)).collect())
+        if rows.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let user_ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
+        let emails = sqlx::query_as::<_, UserEmail>(
+            r#"
+            SELECT id, user_id, email, is_primary, is_verified, created_at
+            FROM core.user_emails
+            WHERE user_id = ANY($1)
+            ORDER BY is_primary DESC, created_at ASC
+            "#,
+        )
+        .bind(&user_ids)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut emails_by_user: std::collections::HashMap<Uuid, Vec<UserEmail>> =
+            std::collections::HashMap::new();
+        for e in emails {
+            emails_by_user.entry(e.user_id).or_default().push(e);
+        }
+
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let user = User {
+                    id: r.id,
+                    name: r.name,
+                    provider: r.provider,
+                    created_at: r.created_at,
+                    display_name: r.display_name,
+                    location: r.location,
+                    readme: r.readme,
+                    links: r.links,
+                    emails: emails_by_user.remove(&r.id).unwrap_or_default(),
+                };
+                (user, r.starred_at)
+            })
+            .collect())
     }
 
     async fn list_commit_filters(
