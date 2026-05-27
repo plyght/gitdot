@@ -17,9 +17,9 @@ export default async function Page({
   params: Promise<{ owner: string; repo: string }>;
 }) {
   const { owner, repo } = await params;
-  const resources = fetchResources(owner, repo, {
-    commits: (p) => p.getCommits(),
-    paths: (p) => p.getPaths(),
+  const resources = fetchResources({
+    commits: (p) => p.getCommits(owner, repo),
+    paths: (p) => p.getPaths(owner, repo),
   });
   const [repository, commitFiltersResult] = await Promise.all([
     getRepository(owner, repo),

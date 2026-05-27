@@ -8,10 +8,6 @@ export * from "./language";
 export * from "./provider/server";
 export * from "./provider/types";
 
-export function fetchResources<T extends ResourceDefinition>(
-  owner: string,
-  repo: string,
-  resources: T,
-) {
-  return new ServerProvider(owner, repo).fetch(resources);
+export function fetchResources<T extends ResourceDefinition>(resources: T) {
+  return new ServerProvider().fetch(resources);
 }

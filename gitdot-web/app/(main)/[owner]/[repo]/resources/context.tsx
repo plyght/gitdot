@@ -1,7 +1,7 @@
 "use client";
 
 import { LocalProvider } from "gitdot-dal/client";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useWorkerContext } from "@/(main)/context/worker";
 
 type RepoContext = {
@@ -22,11 +22,10 @@ export function RepoResources({
   const { syncRepo } = useWorkerContext();
   const [resourcesReady, setResourcesReady] = useState(false);
   const [hastsReady, setHastsReady] = useState(false);
-  const provider = useRef(new LocalProvider(owner, repo)).current;
 
   useEffect(() => {
-    if (resourcesReady) provider.initialize();
-  }, [resourcesReady, provider]);
+    if (resourcesReady) LocalProvider.instance.initialize(owner, repo);
+  }, [resourcesReady, owner, repo]);
 
   useEffect(() => {
     const { resources, hasts } = syncRepo(owner, repo);

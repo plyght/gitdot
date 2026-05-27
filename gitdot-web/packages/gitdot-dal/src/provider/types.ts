@@ -29,20 +29,29 @@ export type ShapeFromDefinition<T extends ResourceDefinition> = {
 };
 
 export abstract class GitdotProvider {
-  protected owner: string;
-  protected repo: string;
-
-  constructor(owner: string, repo: string) {
-    this.owner = owner;
-    this.repo = repo;
-  }
-
-  abstract getPaths(): Promise<RepositoryPathsResource | null>;
-  abstract getCommits(): Promise<RepositoryCommitResource[] | null>;
+  abstract getPaths(
+    owner: string,
+    repo: string,
+  ): Promise<RepositoryPathsResource | null>;
+  abstract getCommits(
+    owner: string,
+    repo: string,
+  ): Promise<RepositoryCommitResource[] | null>;
   abstract getBlob(
+    owner: string,
+    repo: string,
     path: string,
     ref?: string,
   ): Promise<RepositoryBlobResource | null>;
-  abstract getHast(path: string, ref?: string): Promise<Root | null>;
-  abstract getCommit(sha: string): Promise<RepositoryCommitResource | null>;
+  abstract getHast(
+    owner: string,
+    repo: string,
+    path: string,
+    ref?: string,
+  ): Promise<Root | null>;
+  abstract getCommit(
+    owner: string,
+    repo: string,
+    sha: string,
+  ): Promise<RepositoryCommitResource | null>;
 }

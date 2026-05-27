@@ -62,27 +62,40 @@ export class ServerProvider extends GitdotProvider {
     return { promises, requests } as ResourceResultType<ShapeFromDefinition<T>>;
   }
 
-  async getPaths(): Promise<RepositoryPathsResource | null> {
-    return await getRepositoryPaths(this.owner, this.repo);
+  async getPaths(
+    owner: string,
+    repo: string,
+  ): Promise<RepositoryPathsResource | null> {
+    return await getRepositoryPaths(owner, repo);
   }
 
-  async getCommits(): Promise<RepositoryCommitResource[] | null> {
-    const result = await listRepositoryCommits(this.owner, this.repo);
+  async getCommits(
+    owner: string,
+    repo: string,
+  ): Promise<RepositoryCommitResource[] | null> {
+    const result = await listRepositoryCommits(owner, repo);
     return result?.data ?? null;
   }
 
   async getBlob(
+    owner: string,
+    repo: string,
     path: string,
     ref?: string,
   ): Promise<RepositoryBlobResource | null> {
-    return await getRepositoryBlob(this.owner, this.repo, {
+    return await getRepositoryBlob(owner, repo, {
       path,
       ...(ref && { ref_name: ref }),
     });
   }
 
-  async getHast(path: string, ref?: string): Promise<Root | null> {
-    const blob = await getRepositoryBlob(this.owner, this.repo, {
+  async getHast(
+    owner: string,
+    repo: string,
+    path: string,
+    ref?: string,
+  ): Promise<Root | null> {
+    const blob = await getRepositoryBlob(owner, repo, {
       path,
       ...(ref && { ref_name: ref }),
     });
@@ -91,7 +104,11 @@ export class ServerProvider extends GitdotProvider {
     return fileToHast(blob.content, lang, "vitesse", []);
   }
 
-  async getCommit(sha: string): Promise<RepositoryCommitResource | null> {
-    return await getRepositoryCommit(this.owner, this.repo, sha);
+  async getCommit(
+    owner: string,
+    repo: string,
+    sha: string,
+  ): Promise<RepositoryCommitResource | null> {
+    return await getRepositoryCommit(owner, repo, sha);
   }
 }

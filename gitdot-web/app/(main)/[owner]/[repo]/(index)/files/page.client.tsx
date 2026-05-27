@@ -13,15 +13,11 @@ import type { Resources } from "./page";
 type ResourcePromises = ResourcePromisesType<Resources>;
 
 export function PageClient({
-  owner,
-  repo,
   resources,
 }: {
-  owner: string;
-  repo: string;
   resources: ResourceResultType<Resources>;
 }) {
-  const resourcePromises = useResources(owner, repo, resources);
+  const resourcePromises = useResources(resources);
   return (
     <Suspense fallback={<Loading />}>
       <PageContent promises={resourcePromises} />

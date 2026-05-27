@@ -14,8 +14,8 @@ export default async function Layout({
   children: React.ReactNode;
 }) {
   const { owner, repo } = await params;
-  const resources = fetchResources(owner, repo, {
-    paths: (p) => p.getPaths(),
+  const resources = fetchResources({
+    paths: (p) => p.getPaths(owner, repo),
   });
 
   return (

@@ -26,8 +26,8 @@ export default async function Page({
   const build = await getBuild(owner, repo, number);
   if (!build) return null;
 
-  const resources = fetchResources(owner, repo, {
-    commit: (p) => p.getCommit(build.commit_sha),
+  const resources = fetchResources({
+    commit: (p) => p.getCommit(owner, repo, build.commit_sha),
   });
 
   const tasks = await getBuildTasks(owner, repo, number);

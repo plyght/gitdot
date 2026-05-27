@@ -4,7 +4,6 @@ import type { RepositoryPathsResource } from "gitdot-api";
 import { LocalProvider } from "gitdot-dal/client";
 import type { Root } from "hast";
 import { useParams } from "next/navigation";
-import { useMemo } from "react";
 import { FolderPathPreview } from "./folder-path-preview";
 import { FolderTree } from "./folder-tree";
 import { FolderViewerProvider } from "./folder-viewer-context";
@@ -17,9 +16,9 @@ export function FolderViewer({
   paths: RepositoryPathsResource | null;
 }) {
   const { owner, repo } = useParams<{ owner: string; repo: string }>();
-  const db = useMemo(() => new LocalProvider(owner, repo), [owner, repo]);
 
-  const getHast = (p: string): Promise<Root | null> => db.getHast(p);
+  const getHast = (p: string): Promise<Root | null> =>
+    LocalProvider.instance.getHast(owner, repo, p);
 
   if (!paths) return null;
 

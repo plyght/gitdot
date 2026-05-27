@@ -22,7 +22,6 @@ export function RepoFileDialog({
 }) {
   const { resourcesReady } = useRepoContext();
   const idb = useMemo(() => openIdb(), []);
-  const db = useMemo(() => new LocalProvider(owner, repo), [owner, repo]);
   const [paths, setPaths] = useState<RepositoryPathsResource | null>(null);
   const [hast, setHast] = useState<Root | null>(null);
   const [open, setOpen] = useState(false);
@@ -112,8 +111,10 @@ export function RepoFileDialog({
       setHast(null);
       return;
     }
-    db.getHast(selectedFile.path).then(setHast);
-  }, [selectedFile?.path, db, selectedFile]);
+    LocalProvider.instance
+      .getHast(owner, repo, selectedFile.path)
+      .then(setHast);
+  }, [selectedFile?.path, owner, repo, selectedFile]);
 
   useEffect(() => {
     if (selectedIndex >= filteredFiles.length) {

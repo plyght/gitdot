@@ -28,7 +28,7 @@ export function PageClient({
   filePath: string;
   resources: ResourceResultType<Resources>;
 }) {
-  const resourcePromises = useResources(owner, repo, resources);
+  const resourcePromises = useResources(resources);
   return (
     <Suspense fallback={<Loading />}>
       <PageContent

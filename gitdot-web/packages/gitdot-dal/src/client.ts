@@ -17,12 +17,13 @@ export type { ShikiRequest, ShikiResponse } from "./workers/shiki";
 export type { SyncRequest, SyncResponse } from "./workers/sync";
 
 export function useResources<S>(
-  owner: string,
-  repo: string,
   resources: ResourceResultType<S>,
 ): ResourcePromisesType<S> {
-  const local = new LocalProvider(owner, repo);
-  return raceRequests([local], resources.requests, resources.promises);
+  return raceRequests(
+    [LocalProvider.instance],
+    resources.requests,
+    resources.promises,
+  );
 }
 
 function raceRequests<S>(

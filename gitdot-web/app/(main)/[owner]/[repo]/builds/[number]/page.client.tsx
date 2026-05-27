@@ -28,7 +28,7 @@ export function PageClient({
   taskLogs: S2Record[][];
   configHtml: string | null;
 }) {
-  const resourcePromises = useResources(owner, repo, resources);
+  const resourcePromises = useResources(resources);
   return (
     <Suspense fallback={<Loading />}>
       <PageContent

@@ -46,7 +46,7 @@ export function LayoutClient({
 }) {
   const { path } = useParams<{ path: string[] }>();
   const filePath = path.join("/") ?? "";
-  const resourcePromises = useResources(owner, repo, resources);
+  const resourcePromises = useResources(resources);
 
   return (
     <>

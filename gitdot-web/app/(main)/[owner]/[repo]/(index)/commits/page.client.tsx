@@ -39,7 +39,7 @@ export function PageClient({
   repository: RepositoryResource | null;
   commitFilters: RepositoryCommitFilterResource[] | null;
 }) {
-  const resourcePromises = useResources(owner, repo, resources);
+  const resourcePromises = useResources(resources);
   return (
     <Suspense fallback={<Loading />}>
       <PageContent
