@@ -1,7 +1,8 @@
 "use client";
 
+import { ClientProvider } from "gitdot-dal/client";
 import NextLink from "next/link";
-import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
+import type { AnchorHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
 
 interface SmartLinkProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
@@ -9,6 +10,27 @@ interface SmartLinkProps
   prefetch?: boolean;
   children: ReactNode;
   ref?: Ref<HTMLAnchorElement>;
+}
+
+const REPO_RESERVED_SEGMENTS = new Set([
+  "builds",
+  "commits",
+  "files",
+  "questions",
+  "resources",
+  "reviews",
+  "settings",
+]);
+
+function resolveRepoFilePath(
+  href: string,
+): { owner: string; repo: string; path: string } | null {
+  if (!href.startsWith("/")) return null;
+  const segments = href.split("?")[0].split("#")[0].split("/").filter(Boolean);
+  if (segments.length < 3) return null;
+  const [owner, repo, third, ...rest] = segments;
+  if (REPO_RESERVED_SEGMENTS.has(third)) return null;
+  return { owner, repo, path: [third, ...rest].join("/") };
 }
 
 /**
@@ -31,6 +53,7 @@ export default function Link({
   prefetch = true,
   children,
   ref,
+  onMouseDown,
   ...props
 }: SmartLinkProps) {
   // whenever we see any path that looks like gitdot.io/org/org, we de-duplicate it
@@ -38,17 +61,37 @@ export default function Link({
   const canonicalHref = href.replace(/^(\/?)([^\/]+)\/\2(\/|$)/, "$1$2$3");
   const hasDynamicSegment = /\[.*?\]/.test(canonicalHref);
 
+  const handleMouseDown = (e: MouseEvent<HTMLAnchorElement>) => {
+    onMouseDown?.(e);
+    const file = resolveRepoFilePath(canonicalHref);
+    if (!file) return;
+    ClientProvider.instance
+      .getHast(file.owner, file.repo, file.path)
+      .catch(() => {});
+  };
+
   if (hasDynamicSegment) {
     // still causes hydration flicker as next.js will attempt to render [owner] as our own path
     return (
-      <a href={canonicalHref} ref={ref} {...props}>
+      <a
+        {...props}
+        href={canonicalHref}
+        ref={ref}
+        onMouseDown={handleMouseDown}
+      >
         {children}
       </a>
     );
   }
 
   return (
-    <NextLink href={canonicalHref} prefetch={prefetch} ref={ref} {...props}>
+    <NextLink
+      {...props}
+      href={canonicalHref}
+      prefetch={prefetch}
+      ref={ref}
+      onMouseDown={handleMouseDown}
+    >
       {children}
     </NextLink>
   );

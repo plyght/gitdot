@@ -23,6 +23,7 @@ export class ClientProvider extends GitdotProvider {
   private db = openIdb();
   private paths = new Map<string, RepositoryPathsResource>();
   private commits = new Map<string, RepositoryCommitResource[]>();
+  private hasts = new Map<string, Root>();
 
   private syncWorker: SharedWorker | null = null;
   private shikiWorker: SharedWorker | null = null;
@@ -120,11 +121,15 @@ export class ClientProvider extends GitdotProvider {
     path: string,
     _ref?: string,
   ): Promise<Root | null> {
+    const key = `${owner}/${repo}/${path}`;
+    const cached = this.hasts.get(key);
+    if (cached) return cached;
+
     const blob = await this.db.getBlob(owner, repo, path);
     if (!blob || blob.type !== "file") return null;
 
     const id = crypto.randomUUID();
-    return new Promise<Root>((resolve) => {
+    const hast = await new Promise<Root>((resolve) => {
       this.shikiRequests.set(id, resolve);
       this.shikiWorker?.port.postMessage({
         id,
@@ -132,6 +137,8 @@ export class ClientProvider extends GitdotProvider {
         content: blob.content,
       } satisfies ShikiRequest);
     });
+    this.hasts.set(key, hast);
+    return hast;
   }
 
   async getCommit(owner: string, repo: string, sha: string) {
