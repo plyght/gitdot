@@ -6,9 +6,8 @@ use axum::{
 use serde::Serialize;
 use thiserror::Error;
 
-use gitdot_core::error::{
-    AccountError, DeviceError, SessionError, SlackError, TokenExtractionError,
-};
+use gitdot_axum::error::TokenExtractionError;
+use gitdot_core::error::{AccountError, DeviceError, SessionError, SlackError};
 
 #[derive(Debug, Error)]
 pub enum AppError {

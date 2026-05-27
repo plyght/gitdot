@@ -7,7 +7,8 @@ use axum::{
 };
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 
-use gitdot_core::{dto::JwtClaims, error::TokenExtractionError};
+use gitdot_axum::error::TokenExtractionError;
+use gitdot_core::dto::JwtClaims;
 
 use crate::app::{AppError, AppState};
 

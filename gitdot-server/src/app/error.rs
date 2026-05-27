@@ -6,10 +6,11 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use gitdot_api::ApiResource;
+use gitdot_axum::error::TokenExtractionError;
 use gitdot_core::error::{
     AuthorizationError, BuildError, CommitError, GitHttpError, MigrationError, OrganizationError,
-    QuestionError, RepositoryError, ReviewError, RunnerError, TaskError, TokenExtractionError,
-    TokenServiceError, UserError, WebhookError,
+    QuestionError, RepositoryError, ReviewError, RunnerError, TaskError, TokenServiceError,
+    UserError, WebhookError,
 };
 
 use super::AppResponse;

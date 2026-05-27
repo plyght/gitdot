@@ -5,10 +5,10 @@ use axum::{
 };
 use serde::de::DeserializeOwned;
 
+use gitdot_axum::error::TokenExtractionError;
 use gitdot_core::{
     client::{SLACK_BOT_SIGNATURE_HEADER, SLACK_BOT_TIMESTAMP_HEADER},
     dto::VerifySlackBotSignatureRequest,
-    error::TokenExtractionError,
 };
 
 use crate::app::{AppError, AppState};

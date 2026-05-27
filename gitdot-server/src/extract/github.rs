@@ -7,9 +7,10 @@ use axum::{
 };
 use uuid::Uuid;
 
+use gitdot_axum::error::TokenExtractionError;
 use gitdot_core::{
     dto::VerifyGithubSignatureRequest,
-    error::{InputError, TokenExtractionError, WebhookError},
+    error::{InputError, WebhookError},
 };
 
 use crate::app::{AppError, AppState};

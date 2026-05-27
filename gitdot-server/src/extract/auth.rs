@@ -9,9 +9,9 @@ use base64::Engine;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use uuid::Uuid;
 
+use gitdot_axum::error::TokenExtractionError;
 use gitdot_core::{
     dto::{JwtClaims, ValidateTokenRequest},
-    error::TokenExtractionError,
     model::TokenType,
     util::auth::GITDOT_SERVER_ID,
 };
