@@ -4,7 +4,6 @@ import type {
   RepositoryBlobResource,
   RepositoryBlobsResource,
 } from "gitdot-api";
-import type { Root } from "hast";
 import { type IDBPDatabase, openDB } from "idb";
 import type { GitdotDatabase, RepositoryMetadata } from "./types";
 
@@ -17,18 +16,11 @@ const pathKey = (owner: string, repo: string, path: string) =>
 let dbPromise: Promise<IDBPDatabase> | null = null;
 function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = openDB("gitdot", 14, {
+    dbPromise = openDB("gitdot", 15, {
       upgrade(db, oldVersion) {
         if (oldVersion < 11) {
           if (db.objectStoreNames.contains("blobs"))
             db.deleteObjectStore("blobs");
-          if (db.objectStoreNames.contains("hasts"))
-            db.deleteObjectStore("hasts");
-        }
-        if (oldVersion < 12) {
-          // dual-theme HASTs: drop entries highlighted before vitesse-dark was added.
-          if (db.objectStoreNames.contains("hasts"))
-            db.deleteObjectStore("hasts");
         }
         if (oldVersion < 13) {
           // CommitAuthorResource shape change: name (now gitdot slug) + git_name.
@@ -43,14 +35,16 @@ function getDb(): Promise<IDBPDatabase> {
           if (db.objectStoreNames.contains("builds"))
             db.deleteObjectStore("builds");
         }
+        if (oldVersion < 15) {
+          if (db.objectStoreNames.contains("hasts"))
+            db.deleteObjectStore("hasts");
+        }
         if (!db.objectStoreNames.contains("commits"))
           db.createObjectStore("commits");
         if (!db.objectStoreNames.contains("paths"))
           db.createObjectStore("paths");
         if (!db.objectStoreNames.contains("blobs"))
           db.createObjectStore("blobs");
-        if (!db.objectStoreNames.contains("hasts"))
-          db.createObjectStore("hasts");
         if (db.objectStoreNames.contains("settings"))
           db.deleteObjectStore("settings");
         if (!db.objectStoreNames.contains("metadata"))
@@ -59,28 +53,6 @@ function getDb(): Promise<IDBPDatabase> {
     });
   }
   return dbPromise;
-}
-
-function withTimings(db: GitdotDatabase): GitdotDatabase {
-  return new Proxy(db, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (typeof value !== "function") return value;
-      return async (...args: unknown[]) => {
-        const start = performance.now();
-        try {
-          return await (value as (...a: unknown[]) => Promise<unknown>).apply(
-            receiver,
-            args,
-          );
-        } finally {
-          console.log(
-            `idb.${String(prop)} ${(performance.now() - start).toFixed(2)}ms`,
-          );
-        }
-      };
-    },
-  });
 }
 
 export function openIdb(): GitdotDatabase {
@@ -92,7 +64,7 @@ export function openIdb(): GitdotDatabase {
 
   getDb();
 
-  return withTimings({
+  return {
     async getPaths(owner, repo) {
       const db = await getDb();
       const prefix = `${repoKey(owner, repo)}/`;
@@ -178,16 +150,6 @@ export function openIdb(): GitdotDatabase {
       ]);
     },
 
-    async getHast(owner: string, repo: string, path: string) {
-      const db = await getDb();
-      return (await db.get("hasts", pathKey(owner, repo, path))) ?? null;
-    },
-
-    async putHast(owner: string, repo: string, path: string, hast: Root) {
-      const db = await getDb();
-      await db.put("hasts", hast, pathKey(owner, repo, path));
-    },
-
     async getMetadata(owner, repo) {
       const db = await getDb();
       return (await db.get("metadata", repoKey(owner, repo))) ?? null;
@@ -197,5 +159,5 @@ export function openIdb(): GitdotDatabase {
       const db = await getDb();
       await db.put("metadata", metadata, repoKey(owner, repo));
     },
-  });
+  };
 }

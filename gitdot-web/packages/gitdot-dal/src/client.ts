@@ -4,7 +4,6 @@ import type {
   ResourceResultType,
 } from "./provider/types";
 
-export * from "./db";
 export * from "./hast";
 export * from "./language";
 export * from "./provider/client";
@@ -19,9 +18,32 @@ export function useResources<S>(
   resources: ResourceResultType<S>,
 ): ResourcePromisesType<S> {
   const localPromises = ClientProvider.instance.replay(resources.requests);
+  const keys = Object.keys(resources.requests);
+  const start = performance.now();
+  const timings: Record<
+    string,
+    { client: number | null; server: number | null }
+  > = {};
+  for (const key of keys) timings[key] = { client: null, server: null };
+
+  let remaining = keys.length * 2;
+  const tick = () => {
+    if (--remaining === 0) console.log("[useResources]", timings);
+  };
+
   const result: Record<string, Promise<unknown>> = {};
-  for (const key of Object.keys(resources.requests)) {
-    result[key] = racePromises(resources.promises[key as keyof S], localPromises[key]);
+  for (const key of keys) {
+    const serverPromise = resources.promises[key as keyof S];
+    const clientPromise = localPromises[key];
+    Promise.resolve(clientPromise).finally(() => {
+      timings[key].client = +(performance.now() - start).toFixed(2);
+      tick();
+    });
+    Promise.resolve(serverPromise).finally(() => {
+      timings[key].server = +(performance.now() - start).toFixed(2);
+      tick();
+    });
+    result[key] = racePromises(serverPromise, clientPromise);
   }
   return result as ResourcePromisesType<S>;
 }

@@ -7,6 +7,7 @@ import type {
 import type { Root } from "hast";
 import { openIdb } from "../db";
 import { createShikiWorker, createSyncWorker } from "../workers";
+import type { ShikiRequest, ShikiResponse } from "../workers/shiki";
 import type { SyncResponse } from "../workers/sync";
 import { GitdotProvider, type ResourceRequestType } from "./types";
 
@@ -26,6 +27,7 @@ export class ClientProvider extends GitdotProvider {
   private syncWorker: SharedWorker | null = null;
   private shikiWorker: SharedWorker | null = null;
   private syncRequests = new Map<string, () => void>();
+  private shikiRequests = new Map<string, (hast: Root) => void>();
 
   private constructor() {
     super();
@@ -41,6 +43,13 @@ export class ClientProvider extends GitdotProvider {
     };
 
     this.shikiWorker = createShikiWorker();
+    this.shikiWorker.port.start();
+    this.shikiWorker.port.onmessage = (e: MessageEvent<ShikiResponse>) => {
+      const resolve = this.shikiRequests.get(e.data.id);
+      if (!resolve) return;
+      this.shikiRequests.delete(e.data.id);
+      resolve(e.data.hast);
+    };
   }
 
   syncRepo(owner: string, repo: string): Promise<void> {
@@ -111,7 +120,18 @@ export class ClientProvider extends GitdotProvider {
     path: string,
     _ref?: string,
   ): Promise<Root | null> {
-    return this.db.getHast(owner, repo, path);
+    const blob = await this.db.getBlob(owner, repo, path);
+    if (!blob || blob.type !== "file") return null;
+
+    const id = crypto.randomUUID();
+    return new Promise<Root>((resolve) => {
+      this.shikiRequests.set(id, resolve);
+      this.shikiWorker?.port.postMessage({
+        id,
+        path,
+        content: blob.content,
+      } satisfies ShikiRequest);
+    });
   }
 
   async getCommit(owner: string, repo: string, sha: string) {

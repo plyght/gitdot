@@ -1,7 +1,7 @@
 "use client";
 
 import type { RepositoryPathsResource } from "gitdot-api";
-import { ClientProvider, openIdb } from "gitdot-dal/client";
+import { ClientProvider } from "gitdot-dal/client";
 import type { Root } from "hast";
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
@@ -19,7 +19,6 @@ export function RepoFileDialog({
   owner: string;
   repo: string;
 }) {
-  const idb = useMemo(() => openIdb(), []);
   const [paths, setPaths] = useState<RepositoryPathsResource | null>(null);
   const [hast, setHast] = useState<Root | null>(null);
   const [open, setOpen] = useState(false);
@@ -29,8 +28,8 @@ export function RepoFileDialog({
   const [mouseMoved, setMouseMoved] = useState(false);
 
   useEffect(() => {
-    idb.getPaths(owner, repo).then(setPaths);
-  }, [idb, owner, repo]);
+    ClientProvider.instance.getPaths(owner, repo).then(setPaths);
+  }, [owner, repo]);
 
   const files = useMemo(
     () => paths?.entries.filter((entry) => entry.path_type === "blob") ?? [],

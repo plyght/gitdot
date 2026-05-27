@@ -4,7 +4,6 @@ import type {
   RepositoryCommitResource,
   RepositoryPathsResource,
 } from "gitdot-api";
-import type { Root } from "hast";
 
 export type RepositoryMetadata = {
   last_commit: string;
@@ -61,10 +60,6 @@ export interface GitdotDatabase {
     repo: string,
     blobs: RepositoryBlobsResource,
   ): Promise<void>;
-
-  getHast(owner: string, repo: string, path: string): Promise<Root | null>;
-
-  putHast(owner: string, repo: string, path: string, hast: Root): Promise<void>;
 
   getMetadata(owner: string, repo: string): Promise<RepositoryMetadata | null>;
 
