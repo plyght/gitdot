@@ -1,3 +1,4 @@
+pub mod account;
 pub mod device;
 pub mod email;
 pub mod github;

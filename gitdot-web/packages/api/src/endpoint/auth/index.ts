@@ -1,3 +1,4 @@
+export * from "./account";
 export * from "./device";
 export * from "./email";
 export * from "./github";

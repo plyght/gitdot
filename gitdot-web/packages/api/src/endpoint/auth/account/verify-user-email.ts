@@ -12,7 +12,7 @@ export const VerifyUserEmailResponse = UserEmailResource;
 export type VerifyUserEmailResponse = z.infer<typeof VerifyUserEmailResponse>;
 
 export const VerifyUserEmail = {
-  path: "/auth/email/verify-email",
+  path: "/auth/account/verify-email",
   method: "POST",
   request: VerifyUserEmailRequest,
   response: VerifyUserEmailResponse,

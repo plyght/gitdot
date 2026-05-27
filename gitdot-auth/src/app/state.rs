@@ -16,8 +16,8 @@ use gitdot_core::{
         SlackRepositoryImpl, TokenRepositoryImpl, UserRepositoryImpl,
     },
     service::{
-        DeviceService, DeviceServiceImpl, EmailVerificationService, EmailVerificationServiceImpl,
-        SessionService, SessionServiceImpl, SlackService, SlackServiceImpl,
+        AccountService, AccountServiceImpl, DeviceService, DeviceServiceImpl, SessionService,
+        SessionServiceImpl, SlackService, SlackServiceImpl,
     },
 };
 
@@ -30,7 +30,7 @@ pub struct AppState {
     pub session_service: Arc<dyn SessionService>,
     pub device_service: Arc<dyn DeviceService>,
     pub slack_service: Arc<dyn SlackService>,
-    pub email_verification_service: Arc<dyn EmailVerificationService>,
+    pub account_service: Arc<dyn AccountService>,
 
     pub auth_config: AuthConfig,
     pub vercel_oidc_config: VercelOidcConfig,
@@ -100,7 +100,7 @@ impl AppState {
             token_client.clone(),
         ));
         let slack_service = Arc::new(SlackServiceImpl::new(slack_repo, slack_bot_client));
-        let email_verification_service = Arc::new(EmailVerificationServiceImpl::new(
+        let account_service = Arc::new(AccountServiceImpl::new(
             user_repo,
             email_verification_repo,
             email_client,
@@ -124,7 +124,7 @@ impl AppState {
             session_service,
             device_service,
             slack_service,
-            email_verification_service,
+            account_service,
             auth_config,
             vercel_oidc_config,
         })

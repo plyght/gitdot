@@ -5,7 +5,7 @@ use crate::{endpoint::Endpoint, resource::user::UserEmailResource};
 pub struct AddUserEmail;
 
 impl Endpoint for AddUserEmail {
-    const PATH: &'static str = "/auth/email/add-email";
+    const PATH: &'static str = "/auth/account/add-email";
     const METHOD: http::Method = http::Method::POST;
 
     type Request = AddUserEmailRequest;

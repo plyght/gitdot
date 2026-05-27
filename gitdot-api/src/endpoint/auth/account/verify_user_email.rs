@@ -5,7 +5,7 @@ use crate::{endpoint::Endpoint, resource::user::UserEmailResource};
 pub struct VerifyUserEmail;
 
 impl Endpoint for VerifyUserEmail {
-    const PATH: &'static str = "/auth/email/verify-email";
+    const PATH: &'static str = "/auth/account/verify-email";
     const METHOD: http::Method = http::Method::POST;
 
     type Request = VerifyUserEmailRequest;

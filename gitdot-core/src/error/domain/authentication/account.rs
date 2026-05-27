@@ -3,7 +3,7 @@ use thiserror::Error;
 use crate::error::{ConflictError, DatabaseError, EmailError, InputError, NotFoundError};
 
 #[derive(Debug, Error)]
-pub enum EmailVerificationError {
+pub enum AccountError {
     #[error(transparent)]
     Input(#[from] InputError),
 

@@ -11,7 +11,7 @@ export const AddUserEmailResponse = UserEmailResource;
 export type AddUserEmailResponse = z.infer<typeof AddUserEmailResponse>;
 
 export const AddUserEmail = {
-  path: "/auth/email/add-email",
+  path: "/auth/account/add-email",
   method: "POST",
   request: AddUserEmailRequest,
   response: AddUserEmailResponse,

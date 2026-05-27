@@ -1,6 +1,6 @@
 use axum::{Json, extract::State, http::StatusCode};
 
-use gitdot_api::endpoint::auth::email::verify_user_email as api;
+use gitdot_api::endpoint::auth::account::verify_user_email as api;
 use gitdot_axum::extract::Principal;
 use gitdot_core::dto::VerifyUserEmailRequest;
 
@@ -16,7 +16,7 @@ pub async fn verify_user_email(
 ) -> Result<AppResponse<api::VerifyUserEmailResponse>, AppError> {
     let request = VerifyUserEmailRequest::new(principal.id, &body.email, &body.code)?;
     state
-        .email_verification_service
+        .account_service
         .verify_email(request)
         .await
         .map_err(AppError::from)

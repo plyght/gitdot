@@ -1,3 +1,4 @@
+mod account;
 mod device;
 mod email;
 mod github;
@@ -9,6 +10,7 @@ mod validate_token;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
+pub use account::*;
 pub use device::*;
 pub use email::*;
 pub use github::*;

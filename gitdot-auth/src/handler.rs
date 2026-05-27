@@ -1,3 +1,4 @@
+mod account;
 mod device;
 mod email;
 mod github;
@@ -13,8 +14,9 @@ use gitdot_axum::middleware::verify_vercel_oidc;
 
 use crate::app::AppState;
 
+use account::{add_user_email, verify_user_email};
 use device::{authorize_device, create_device_code, poll_token};
-use email::{add_user_email, send_auth_email, verify_auth_code, verify_user_email};
+use email::{send_auth_email, verify_auth_code};
 use github::{exchange_github_code, redirect_to_github_auth};
 use logout::logout;
 use refresh_session::refresh_session;
@@ -27,10 +29,10 @@ pub fn create_auth_router(state: AppState) -> Router<AppState> {
 
     let web_routes = Router::new()
         .route("/auth/device/authorize", post(authorize_device))
+        .route("/auth/account/add-email", post(add_user_email))
+        .route("/auth/account/verify-email", post(verify_user_email))
         .route("/auth/email/send", post(send_auth_email))
         .route("/auth/email/verify", post(verify_auth_code))
-        .route("/auth/email/add-email", post(add_user_email))
-        .route("/auth/email/verify-email", post(verify_user_email))
         .route("/auth/github/redirect", get(redirect_to_github_auth))
         .route("/auth/github/exchange", post(exchange_github_code))
         .route("/auth/slack/link", post(link_slack_account))
