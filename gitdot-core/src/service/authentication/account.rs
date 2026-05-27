@@ -90,20 +90,15 @@ where
         // Resolve the user_email row: insert a new unverified row, or reuse the
         // caller's existing unverified row (resend). Conflict when the email
         // already belongs to another user, or to this user but verified.
-        let user_email_id = match self.user_repo.get_email_owner(email).await? {
-            Some((id, owner_id, is_verified)) => {
-                if owner_id != request.user_id || is_verified {
+        let user_email_id = match self.user_repo.get_email(email).await? {
+            Some(row) => {
+                if row.user_id != request.user_id || row.is_verified {
                     return Err(ConflictError::new("email", email).into());
                 }
-                id
+                row.id
             }
             None => match self.user_repo.create_email(request.user_id, email).await {
-                Ok(_) => self
-                    .user_repo
-                    .get_email_owner(email)
-                    .await?
-                    .map(|(id, _, _)| id)
-                    .or_not_found("user_email", email)?,
+                Ok(row) => row.id,
                 Err(DatabaseError::Other(e))
                     if e.as_database_error().and_then(|db| db.code()).as_deref()
                         == Some("23505") =>
@@ -150,8 +145,8 @@ where
         // Locate the caller's row for this email. Any mismatch (not present, or
         // owned by another user) collapses to InvalidCode so we don't leak
         // ownership information.
-        let user_email_id = match self.user_repo.get_email_owner(email).await? {
-            Some((id, owner_id, _)) if owner_id == request.user_id => id,
+        let user_email_id = match self.user_repo.get_email(email).await? {
+            Some(row) if row.user_id == request.user_id => row.id,
             _ => return Err(AccountError::InvalidCode),
         };
 
