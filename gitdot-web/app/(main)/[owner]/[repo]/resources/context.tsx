@@ -1,14 +1,7 @@
 "use client";
 
-import { LocalProvider } from "gitdot-dal/client";
-import { createContext, useContext, useEffect, useState } from "react";
-import { useWorkerContext } from "@/(main)/context/worker";
-
-type RepoContext = {
-  resourcesReady: boolean;
-  hastsReady: boolean;
-};
-const RepoContext = createContext<RepoContext | null>(null);
+import { ClientProvider } from "gitdot-dal/client";
+import { useEffect } from "react";
 
 export function RepoResources({
   owner,
@@ -19,34 +12,9 @@ export function RepoResources({
   repo: string;
   children: React.ReactNode;
 }) {
-  const { syncRepo } = useWorkerContext();
-  const [resourcesReady, setResourcesReady] = useState(false);
-  const [hastsReady, setHastsReady] = useState(false);
-
   useEffect(() => {
-    if (resourcesReady) LocalProvider.instance.initialize(owner, repo);
-  }, [resourcesReady, owner, repo]);
+    ClientProvider.instance.syncRepo(owner, repo);
+  }, [owner, repo]);
 
-  useEffect(() => {
-    const { resources, hasts } = syncRepo(owner, repo);
-    resources.then(() => setResourcesReady(true));
-    hasts.then(() => setHastsReady(true));
-  }, [syncRepo, owner, repo]);
-
-  return (
-    <RepoContext
-      value={{
-        resourcesReady,
-        hastsReady,
-      }}
-    >
-      {children}
-    </RepoContext>
-  );
-}
-
-export function useRepoContext(): RepoContext {
-  const ctx = useContext(RepoContext);
-  if (!ctx) throw new Error("useRepoContext must be used within RepoResources");
-  return ctx;
+  return <>{children}</>;
 }

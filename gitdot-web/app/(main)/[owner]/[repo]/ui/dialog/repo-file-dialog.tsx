@@ -1,7 +1,7 @@
 "use client";
 
 import type { RepositoryPathsResource } from "gitdot-api";
-import { LocalProvider, openIdb } from "gitdot-dal/client";
+import { ClientProvider, openIdb } from "gitdot-dal/client";
 import type { Root } from "hast";
 import { toJsxRuntime } from "hast-util-to-jsx-runtime";
 import type { JSX } from "react";
@@ -10,7 +10,6 @@ import { jsx, jsxs } from "react/jsx-runtime";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import Link from "@/ui/link";
 import { Loading } from "@/ui/loading";
-import { useRepoContext } from "../../resources/context";
 import { fuzzyMatch } from "../../util";
 
 export function RepoFileDialog({
@@ -20,7 +19,6 @@ export function RepoFileDialog({
   owner: string;
   repo: string;
 }) {
-  const { resourcesReady } = useRepoContext();
   const idb = useMemo(() => openIdb(), []);
   const [paths, setPaths] = useState<RepositoryPathsResource | null>(null);
   const [hast, setHast] = useState<Root | null>(null);
@@ -31,9 +29,8 @@ export function RepoFileDialog({
   const [mouseMoved, setMouseMoved] = useState(false);
 
   useEffect(() => {
-    if (!resourcesReady) return;
     idb.getPaths(owner, repo).then(setPaths);
-  }, [resourcesReady, idb, owner, repo]);
+  }, [idb, owner, repo]);
 
   const files = useMemo(
     () => paths?.entries.filter((entry) => entry.path_type === "blob") ?? [],
@@ -44,11 +41,12 @@ export function RepoFileDialog({
   const selectedItemRef = useRef<HTMLAnchorElement | null>(null);
 
   useEffect(() => {
+    if (!paths) return;
     const handleOpenFileSearch = () => setOpen(true);
     window.addEventListener("openFileSearch", handleOpenFileSearch);
     return () =>
       window.removeEventListener("openFileSearch", handleOpenFileSearch);
-  }, []);
+  }, [paths]);
 
   const filteredFiles = useMemo(() => {
     if (!query) return files;
@@ -111,7 +109,7 @@ export function RepoFileDialog({
       setHast(null);
       return;
     }
-    LocalProvider.instance
+    ClientProvider.instance
       .getHast(owner, repo, selectedFile.path)
       .then(setHast);
   }, [selectedFile?.path, owner, repo, selectedFile]);

@@ -1,7 +1,6 @@
-import { LocalProvider } from "./provider/client";
+import { ClientProvider } from "./provider/client";
 import type {
   ResourcePromisesType,
-  ResourceRequestsType,
   ResourceResultType,
 } from "./provider/types";
 
@@ -19,25 +18,11 @@ export type { SyncRequest, SyncResponse } from "./workers/sync";
 export function useResources<S>(
   resources: ResourceResultType<S>,
 ): ResourcePromisesType<S> {
-  return raceRequests(
-    [LocalProvider.instance],
-    resources.requests,
-    resources.promises,
-  );
-}
-
-function raceRequests<S>(
-  providers: LocalProvider[],
-  requests: ResourceRequestsType<S>,
-  promises: ResourcePromisesType<S>,
-): ResourcePromisesType<S> {
+  const localPromises = ClientProvider.instance.replay(resources.requests);
   const result: Record<string, Promise<unknown>> = {};
-
-  for (const key of Object.keys(requests)) {
-    const replayed = providers.map((p) => p.replay(requests)[key]);
-    result[key] = racePromises(promises[key as keyof S], ...replayed);
+  for (const key of Object.keys(resources.requests)) {
+    result[key] = racePromises(resources.promises[key as keyof S], localPromises[key]);
   }
-
   return result as ResourcePromisesType<S>;
 }
 

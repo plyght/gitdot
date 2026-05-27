@@ -6,20 +6,54 @@ import type {
 } from "gitdot-api";
 import type { Root } from "hast";
 import { openIdb } from "../db";
+import { createShikiWorker, createSyncWorker } from "../workers";
+import type { SyncResponse } from "../workers/sync";
 import { GitdotProvider, type ResourceRequestType } from "./types";
 
-export class LocalProvider extends GitdotProvider {
-  private static _instance: LocalProvider | null = null;
-  static get instance(): LocalProvider {
-    if (!LocalProvider._instance) {
-      LocalProvider._instance = new LocalProvider();
+export class ClientProvider extends GitdotProvider {
+  private static _instance: ClientProvider | null = null;
+  static get instance(): ClientProvider {
+    if (!ClientProvider._instance) {
+      ClientProvider._instance = new ClientProvider();
     }
-    return LocalProvider._instance;
+    return ClientProvider._instance;
   }
 
   private db = openIdb();
   private paths = new Map<string, RepositoryPathsResource>();
   private commits = new Map<string, RepositoryCommitResource[]>();
+
+  private syncWorker: SharedWorker | null = null;
+  private shikiWorker: SharedWorker | null = null;
+  private syncRequests = new Map<string, () => void>();
+
+  private constructor() {
+    super();
+    if (typeof SharedWorker === "undefined") return;
+
+    this.syncWorker = createSyncWorker();
+    this.syncWorker.port.start();
+    this.syncWorker.port.onmessage = (e: MessageEvent<SyncResponse>) => {
+      const resolve = this.syncRequests.get(e.data.id);
+      if (!resolve) return;
+      this.syncRequests.delete(e.data.id);
+      resolve();
+    };
+
+    this.shikiWorker = createShikiWorker();
+  }
+
+  syncRepo(owner: string, repo: string): Promise<void> {
+    let resolve!: () => void;
+    const done = new Promise<void>((r) => {
+      resolve = r;
+    });
+    const id = crypto.randomUUID();
+    this.syncRequests.set(id, resolve);
+    this.syncWorker?.port.postMessage({ id, owner, repo });
+    done.then(() => this.initializeRepo(owner, repo));
+    return done;
+  }
 
   replay(
     requests: Record<string, ResourceRequestType>,
@@ -28,14 +62,14 @@ export class LocalProvider extends GitdotProvider {
     for (const [key, { method, args }] of Object.entries(requests)) {
       const func = this[method as keyof this];
       if (typeof func !== "function") {
-        throw new Error(`LocalProvider has no method "${method}"`);
+        throw new Error(`ClientProvider has no method "${method}"`);
       }
       results[key] = func.apply(this, args);
     }
     return results;
   }
 
-  async initialize(owner: string, repo: string) {
+  async initializeRepo(owner: string, repo: string) {
     await Promise.all([
       this.getPaths(owner, repo),
       this.getCommits(owner, repo),

@@ -1,7 +1,7 @@
 "use client";
 
 import type { RepositoryPathsResource } from "gitdot-api";
-import { LocalProvider } from "gitdot-dal/client";
+import { ClientProvider } from "gitdot-dal/client";
 import type { Root } from "hast";
 import { useParams } from "next/navigation";
 import { FolderPathPreview } from "./folder-path-preview";
@@ -18,7 +18,7 @@ export function FolderViewer({
   const { owner, repo } = useParams<{ owner: string; repo: string }>();
 
   const getHast = (p: string): Promise<Root | null> =>
-    LocalProvider.instance.getHast(owner, repo, p);
+    ClientProvider.instance.getHast(owner, repo, p);
 
   if (!paths) return null;
 

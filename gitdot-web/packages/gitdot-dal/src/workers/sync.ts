@@ -13,7 +13,7 @@ export interface SyncRequest {
 
 export interface SyncResponse {
   id: string;
-  stage: "resources" | "hasts";
+  done: true;
 }
 
 interface Message {
@@ -87,9 +87,8 @@ async function process({ id, owner, repo }: SyncRequest, port: MessagePort) {
 
   console.log(`[gitdot-sync] idb write took ${performance.now() - t}ms`);
 
-  port.postMessage({ id, stage: "resources" } satisfies SyncResponse);
   if (!result.blobs) {
-    port.postMessage({ id, stage: "hasts" } satisfies SyncResponse);
+    port.postMessage({ id, done: true } satisfies SyncResponse);
     return;
   }
 
@@ -124,7 +123,7 @@ async function process({ id, owner, repo }: SyncRequest, port: MessagePort) {
   logStats("blob size", blobSizes, (n) => `${(n / 1024).toFixed(1)}kb`);
   logStats("hast size", hastSizes, (n) => `${(n / 1024).toFixed(1)}kb`);
   logStats("codeToHast", hastTimes, (n) => `${n.toFixed(2)}ms`);
-  port.postMessage({ id, stage: "hasts" } satisfies SyncResponse);
+  port.postMessage({ id, done: true } satisfies SyncResponse);
 }
 
 function logStats(
