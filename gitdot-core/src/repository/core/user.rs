@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rand::RngExt as _;
-use sqlx::{FromRow, PgPool, Postgres};
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::{
@@ -11,52 +11,22 @@ use crate::{
     util::user::DEFAULT_USER_README,
 };
 
-#[derive(FromRow)]
-struct UserRow {
-    id: Uuid,
-    name: String,
-    provider: AuthProvider,
-    created_at: DateTime<Utc>,
-    display_name: Option<String>,
-    location: Option<String>,
-    readme: Option<String>,
-    links: Vec<String>,
-}
-
-impl UserRow {
-    fn into_user(self, emails: Vec<UserEmail>) -> User {
-        User {
-            id: self.id,
-            name: self.name,
-            provider: self.provider,
-            created_at: self.created_at,
-            display_name: self.display_name,
-            location: self.location,
-            readme: self.readme,
-            links: self.links,
-            emails,
-        }
-    }
-}
-
-async fn fetch_emails<'e, E>(executor: E, user_id: Uuid) -> Result<Vec<UserEmail>, DatabaseError>
-where
-    E: sqlx::Executor<'e, Database = Postgres>,
-{
-    let rows = sqlx::query_as::<_, UserEmail>(
-        r#"
-        SELECT id, user_id, email, is_primary, is_verified, created_at
-        FROM core.user_emails
-        WHERE user_id = $1
-        ORDER BY is_primary DESC, created_at ASC
-        "#,
-    )
-    .bind(user_id)
-    .fetch_all(executor)
-    .await?;
-
-    Ok(rows)
-}
+const USER_PROJECTION: &str = r#"
+SELECT
+    u.id, u.name, u.provider, u.created_at, u.display_name, u.location, u.readme, u.links,
+    COALESCE(
+        (SELECT json_agg(json_build_object(
+            'id', e.id,
+            'user_id', e.user_id,
+            'email', e.email,
+            'is_primary', e.is_primary,
+            'is_verified', e.is_verified,
+            'created_at', e.created_at
+         ) ORDER BY e.is_primary DESC, e.created_at ASC)
+         FROM core.user_emails e WHERE e.user_id = u.id),
+        '[]'::json
+    ) AS emails
+"#;
 
 #[derive(FromRow)]
 struct StarredRepoRow {
@@ -145,54 +115,55 @@ impl UserRepository for UserRepositoryImpl {
         };
         let name = format!("user_{suffix}");
 
-        let mut tx = self.pool.begin().await?;
-
-        let row = sqlx::query_as::<_, UserRow>(
+        let user = sqlx::query_as::<_, User>(
             r#"
-            INSERT INTO core.users (name, provider, readme)
-            VALUES ($1, $2, $3)
-            RETURNING id, name, provider, created_at, display_name, location, readme, links
+            WITH new_user AS (
+                INSERT INTO core.users (name, provider, readme)
+                VALUES ($1, $2, $3)
+                RETURNING id, name, provider, created_at, display_name, location, readme, links
+            ),
+            new_email AS (
+                INSERT INTO core.user_emails (user_id, email, is_primary, is_verified, verified_at)
+                SELECT id, $4, TRUE, $5, CASE WHEN $5 THEN NOW() ELSE NULL END FROM new_user
+            )
+            SELECT
+                u.id, u.name, u.provider, u.created_at,
+                u.display_name, u.location, u.readme, u.links,
+                COALESCE(
+                    (SELECT json_agg(json_build_object(
+                        'id', e.id,
+                        'user_id', e.user_id,
+                        'email', e.email,
+                        'is_primary', e.is_primary,
+                        'is_verified', e.is_verified,
+                        'created_at', e.created_at
+                     ) ORDER BY e.is_primary DESC, e.created_at ASC)
+                     FROM core.user_emails e WHERE e.user_id = u.id),
+                    '[]'::json
+                ) AS emails
+            FROM new_user u
             "#,
         )
         .bind(name)
         .bind(provider)
         .bind(DEFAULT_USER_README)
-        .fetch_one(&mut *tx)
-        .await?;
-
-        let user_email = sqlx::query_as::<_, UserEmail>(
-            r#"
-            INSERT INTO core.user_emails (user_id, email, is_primary, is_verified, verified_at)
-            VALUES ($1, $2, TRUE, $3, CASE WHEN $3 THEN NOW() ELSE NULL END)
-            RETURNING id, user_id, email, is_primary, is_verified, created_at
-            "#,
-        )
-        .bind(row.id)
         .bind(email)
         .bind(is_email_verified)
-        .fetch_one(&mut *tx)
+        .fetch_one(&self.pool)
         .await?;
 
-        tx.commit().await?;
-
-        Ok(row.into_user(vec![user_email]))
+        Ok(user)
     }
 
     async fn get(&self, user_name: &str) -> Result<Option<User>, DatabaseError> {
-        let row = sqlx::query_as::<_, UserRow>(
-            r#"
-            SELECT id, name, provider, created_at, display_name, location, readme, links
-            FROM core.users
-            WHERE name = $1
-            "#,
-        )
+        let user = sqlx::query_as::<_, User>(&format!(
+            "{USER_PROJECTION} FROM core.users u WHERE u.name = $1"
+        ))
         .bind(user_name)
         .fetch_optional(&self.pool)
         .await?;
 
-        let Some(row) = row else { return Ok(None) };
-        let emails = fetch_emails(&self.pool, row.id).await?;
-        Ok(Some(row.into_user(emails)))
+        Ok(user)
     }
 
     async fn update(
@@ -204,7 +175,7 @@ impl UserRepository for UserRepositoryImpl {
         links: Option<Vec<String>>,
         display_name: Option<String>,
     ) -> Result<User, DatabaseError> {
-        let mut builder = sqlx::QueryBuilder::new("UPDATE core.users SET ");
+        let mut builder = sqlx::QueryBuilder::new("WITH u AS (UPDATE core.users SET ");
         let mut sep = builder.separated(", ");
 
         if let Some(n) = name {
@@ -223,52 +194,45 @@ impl UserRepository for UserRepositoryImpl {
             sep.push("display_name = ").push_bind_unseparated(d);
         }
 
-        builder.push(" WHERE id = ").push_bind(id).push(
-            " RETURNING id, name, provider, created_at, display_name, location, readme, links",
-        );
+        builder
+            .push(" WHERE id = ")
+            .push_bind(id)
+            .push(" RETURNING id, name, provider, created_at, display_name, location, readme, links) ")
+            .push(USER_PROJECTION)
+            .push(" FROM u");
 
-        let row = builder
-            .build_query_as::<UserRow>()
+        let user = builder
+            .build_query_as::<User>()
             .fetch_one(&self.pool)
             .await?;
-
-        let emails = fetch_emails(&self.pool, row.id).await?;
-        Ok(row.into_user(emails))
+        Ok(user)
     }
 
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DatabaseError> {
-        let row = sqlx::query_as::<_, UserRow>(
-            r#"
-            SELECT id, name, provider, created_at, display_name, location, readme, links
-            FROM core.users
-            WHERE id = $1
-            "#,
-        )
+        let user = sqlx::query_as::<_, User>(&format!(
+            "{USER_PROJECTION} FROM core.users u WHERE u.id = $1"
+        ))
         .bind(id)
         .fetch_optional(&self.pool)
         .await?;
 
-        let Some(row) = row else { return Ok(None) };
-        let emails = fetch_emails(&self.pool, row.id).await?;
-        Ok(Some(row.into_user(emails)))
+        Ok(user)
     }
 
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DatabaseError> {
-        let row = sqlx::query_as::<_, UserRow>(
+        let user = sqlx::query_as::<_, User>(&format!(
             r#"
-            SELECT u.id, u.name, u.provider, u.created_at, u.display_name, u.location, u.readme, u.links
+            {USER_PROJECTION}
             FROM core.users u
             JOIN core.user_emails ue ON ue.user_id = u.id AND ue.is_primary
             WHERE ue.email = $1
-            "#,
-        )
+            "#
+        ))
         .bind(email)
         .fetch_optional(&self.pool)
         .await?;
 
-        let Some(row) = row else { return Ok(None) };
-        let emails = fetch_emails(&self.pool, row.id).await?;
-        Ok(Some(row.into_user(emails)))
+        Ok(user)
     }
 
     async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<(String, Uuid)>, DatabaseError> {
@@ -323,7 +287,19 @@ impl UserRepository for UserRepositoryImpl {
     }
 
     async fn list_emails(&self, user_id: Uuid) -> Result<Vec<UserEmail>, DatabaseError> {
-        fetch_emails(&self.pool, user_id).await
+        let rows = sqlx::query_as::<_, UserEmail>(
+            r#"
+            SELECT id, user_id, email, is_primary, is_verified, created_at
+            FROM core.user_emails
+            WHERE user_id = $1
+            ORDER BY is_primary DESC, created_at ASC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
     }
 
     async fn create_email(&self, user_id: Uuid, email: &str) -> Result<UserEmail, DatabaseError> {

@@ -3,12 +3,11 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct User {
     pub id: Uuid,
     pub name: String,
     pub provider: AuthProvider,
-    pub emails: Vec<UserEmail>,
 
     // user metadata provided by user
     pub display_name: Option<String>,
@@ -17,6 +16,9 @@ pub struct User {
     pub links: Vec<String>,
 
     pub created_at: DateTime<Utc>,
+
+    #[sqlx(json)]
+    pub emails: Vec<UserEmail>,
 }
 
 impl User {
