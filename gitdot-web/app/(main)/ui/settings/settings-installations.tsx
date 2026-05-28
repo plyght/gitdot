@@ -29,8 +29,8 @@ export function SettingsInstallations() {
         <>
           <div className="mt-3">
             {installations.length === 0 ? (
-              <div className="border border-border rounded p-3 text-sm text-muted-foreground">
-                no installations found
+              <div className="text-sm font-mono text-muted-foreground">
+                no accounts found
               </div>
             ) : (
               <ul>

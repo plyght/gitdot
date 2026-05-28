@@ -43,8 +43,8 @@ export function SettingsMigrations() {
       ) : (
         <div className="mt-3">
           {!migrations || migrations.length === 0 ? (
-            <div className="border border-border rounded p-3 text-sm text-muted-foreground">
-              no migrations yet
+            <div className="text-sm font-mono text-muted-foreground">
+              no migrations found
             </div>
           ) : (
             <ul>

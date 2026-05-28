@@ -1,6 +1,7 @@
 "use client";
 
 import type { UserResource } from "gitdot-api";
+import { Save } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
@@ -53,7 +54,20 @@ export function SettingsProfile({ user }: { user: UserResource }) {
   return (
     <div className="p-4">
       <div className="space-y-6">
-        <ProfilePrimary user={user} />
+        <div className="flex justify-between items-start gap-4">
+          <ProfilePrimary user={user} />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!dirty || saving}
+            className={`flex items-center gap-1.5 text-sm border-b transition-colors cursor-pointer disabled:cursor-not-allowed ${
+              saving ? "border-transparent" : "border-current"
+            } ${dirty ? "text-foreground" : "text-muted-foreground"}`}
+          >
+            <Save className="size-3.5 mb-px" />
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
         <ProfileAbout
           displayName={displayName}
           location={location}
@@ -62,18 +76,6 @@ export function SettingsProfile({ user }: { user: UserResource }) {
         />
         <ProfileLinks links={links} onLinksChange={setLinks} />
         <ProfileReadme readme={readme} onReadmeChange={setReadme} />
-      </div>
-      <div className="flex justify-start mt-2">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={!dirty || saving}
-          className={`text-sm underline-offset-4 transition-colors cursor-pointer disabled:cursor-not-allowed ${
-            saving ? "" : "underline"
-          } ${dirty ? "text-foreground" : "text-muted-foreground"}`}
-        >
-          {saving ? "Saving..." : "Save profile"}
-        </button>
       </div>
     </div>
   );
@@ -284,17 +286,15 @@ function ProfileReadme({
   onReadmeChange: (v: string) => void;
 }) {
   return (
-    <div className="space-y-2 group">
-      <p className="text-xs text-muted-foreground font-mono transition-colors duration-200 group-focus-within:text-foreground">
-        <span className="text-foreground/40 select-none transition-colors duration-200 group-focus-within:text-foreground">
-          #{" "}
-        </span>
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground font-mono">
+        <span className="text-foreground/40 select-none"># </span>
         README.md
       </p>
       <textarea
         value={readme}
         onChange={(e) => onReadmeChange(e.target.value)}
-        className="text-sm bg-transparent border-b border-border pb-1 outline-none w-full min-h-24 placeholder:text-muted-foreground/40 transition-colors focus:border-foreground resize-none field-sizing-content"
+        className="text-sm bg-transparent border-l border-border pl-2 outline-none w-full min-h-24 placeholder:text-muted-foreground/40 transition-colors focus:border-foreground resize-none field-sizing-content"
         placeholder="what you love to do..."
       />
     </div>
