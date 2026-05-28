@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::{
     dto::Cursor,
     error::DatabaseError,
-    model::{Organization, OrganizationMember, OrganizationRole},
+    model::{Organization, OrganizationMember, OrganizationRole, UserOrganization},
 };
 
 #[async_trait]
@@ -65,20 +65,12 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
 
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, DatabaseError>;
 
-    async fn list_members(
-        &self,
-        org_name: &str,
-        role: Option<OrganizationRole>,
-        cursor: Option<Cursor>,
-        limit: i64,
-    ) -> Result<(Vec<OrganizationMember>, Option<Cursor>), DatabaseError>;
-
     async fn list_memberships_by_user_id(
         &self,
         user_id: Uuid,
         cursor: Option<Cursor>,
         limit: i64,
-    ) -> Result<(Vec<OrganizationMember>, Option<Cursor>), DatabaseError>;
+    ) -> Result<(Vec<UserOrganization>, Option<Cursor>), DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -104,7 +96,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         let mut tx = self.pool.begin().await?;
 
         let org = sqlx::query_as::<_, Organization>(
-            "INSERT INTO core.organizations (name, readme) VALUES ($1, $2) RETURNING id, name, created_at, location, readme, links, display_name",
+            "INSERT INTO core.organizations (name, readme) VALUES ($1, $2) RETURNING id, name, created_at, location, readme, links, display_name, NULL::json AS members",
         )
         .bind(org_name)
         .bind(readme)
@@ -126,7 +118,30 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
 
     async fn get(&self, org_name: &str) -> Result<Option<Organization>, DatabaseError> {
         let org = sqlx::query_as::<_, Organization>(
-            "SELECT id, name, created_at, location, readme, links, display_name FROM core.organizations WHERE name = $1",
+            r#"
+            SELECT
+                o.id, o.name, o.created_at, o.location, o.readme, o.links, o.display_name,
+                COALESCE(
+                    (
+                        SELECT json_agg(
+                            json_build_object(
+                                'id', om.id,
+                                'user_id', om.user_id,
+                                'user_name', u.name,
+                                'role', om.role,
+                                'role_description', om.role_description,
+                                'created_at', om.created_at
+                            ) ORDER BY om.created_at DESC, om.id DESC
+                        )
+                        FROM core.organization_members om
+                        JOIN core.users u ON u.id = om.user_id
+                        WHERE om.organization_id = o.id
+                    ),
+                    '[]'::json
+                ) AS members
+            FROM core.organizations o
+            WHERE o.name = $1
+            "#,
         )
         .bind(org_name)
         .fetch_optional(&self.pool)
@@ -167,12 +182,11 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
                 FROM core.users u, core.organizations o
                 WHERE u.name = $1 AND o.name = $2
                 ON CONFLICT (user_id, organization_id) DO NOTHING
-                RETURNING id, user_id, organization_id, role, role_description, created_at
+                RETURNING id, user_id, role, role_description, created_at
             )
-            SELECT i.id, i.user_id, i.organization_id, i.role, i.role_description, i.created_at, u.name AS user_name, o.name AS org_name
+            SELECT i.id, i.user_id, i.role, i.role_description, i.created_at, u.name AS user_name
             FROM inserted i
             JOIN core.users u ON i.user_id = u.id
-            JOIN core.organizations o ON i.organization_id = o.id
             "#,
         )
         .bind(user_name)
@@ -213,7 +227,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     ) -> Result<Option<OrganizationMember>, DatabaseError> {
         let member = sqlx::query_as::<_, OrganizationMember>(
             r#"
-            SELECT om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at, u.name AS user_name, o.name AS org_name
+            SELECT om.id, om.user_id, om.role, om.role_description, om.created_at, u.name AS user_name
             FROM core.organization_members om
             JOIN core.organizations o ON om.organization_id = o.id
             JOIN core.users u ON om.user_id = u.id
@@ -255,7 +269,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         builder
             .push(" WHERE name = ")
             .push_bind(org_name)
-            .push(" RETURNING id, name, created_at, location, readme, links, display_name");
+            .push(" RETURNING id, name, created_at, location, readme, links, display_name, NULL::json AS members");
 
         Ok(builder
             .build_query_as::<Organization>()
@@ -278,12 +292,11 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
                 WHERE om.organization_id = o.id
                   AND o.name = $1
                   AND om.id = $2
-                RETURNING om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at
+                RETURNING om.id, om.user_id, om.role, om.role_description, om.created_at
             )
-            SELECT updated.id, updated.user_id, updated.organization_id, updated.role, updated.role_description, updated.created_at, u.name AS user_name, o.name AS org_name
+            SELECT updated.id, updated.user_id, updated.role, updated.role_description, updated.created_at, u.name AS user_name
             FROM updated
             JOIN core.users u ON updated.user_id = u.id
-            JOIN core.organizations o ON updated.organization_id = o.id
             "#,
         )
         .bind(org_name)
@@ -305,7 +318,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
 
         let mut orgs = sqlx::query_as::<_, Organization>(
             r#"
-            SELECT id, name, created_at, location, readme, links, display_name
+            SELECT id, name, created_at, location, readme, links, display_name, NULL::json AS members
             FROM core.organizations
             WHERE ($1::timestamptz IS NULL OR (created_at, id) < ($1, $2))
             ORDER BY created_at DESC, id DESC
@@ -334,7 +347,7 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, DatabaseError> {
         let orgs = sqlx::query_as::<_, Organization>(
             r#"
-            SELECT o.id, o.name, o.created_at, o.location, o.readme, o.links, o.display_name
+            SELECT o.id, o.name, o.created_at, o.location, o.readme, o.links, o.display_name, NULL::json AS members
             FROM core.organizations o
             JOIN core.organization_members om ON o.id = om.organization_id
             WHERE om.user_id = $1
@@ -348,68 +361,23 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         Ok(orgs)
     }
 
-    async fn list_members(
-        &self,
-        org_name: &str,
-        role: Option<OrganizationRole>,
-        cursor: Option<Cursor>,
-        limit: i64,
-    ) -> Result<(Vec<OrganizationMember>, Option<Cursor>), DatabaseError> {
-        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
-        let cursor_id = cursor.as_ref().map(|c| c.id);
-
-        let mut members = sqlx::query_as::<_, OrganizationMember>(
-            r#"
-            SELECT om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at, u.name AS user_name, o.name AS org_name
-            FROM core.organization_members om
-            JOIN core.organizations o ON om.organization_id = o.id
-            JOIN core.users u ON om.user_id = u.id
-            WHERE o.name = $1
-              AND ($2::core.organization_role IS NULL OR om.role = $2)
-              AND ($3::timestamptz IS NULL OR (om.created_at, om.id) < ($3, $4))
-            ORDER BY om.created_at DESC, om.id DESC
-            LIMIT $5
-            "#,
-        )
-        .bind(org_name)
-        .bind(role)
-        .bind(cursor_created_at)
-        .bind(cursor_id)
-        .bind(limit + 1)
-        .fetch_all(&self.pool)
-        .await?;
-
-        let next_cursor = if members.len() as i64 > limit {
-            members.pop();
-            members.last().map(|last| Cursor {
-                created_at: last.created_at,
-                id: last.id,
-            })
-        } else {
-            None
-        };
-
-        Ok((members, next_cursor))
-    }
-
     async fn list_memberships_by_user_id(
         &self,
         user_id: Uuid,
         cursor: Option<Cursor>,
         limit: i64,
-    ) -> Result<(Vec<OrganizationMember>, Option<Cursor>), DatabaseError> {
+    ) -> Result<(Vec<UserOrganization>, Option<Cursor>), DatabaseError> {
         let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
         let cursor_id = cursor.as_ref().map(|c| c.id);
 
-        let mut members = sqlx::query_as::<_, OrganizationMember>(
+        let mut orgs = sqlx::query_as::<_, UserOrganization>(
             r#"
-            SELECT om.id, om.user_id, om.organization_id, om.role, om.role_description, om.created_at, u.name AS user_name, o.name AS org_name
+            SELECT o.id, o.name, o.display_name, om.role, om.role_description, om.created_at AS joined_at
             FROM core.organization_members om
             JOIN core.organizations o ON om.organization_id = o.id
-            JOIN core.users u ON om.user_id = u.id
             WHERE om.user_id = $1
-              AND ($2::timestamptz IS NULL OR (om.created_at, om.id) < ($2, $3))
-            ORDER BY om.created_at DESC, om.id DESC
+              AND ($2::timestamptz IS NULL OR (om.created_at, o.id) < ($2, $3))
+            ORDER BY om.created_at DESC, o.id DESC
             LIMIT $4
             "#,
         )
@@ -420,16 +388,16 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         .fetch_all(&self.pool)
         .await?;
 
-        let next_cursor = if members.len() as i64 > limit {
-            members.pop();
-            members.last().map(|last| Cursor {
-                created_at: last.created_at,
+        let next_cursor = if orgs.len() as i64 > limit {
+            orgs.pop();
+            orgs.last().map(|last| Cursor {
+                created_at: last.joined_at,
                 id: last.id,
             })
         } else {
             None
         };
 
-        Ok((members, next_cursor))
+        Ok((orgs, next_cursor))
     }
 }

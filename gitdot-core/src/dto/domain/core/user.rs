@@ -12,10 +12,7 @@ mod update_current_user_image;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::{
-    dto::OrganizationMemberResponse,
-    model::{User, UserEmail},
-};
+use crate::model::{OrganizationRole, User, UserEmail, UserOrganization};
 
 pub use get_current_user::GetCurrentUserRequest;
 pub use get_user::GetUserRequest;
@@ -79,7 +76,7 @@ pub struct GetCurrentUserResponse {
     pub id: Uuid,
     pub name: String,
     pub emails: Vec<UserEmailResponse>,
-    pub memberships: Vec<OrganizationMemberResponse>,
+    pub memberships: Vec<UserOrganizationResponse>,
 
     pub location: Option<String>,
     pub readme: Option<String>,
@@ -87,4 +84,28 @@ pub struct GetCurrentUserResponse {
     pub display_name: Option<String>,
 
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserOrganizationResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub display_name: Option<String>,
+
+    pub role: OrganizationRole,
+    pub role_description: Option<String>,
+    pub joined_at: DateTime<Utc>,
+}
+
+impl From<UserOrganization> for UserOrganizationResponse {
+    fn from(org: UserOrganization) -> Self {
+        Self {
+            id: org.id,
+            name: org.name,
+            display_name: org.display_name,
+            role: org.role,
+            role_description: org.role_description,
+            joined_at: org.joined_at,
+        }
+    }
 }

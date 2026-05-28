@@ -1,6 +1,10 @@
 use gitdot_api::resource::{repository as repo_api, user as api};
-use gitdot_core::dto::{
-    GetCurrentUserResponse, UserCommitResponse, UserEmailResponse, UserResponse,
+use gitdot_core::{
+    dto::{
+        GetCurrentUserResponse, UserCommitResponse, UserEmailResponse, UserOrganizationResponse,
+        UserResponse,
+    },
+    model::OrganizationRole,
 };
 
 use super::IntoApi;
@@ -45,6 +49,23 @@ impl IntoApi for GetCurrentUserResponse {
             links: self.links,
             display_name: self.display_name,
             created_at: self.created_at,
+        }
+    }
+}
+
+impl IntoApi for UserOrganizationResponse {
+    type ApiType = api::UserOrganizationResource;
+    fn into_api(self) -> Self::ApiType {
+        api::UserOrganizationResource {
+            id: self.id,
+            name: self.name,
+            display_name: self.display_name,
+            role: match self.role {
+                OrganizationRole::Admin => "admin".to_string(),
+                OrganizationRole::Member => "member".to_string(),
+            },
+            role_description: self.role_description,
+            joined_at: self.joined_at,
         }
     }
 }

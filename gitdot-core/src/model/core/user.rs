@@ -3,13 +3,14 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Type};
 use uuid::Uuid;
 
+use crate::model::OrganizationRole;
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct User {
     pub id: Uuid,
     pub name: String,
     pub provider: AuthProvider,
 
-    // user metadata provided by user
     pub display_name: Option<String>,
     pub location: Option<String>,
     pub readme: Option<String>,
@@ -45,4 +46,17 @@ pub struct UserEmail {
     pub is_verified: bool,
 
     pub created_at: DateTime<Utc>,
+}
+
+/// An organization from a user's perspective: basic org info joined with the
+/// user's own membership (`role`, `joined_at`).
+#[derive(Debug, Clone, FromRow)]
+pub struct UserOrganization {
+    pub id: Uuid,
+    pub name: String,
+    pub display_name: Option<String>,
+
+    pub role: OrganizationRole,
+    pub role_description: Option<String>,
+    pub joined_at: DateTime<Utc>,
 }

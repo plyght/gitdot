@@ -1,7 +1,6 @@
 mod add_member;
 mod create_organization;
 mod get_organization;
-mod list_members;
 mod list_organization_repositories;
 mod list_organizations;
 mod update_member;
@@ -11,12 +10,11 @@ mod update_organization_image;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::model::Organization;
+use crate::model::{Organization, OrganizationMember, OrganizationRole};
 
-pub use add_member::{AddMemberRequest, OrganizationMemberResponse};
+pub use add_member::AddMemberRequest;
 pub use create_organization::CreateOrganizationRequest;
 pub use get_organization::GetOrganizationRequest;
-pub use list_members::ListMembersRequest;
 pub use list_organization_repositories::ListOrganizationRepositoriesRequest;
 pub use list_organizations::ListOrganizationsRequest;
 pub use update_member::UpdateOrganizationMemberRequest;
@@ -27,11 +25,15 @@ pub use update_organization_image::UpdateOrganizationImageRequest;
 pub struct OrganizationResponse {
     pub id: Uuid,
     pub name: String,
-    pub created_at: DateTime<Utc>,
+
+    pub display_name: Option<String>,
     pub location: Option<String>,
     pub readme: Option<String>,
     pub links: Vec<String>,
-    pub display_name: Option<String>,
+
+    pub created_at: DateTime<Utc>,
+
+    pub members: Option<Vec<OrganizationMemberResponse>>,
 }
 
 impl From<Organization> for OrganizationResponse {
@@ -39,11 +41,39 @@ impl From<Organization> for OrganizationResponse {
         Self {
             id: org.id,
             name: org.name,
-            created_at: org.created_at,
+            display_name: org.display_name,
             location: org.location,
             readme: org.readme,
             links: org.links,
-            display_name: org.display_name,
+            created_at: org.created_at,
+            members: org
+                .members
+                .map(|members| members.into_iter().map(Into::into).collect()),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct OrganizationMemberResponse {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub user_name: String,
+
+    pub role: OrganizationRole,
+    pub role_description: Option<String>,
+
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<OrganizationMember> for OrganizationMemberResponse {
+    fn from(member: OrganizationMember) -> Self {
+        Self {
+            id: member.id,
+            user_id: member.user_id,
+            user_name: member.user_name,
+            role: member.role,
+            role_description: member.role_description,
+            created_at: member.created_at,
         }
     }
 }

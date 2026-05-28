@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     endpoint::Endpoint,
-    resource::{OrganizationMemberResource, common::Page},
+    resource::{UserOrganizationResource, common::Page},
 };
 
 pub struct ListUserOrganizations;
@@ -23,4 +23,4 @@ pub struct ListUserOrganizationsRequest {
     pub limit: Option<u32>,
 }
 
-pub type ListUserOrganizationsResponse = Page<OrganizationMemberResource>;
+pub type ListUserOrganizationsResponse = Page<UserOrganizationResource>;

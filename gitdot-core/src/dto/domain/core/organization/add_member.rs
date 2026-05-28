@@ -1,10 +1,7 @@
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
-
 use crate::{
     dto::OwnerName,
     error::{InputError, OrganizationError},
-    model::{OrganizationMember, OrganizationRole},
+    model::OrganizationRole,
 };
 
 #[derive(Debug, Clone)]
@@ -36,32 +33,5 @@ impl AddMemberRequest {
             role,
             role_description,
         })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct OrganizationMemberResponse {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub organization_id: Uuid,
-    pub role: OrganizationRole,
-    pub role_description: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub user_name: String,
-    pub org_name: String,
-}
-
-impl From<OrganizationMember> for OrganizationMemberResponse {
-    fn from(member: OrganizationMember) -> Self {
-        Self {
-            id: member.id,
-            user_id: member.user_id,
-            organization_id: member.organization_id,
-            role: member.role,
-            role_description: member.role_description,
-            created_at: member.created_at,
-            user_name: member.user_name,
-            org_name: member.org_name,
-        }
     }
 }

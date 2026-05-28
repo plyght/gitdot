@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use crate::{
     client::{ImageClient, ImageClientImpl, R2Client, R2ClientImpl},
     dto::{
-        AddMemberRequest, CreateOrganizationRequest, GetOrganizationRequest, ListMembersRequest,
+        AddMemberRequest, CreateOrganizationRequest, GetOrganizationRequest,
         ListOrganizationRepositoriesRequest, ListOrganizationsRequest, OrganizationMemberResponse,
         OrganizationResponse, Page, RepositoryResponse, UpdateOrganizationImageRequest,
         UpdateOrganizationMemberRequest, UpdateOrganizationRequest,
@@ -57,11 +57,6 @@ pub trait OrganizationService: Send + Sync + 'static {
         &self,
         request: ListOrganizationsRequest,
     ) -> Result<Page<OrganizationResponse>, OrganizationError>;
-
-    async fn list_members(
-        &self,
-        request: ListMembersRequest,
-    ) -> Result<Page<OrganizationMemberResponse>, OrganizationError>;
 }
 
 #[derive(Debug, Clone)]
@@ -285,32 +280,6 @@ where
 
         Ok(Page {
             data: repositories.into_iter().map(|r| r.into()).collect(),
-            next_cursor: next_cursor.as_ref().map(cursor::encode),
-        })
-    }
-
-    async fn list_members(
-        &self,
-        request: ListMembersRequest,
-    ) -> Result<Page<OrganizationMemberResponse>, OrganizationError> {
-        let org_name = request.org_name.to_string();
-        self.org_repo
-            .get(&org_name)
-            .await?
-            .or_not_found("organization", &org_name)?;
-
-        let (members, next_cursor) = self
-            .org_repo
-            .list_members(
-                &org_name,
-                request.role,
-                request.cursor,
-                request.limit as i64,
-            )
-            .await?;
-
-        Ok(Page {
-            data: members.into_iter().map(|m| m.into()).collect(),
             next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
     }

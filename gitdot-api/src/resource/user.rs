@@ -2,10 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::resource::{
-    organization::OrganizationMemberResource,
-    repository::{CommitAuthorResource, RepositoryDiffStatResource},
-};
+use crate::resource::repository::{CommitAuthorResource, RepositoryDiffStatResource};
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserResource {
@@ -33,7 +30,7 @@ pub struct CurrentUserResource {
     pub id: Uuid,
     pub name: String,
     pub emails: Vec<UserEmailResource>,
-    pub memberships: Vec<OrganizationMemberResource>,
+    pub memberships: Vec<UserOrganizationResource>,
 
     pub location: Option<String>,
     pub readme: Option<String>,
@@ -41,6 +38,20 @@ pub struct CurrentUserResource {
     pub display_name: Option<String>,
 
     pub created_at: DateTime<Utc>,
+}
+
+/// An organization as surfaced from a user's perspective — basic org info plus
+/// the viewer's own membership metadata (`role`, `joined_at`). Used by
+/// `list_user_organizations` and `CurrentUserResource.memberships`.
+#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserOrganizationResource {
+    pub id: Uuid,
+    pub name: String,
+    pub display_name: Option<String>,
+
+    pub role: String,
+    pub role_description: Option<String>,
+    pub joined_at: DateTime<Utc>,
 }
 
 /// A commit as surfaced on a user's profile. Most fields are optional so that

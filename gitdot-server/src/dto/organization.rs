@@ -12,11 +12,12 @@ impl IntoApi for OrganizationResponse {
         api::OrganizationResource {
             id: self.id,
             name: self.name,
-            created_at: self.created_at,
+            display_name: self.display_name,
             location: self.location,
             readme: self.readme,
             links: self.links,
-            display_name: self.display_name,
+            created_at: self.created_at,
+            members: self.members.into_api(),
         }
     }
 }
@@ -27,15 +28,13 @@ impl IntoApi for OrganizationMemberResponse {
         api::OrganizationMemberResource {
             id: self.id,
             user_id: self.user_id,
-            organization_id: self.organization_id,
-            org_name: self.org_name,
+            user_name: self.user_name,
             role: match self.role {
                 OrganizationRole::Admin => "admin".to_string(),
                 OrganizationRole::Member => "member".to_string(),
             },
             role_description: self.role_description,
             created_at: self.created_at,
-            user_name: self.user_name,
         }
     }
 }
