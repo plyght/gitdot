@@ -172,7 +172,7 @@ where
                 format!("{}/{}", request.owner.as_ref(), request.repo.as_ref()),
             )?;
 
-        if request.permission != RepositoryPermission::Read && repository.readonly {
+        if repository.readonly && request.permission == RepositoryPermission::Write {
             return Err(AuthorizationError::ReadonlyRepository);
         }
 

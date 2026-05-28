@@ -2,10 +2,11 @@
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useEffect, useState, useTransition } from "react";
-import { deleteRepositoryAction } from "@/actions";
+import { toast } from "@/(main)/context/toaster";
+import { convertReadonlyRepositoryAction } from "@/actions/repository";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 
-export function DeleteRepositoryDialog({
+export function RepoPromoteDialog({
   open,
   setOpen,
   owner,
@@ -36,10 +37,13 @@ export function DeleteRepositoryDialog({
 
     setError(null);
     startTransition(async () => {
-      const result = await deleteRepositoryAction(owner, repo);
+      const result = await convertReadonlyRepositoryAction(owner, repo);
       if ("error" in result) {
         setError(result.error);
+        return;
       }
+      toast.success("Repository promoted");
+      setOpen(false);
     });
   }
 
@@ -51,48 +55,38 @@ export function DeleteRepositoryDialog({
         showOverlay={true}
       >
         <VisuallyHidden>
-          <DialogTitle>Delete repository</DialogTitle>
+          <DialogTitle>Promote repository</DialogTitle>
         </VisuallyHidden>
         <form onSubmit={handleSubmit}>
-          <div className="p-2 border-b border-border">
-            <p className="text-sm pb-2">
-              Are you sure you want to delete this repository?
+          <div className="p-2 border-b border-border flex flex-col gap-2">
+            <p className="text-sm">Promote this repository?</p>
+            <p className="text-xs text-muted-foreground">
+              Collaborators will be able to push directly to gitdot and new
+              commits on GitHub will no longer be synced.
             </p>
             <p className="text-xs text-muted-foreground">
-              This action cannot be undone. To confirm, type{" "}
-              <span className="font-medium">{confirmValue}</span> below.
+              Type <span className="font-medium">{confirmValue}</span> below to
+              confirm.
             </p>
+            {error && <p className="text-xs text-red-500 px-2 py-1">{error}</p>}
           </div>
-          <input
-            type="text"
-            name="confirmation"
-            placeholder={confirmValue}
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-            className="w-full p-2 text-sm bg-background outline-none border-b border-border"
-            disabled={isPending}
-            autoFocus
-          />
-          {error && (
-            <p className="text-xs text-red-500 px-2 py-1 border-b border-border">
-              {error}
-            </p>
-          )}
-          <div className="flex h-7 justify-end">
-            <button
-              type="button"
-              className="h-full px-3 text-xs border-l border-r border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => setOpen(false)}
+          <div className="flex h-7">
+            <input
+              type="text"
+              name="confirmation"
+              placeholder={confirmValue}
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              className="flex-1 min-w-0 h-full px-2 text-xs leading-7 border-0 outline-none pb-1"
               disabled={isPending}
-            >
-              Cancel
-            </button>
+              autoFocus
+            />
             <button
               type="submit"
               disabled={!isValid || isPending}
-              className="h-full px-3 text-xs hover:bg-muted text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center px-3 h-full text-xs bg-primary text-primary-foreground border-l border-primary enabled:hover:opacity-90 disabled:opacity-60 transition-opacity disabled:cursor-not-allowed cursor-pointer"
             >
-              {isPending ? "Deleting..." : "Delete"}
+              {isPending ? "Promoting..." : "Promote"}
             </button>
           </div>
         </form>

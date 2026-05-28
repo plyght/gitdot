@@ -9,7 +9,6 @@ export const NAV_ITEMS = [
   { path: "", label: "/home" },
   { path: "files", label: "/files" },
   { path: "commits", label: "/commits" },
-  { path: "settings", label: "/settings", protected: true },
   { path: "questions", label: "/questions", beta: true },
   { path: "reviews", label: "/reviews", beta: true },
   { path: "builds", label: "/builds", beta: true },
@@ -20,37 +19,25 @@ const IS_BETA = process.env.NEXT_PUBLIC_GITDOT_BETA === "true";
 export function LayoutClient({
   owner,
   repo,
-  showSettings,
   children,
 }: {
   owner: string;
   repo: string;
-  showSettings?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <>
-      <IndexSidebar owner={owner} repo={repo} showSettings={showSettings} />
+      <IndexSidebar owner={owner} repo={repo} />
       <OverlayScroll> {children} </OverlayScroll>
     </>
   );
 }
 
-function IndexSidebar({
-  owner,
-  repo,
-  showSettings,
-}: {
-  owner: string;
-  repo: string;
-  showSettings?: boolean;
-}) {
+function IndexSidebar({ owner, repo }: { owner: string; repo: string }) {
   const pathname = usePathname();
   const path = pathname.replace(`/${owner}/${repo}`, "") || "/";
 
-  const items = NAV_ITEMS.filter(
-    (i) => (!i.protected || showSettings) && (!i.beta || IS_BETA),
-  );
+  const items = NAV_ITEMS.filter((i) => !i.beta || IS_BETA);
   const isActive = (itemPath: string) => {
     const full = `/${itemPath}`;
     return path === full || path.startsWith(`${full}/`);

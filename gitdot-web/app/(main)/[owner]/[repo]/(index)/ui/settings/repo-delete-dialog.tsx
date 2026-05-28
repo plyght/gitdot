@@ -1,12 +1,13 @@
 "use client";
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "@/(main)/context/toaster";
-import { convertReadonlyRepositoryAction } from "@/actions/repository";
+import { deleteRepositoryAction } from "@/actions";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 
-export function RepoPromoteDialog({
+export function RepoDeleteDialog({
   open,
   setOpen,
   owner,
@@ -17,6 +18,7 @@ export function RepoPromoteDialog({
   owner: string;
   repo: string;
 }) {
+  const router = useRouter();
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -37,13 +39,14 @@ export function RepoPromoteDialog({
 
     setError(null);
     startTransition(async () => {
-      const result = await convertReadonlyRepositoryAction(owner, repo);
+      const result = await deleteRepositoryAction(owner, repo);
       if ("error" in result) {
         setError(result.error);
         return;
       }
-      toast.success("Repository promoted");
+      toast.success(`Deleted ${owner}/${repo}`);
       setOpen(false);
+      router.push(`/${owner}`);
     });
   }
 
@@ -55,25 +58,21 @@ export function RepoPromoteDialog({
         showOverlay={true}
       >
         <VisuallyHidden>
-          <DialogTitle>Promote repository</DialogTitle>
+          <DialogTitle>Delete repository</DialogTitle>
         </VisuallyHidden>
         <form onSubmit={handleSubmit}>
           <div className="p-2 border-b border-border flex flex-col gap-2">
-            <p className="text-sm">Promote this repository?</p>
+            <p className="text-sm">Delete this repository?</p>
             <p className="text-xs text-muted-foreground">
-              Collaborators will be able to push directly to gitdot and new
-              commits on GitHub will no longer be synced.
+              This permanently removes the repository and all of its data. This
+              action cannot be undone.
             </p>
             <p className="text-xs text-muted-foreground">
               Type <span className="font-medium">{confirmValue}</span> below to
               confirm.
             </p>
+            {error && <p className="text-xs text-red-500 px-2 py-1">{error}</p>}
           </div>
-          {error && (
-            <p className="text-xs text-red-500 px-2 py-1 border-b border-border">
-              {error}
-            </p>
-          )}
           <div className="flex h-7">
             <input
               type="text"
@@ -88,9 +87,9 @@ export function RepoPromoteDialog({
             <button
               type="submit"
               disabled={!isValid || isPending}
-              className="flex items-center px-3 h-full text-xs bg-primary text-primary-foreground border-l border-primary enabled:hover:opacity-90 disabled:opacity-60 transition-opacity disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center px-3 h-full text-xs bg-destructive text-white border-l border-destructive enabled:hover:opacity-90 disabled:opacity-60 transition-opacity disabled:cursor-not-allowed cursor-pointer"
             >
-              {isPending ? "Promoting..." : "Promote"}
+              {isPending ? "Deleting..." : "Delete"}
             </button>
           </div>
         </form>

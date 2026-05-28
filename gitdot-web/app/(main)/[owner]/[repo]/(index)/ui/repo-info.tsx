@@ -4,7 +4,13 @@ import type { RepositoryResource } from "gitdot-api";
 import { useTimezone } from "@/(main)/context/timezone";
 import { formatDate } from "@/util/date";
 
-export function RepoInfo({ repository }: { repository: RepositoryResource }) {
+export function RepoInfo({
+  repository,
+  isAdmin,
+}: {
+  repository: RepositoryResource;
+  isAdmin: boolean;
+}) {
   const tz = useTimezone();
 
   const rows: { label: string; value: string }[] = [
@@ -21,8 +27,19 @@ export function RepoInfo({ repository }: { repository: RepositoryResource }) {
         About
       </span>
       <p className="text-xs text-foreground mb-2">
-        {repository.description ??
-          "This repository does not yet have a description. Descriptions help others quickly understand what the project does and why it exists. Consider adding one in the repository settings to give visitors a concise overview before they dive into the code."}
+        {repository.description ?? (
+          <span className="italic text-muted-foreground">
+            {isAdmin ? (
+              <>
+                no description found.
+                <br />
+                click settings below to add one.
+              </>
+            ) : (
+              "no description found"
+            )}
+          </span>
+        )}
       </p>
       <div className="flex flex-col gap-1 font-mono text-xs">
         {rows.map((row) => (

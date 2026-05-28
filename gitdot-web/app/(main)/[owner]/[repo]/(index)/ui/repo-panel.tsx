@@ -12,17 +12,19 @@ import { RepoInfo } from "./repo-info";
 export function RepoPanel({
   repository,
   activityPromise,
+  isAdmin,
 }: {
   repository: RepositoryResource;
   activityPromise: Promise<GetRepositoryActivityResponse | null>;
+  isAdmin: boolean;
 }) {
   const open = useRightSidebar();
   if (!open) return null;
 
   return (
     <div className="w-64 shrink-0 h-full border-l flex flex-col">
-      <RepoInfo repository={repository} />
-      <RepoActions repository={repository} />
+      <RepoInfo repository={repository} isAdmin={isAdmin} />
+      <RepoActions repository={repository} isAdmin={isAdmin} />
       <RepoActivity activityPromise={activityPromise} />
     </div>
   );

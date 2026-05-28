@@ -18,7 +18,6 @@ import {
   updateRepositoryCommitFilter,
 } from "gitdot-client";
 import { refresh } from "next/cache";
-import { redirect } from "next/navigation";
 
 export type CreateRepositoryActionResult =
   | { repository: RepositoryResource }
@@ -87,7 +86,6 @@ export async function deleteRepositoryAction(
     };
   }
 
-  redirect(`/${owner}`);
   return { success: true };
 }
 

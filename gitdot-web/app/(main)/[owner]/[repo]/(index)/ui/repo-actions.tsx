@@ -1,7 +1,7 @@
 "use client";
 
 import type { RepositoryResource } from "gitdot-api";
-import { Copy, Download, Rocket, Star } from "lucide-react";
+import { Copy, Download, Settings, Star } from "lucide-react";
 import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "@/(main)/context/toaster";
 import { useUserContext } from "@/(main)/context/user";
@@ -10,16 +10,20 @@ import {
   unstarRepositoryAction,
 } from "@/actions/repository";
 import { cn } from "@/util";
-import { RepoPromoteDialog } from "./repo-promote-dialog";
+import { RepoSettingsDialog } from "./settings/repo-settings-dialog";
+import type { RepoSettingsTab } from "./settings/repo-settings-sidebar";
 
 export function RepoActions({
   repository,
+  isAdmin,
 }: {
   repository: RepositoryResource;
+  isAdmin: boolean;
 }) {
   const { requireAuth } = useUserContext();
   const [, startTransition] = useTransition();
-  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<RepoSettingsTab>("general");
   const [optimistic, setOptimistic] = useOptimistic(
     { starred: repository.user_star, count: repository.stars },
     (state, next: boolean) => ({
@@ -82,19 +86,25 @@ export function RepoActions({
         label="Clone"
         onClick={handleClone}
       />
-      {repository.readonly && (
-        <RepoActionButton
-          icon={<Rocket className="size-3" />}
-          label="Promote"
-          onClick={() => setPromoteOpen(true)}
-        />
+      {isAdmin && (
+        <>
+          <RepoActionButton
+            icon={<Settings className="size-3" />}
+            label="Settings"
+            onClick={() => {
+              setSettingsTab("general");
+              setSettingsOpen(true);
+            }}
+          />
+          <RepoSettingsDialog
+            repository={repository}
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            tab={settingsTab}
+            onTabChange={setSettingsTab}
+          />
+        </>
       )}
-      <RepoPromoteDialog
-        open={promoteOpen}
-        setOpen={setPromoteOpen}
-        owner={repository.owner}
-        repo={repository.name}
-      />
     </div>
   );
 }
