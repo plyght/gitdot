@@ -455,6 +455,7 @@ mod tests {
             async fn list_latest(&self, limit: i64) -> Result<Vec<Repository>, crate::error::DatabaseError>;
             async fn list_trending(&self, limit: i64) -> Result<Vec<Repository>, crate::error::DatabaseError>;
             async fn delete(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
+            async fn update(&self, id: Uuid, description: Option<String>) -> Result<Option<Repository>, crate::error::DatabaseError>;
             async fn disable_readonly(&self, owner: &str, repo: &str) -> Result<Option<Repository>, crate::error::DatabaseError>;
             async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, crate::error::DatabaseError>;
             async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, crate::error::DatabaseError>;

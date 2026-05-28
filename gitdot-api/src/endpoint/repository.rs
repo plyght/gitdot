@@ -18,6 +18,7 @@ pub mod list_repository_commits;
 pub mod list_trending_repositories;
 pub mod star_repository;
 pub mod unstar_repository;
+pub mod update_repository;
 pub mod update_repository_commit_filter;
 
 fn default_visibility() -> String {

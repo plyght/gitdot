@@ -3,6 +3,8 @@
 import type { RepositoryResource } from "gitdot-api";
 import { useEffect, useState } from "react";
 import { useTimezone } from "@/(main)/context/timezone";
+import { toast } from "@/(main)/context/toaster";
+import { updateRepositoryAction } from "@/actions";
 import { formatDate, timeAgo } from "@/util/date";
 
 export function RepoSettingsInfo({
@@ -23,7 +25,17 @@ export function RepoSettingsInfo({
   async function handleSave() {
     if (!dirty || saving) return;
     setSaving(true);
+    const result = await updateRepositoryAction(
+      repository.owner,
+      repository.name,
+      { description },
+    );
     setSaving(false);
+    if ("error" in result) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Repository info updated.");
   }
 
   return (
@@ -41,15 +53,17 @@ export function RepoSettingsInfo({
             {timeAgo(new Date(repository.created_at))})
           </span>
         </div>
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground font-mono">
-            <span className="text-foreground/40 select-none"># </span>
+        <div className="space-y-2 group">
+          <p className="text-xs text-muted-foreground font-mono transition-colors duration-200 group-focus-within:text-foreground">
+            <span className="text-foreground/40 select-none transition-colors duration-200 group-focus-within:text-foreground">
+              #{" "}
+            </span>
             description
           </p>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="text-sm bg-transparent border-l border-border pl-2 outline-none w-full min-h-24 placeholder:text-muted-foreground/40 transition-colors focus:border-foreground resize-none field-sizing-content"
+            className="text-sm bg-transparent border-b border-border pb-1 outline-none w-full min-h-24 placeholder:text-muted-foreground/40 transition-colors focus:border-foreground resize-none field-sizing-content"
             placeholder="what this repo is about..."
           />
         </div>

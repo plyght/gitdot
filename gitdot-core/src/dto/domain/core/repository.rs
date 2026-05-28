@@ -16,6 +16,7 @@ mod list_repository_commit_filters;
 mod list_repository_commits;
 mod star_repository;
 mod unstar_repository;
+mod update_repository;
 mod update_repository_commit_filter;
 
 use chrono::{DateTime, Utc};
@@ -45,6 +46,7 @@ pub use list_repository_commit_filters::ListRepositoryCommitFiltersRequest;
 pub use list_repository_commits::ListRepositoryCommitsRequest;
 pub use star_repository::StarRepositoryRequest;
 pub use unstar_repository::UnstarRepositoryRequest;
+pub use update_repository::UpdateRepositoryRequest;
 pub use update_repository_commit_filter::UpdateRepositoryCommitFilterRequest;
 
 #[derive(Debug, Clone)]

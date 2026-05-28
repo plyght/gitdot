@@ -17,7 +17,7 @@ use crate::{
         RepositoryBlobDiffsResponse, RepositoryBlobResponse, RepositoryBlobsResponse,
         RepositoryCommitFilterResponse, RepositoryDiffFileResponse, RepositoryFileResponse,
         RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest,
-        UnstarRepositoryRequest, UpdateRepositoryCommitFilterRequest,
+        UnstarRepositoryRequest, UpdateRepositoryCommitFilterRequest, UpdateRepositoryRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, RepositoryError},
     model::{CommitDiff, RepositoryOwnerType},
@@ -68,6 +68,11 @@ pub trait RepositoryService: Send + Sync + 'static {
         &self,
         request: DeleteRepositoryRequest,
     ) -> Result<(), RepositoryError>;
+
+    async fn update_repository(
+        &self,
+        request: UpdateRepositoryRequest,
+    ) -> Result<RepositoryResponse, RepositoryError>;
 
     async fn convert_readonly_repository(
         &self,
@@ -479,6 +484,28 @@ where
         self.repo_repo.delete(repository.id).await?;
 
         Ok(())
+    }
+
+    async fn update_repository(
+        &self,
+        request: UpdateRepositoryRequest,
+    ) -> Result<RepositoryResponse, RepositoryError> {
+        let owner = request.owner.as_ref();
+        let repo = request.repo.as_ref();
+
+        let repository = self
+            .repo_repo
+            .get(owner, repo, None)
+            .await?
+            .or_not_found("repository", format!("{}/{}", owner, repo))?;
+
+        let updated = self
+            .repo_repo
+            .update(repository.id, request.description)
+            .await?
+            .or_not_found("repository", format!("{}/{}", owner, repo))?;
+
+        Ok(updated.into())
     }
 
     async fn convert_readonly_repository(

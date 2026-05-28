@@ -25,6 +25,8 @@ import {
   RepositoryResourcesResource,
   type UpdateRepositoryCommitFilterRequest,
   UpdateRepositoryCommitFilterResponse,
+  type UpdateRepositoryRequest,
+  UpdateRepositoryResponse,
 } from "gitdot-api";
 import {
   authDelete,
@@ -48,6 +50,19 @@ export async function createRepository(
   );
 
   return await handleResponse(response, RepositoryResource);
+}
+
+export async function updateRepository(
+  owner: string,
+  repo: string,
+  request: UpdateRepositoryRequest,
+): Promise<RepositoryResource | null> {
+  const response = await authPatch(
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}`,
+    request,
+  );
+
+  return await handleResponse(response, UpdateRepositoryResponse);
 }
 
 export async function getRepositoryBlob(

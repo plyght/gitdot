@@ -18,6 +18,7 @@ mod list_repository_commits;
 mod list_trending_repositories;
 mod star_repository;
 mod unstar_repository;
+mod update_repository;
 mod update_repository_commit_filter;
 
 use axum::{
@@ -47,6 +48,7 @@ use list_repository_commits::list_repository_commits;
 use list_trending_repositories::list_trending_repositories;
 use star_repository::star_repository;
 use unstar_repository::unstar_repository;
+use update_repository::update_repository;
 use update_repository_commit_filter::update_repository_commit_filter;
 
 pub fn create_repository_router() -> Router<AppState> {
@@ -57,6 +59,7 @@ pub fn create_repository_router() -> Router<AppState> {
             "/repository/{owner}/{repo}",
             post(create_repository)
                 .get(get_repository)
+                .patch(update_repository)
                 .delete(delete_repository),
         )
         .route("/repository/{owner}/{repo}/blob", get(get_repository_blob))

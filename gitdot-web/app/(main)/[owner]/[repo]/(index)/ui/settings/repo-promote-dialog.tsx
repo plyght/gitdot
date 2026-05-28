@@ -11,11 +11,13 @@ export function RepoPromoteDialog({
   setOpen,
   owner,
   repo,
+  onSuccess,
 }: {
   open: boolean;
   setOpen: (open: boolean) => void;
   owner: string;
   repo: string;
+  onSuccess?: () => void;
 }) {
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +46,7 @@ export function RepoPromoteDialog({
       }
       toast.success("Repository promoted");
       setOpen(false);
+      onSuccess?.();
     });
   }
 

@@ -5,6 +5,7 @@ import type {
   RepositoryCommitFilterResource,
   RepositoryResource,
   UpdateRepositoryCommitFilterRequest,
+  UpdateRepositoryRequest,
 } from "gitdot-api";
 import {
   ApiError,
@@ -15,6 +16,7 @@ import {
   deleteRepositoryCommitFilter,
   starRepository,
   unstarRepository,
+  updateRepository,
   updateRepositoryCommitFilter,
 } from "gitdot-client";
 import { refresh } from "next/cache";
@@ -66,6 +68,29 @@ export async function createRepositoryAction(
   } catch (e) {
     return {
       error: e instanceof ApiError ? e.message : "Failed to create repository",
+    };
+  }
+}
+
+export type UpdateRepositoryActionResult =
+  | { repository: RepositoryResource }
+  | { error: string };
+
+export async function updateRepositoryAction(
+  owner: string,
+  repo: string,
+  payload: UpdateRepositoryRequest,
+): Promise<UpdateRepositoryActionResult> {
+  try {
+    const repository = await updateRepository(owner, repo, payload);
+    if (!repository) {
+      return { error: "Failed to update repository" };
+    }
+    refresh();
+    return { repository };
+  } catch (e) {
+    return {
+      error: e instanceof ApiError ? e.message : "Failed to update repository",
     };
   }
 }

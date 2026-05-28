@@ -8,8 +8,10 @@ import { RepoPromoteDialog } from "./repo-promote-dialog";
 
 export function RepoSettingsAdmin({
   repository,
+  onClose,
 }: {
   repository: RepositoryResource;
+  onClose: () => void;
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
@@ -38,12 +40,14 @@ export function RepoSettingsAdmin({
         setOpen={setDeleteOpen}
         owner={repository.owner}
         repo={repository.name}
+        onSuccess={onClose}
       />
       <RepoPromoteDialog
         open={promoteOpen}
         setOpen={setPromoteOpen}
         owner={repository.owner}
         repo={repository.name}
+        onSuccess={onClose}
       />
     </>
   );

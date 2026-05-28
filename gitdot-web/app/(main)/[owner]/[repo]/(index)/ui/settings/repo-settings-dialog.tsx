@@ -37,7 +37,12 @@ export function RepoSettingsDialog({
 
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {tab === "info" && <RepoSettingsInfo repository={repository} />}
-            {tab === "admin" && <RepoSettingsAdmin repository={repository} />}
+            {tab === "admin" && (
+              <RepoSettingsAdmin
+                repository={repository}
+                onClose={() => onOpenChange(false)}
+              />
+            )}
           </div>
         </div>
       </DialogContent>

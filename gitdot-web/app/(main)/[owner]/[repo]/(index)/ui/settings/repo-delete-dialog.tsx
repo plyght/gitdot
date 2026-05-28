@@ -12,11 +12,13 @@ export function RepoDeleteDialog({
   setOpen,
   owner,
   repo,
+  onSuccess,
 }: {
   open: boolean;
   setOpen: (open: boolean) => void;
   owner: string;
   repo: string;
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
   const [confirmation, setConfirmation] = useState("");
@@ -46,6 +48,7 @@ export function RepoDeleteDialog({
       }
       toast.success(`Deleted ${owner}/${repo}`);
       setOpen(false);
+      onSuccess?.();
       router.push(`/${owner}`);
     });
   }

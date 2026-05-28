@@ -18,4 +18,5 @@ export * from "./list-repository-commits";
 export * from "./list-trending-repositories";
 export * from "./star-repository";
 export * from "./unstar-repository";
+export * from "./update-repository";
 export * from "./update-repository-commit-filter";

@@ -55,7 +55,7 @@ export function OrgSettingsProfile({ org }: { org: OrganizationResource }) {
   }
 
   return (
-    <div className="max-w-lg mx-auto p-4">
+    <div className="p-4">
       <div className="space-y-6">
         <OrgProfilePrimary org={org} />
         <OrgProfileAbout
@@ -67,7 +67,7 @@ export function OrgSettingsProfile({ org }: { org: OrganizationResource }) {
         <OrgProfileLinks links={links} onLinksChange={setLinks} />
         <OrgProfileReadme readme={readme} onReadmeChange={setReadme} />
       </div>
-      <div className="flex justify-end mt-2">
+      <div className="flex justify-start mt-2">
         <button
           type="button"
           onClick={handleSave}
@@ -284,15 +284,17 @@ function OrgProfileReadme({
   onReadmeChange: (v: string) => void;
 }) {
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground font-mono">
-        <span className="text-foreground/40 select-none"># </span>
+    <div className="space-y-2 group">
+      <p className="text-xs text-muted-foreground font-mono transition-colors duration-200 group-focus-within:text-foreground">
+        <span className="text-foreground/40 select-none transition-colors duration-200 group-focus-within:text-foreground">
+          #{" "}
+        </span>
         README.md
       </p>
       <textarea
         value={readme}
         onChange={(e) => onReadmeChange(e.target.value)}
-        className="text-sm bg-transparent border-l border-border pl-2 outline-none w-full min-h-24 placeholder:text-muted-foreground/40 transition-colors focus:border-foreground resize-none field-sizing-content"
+        className="text-sm bg-transparent border-b border-border pb-1 outline-none w-full min-h-24 placeholder:text-muted-foreground/40 transition-colors focus:border-foreground resize-none field-sizing-content"
         placeholder="what this org is about..."
       />
     </div>
