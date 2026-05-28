@@ -26,10 +26,8 @@ use tower_http::{
 use gitdot_axum::middleware::log_request;
 
 use crate::handler::{
-    create_build_router, create_git_http_router, create_internal_router, create_migration_router,
-    create_organization_router, create_question_router, create_repository_router,
-    create_review_router, create_runner_router, create_task_router, create_user_router,
-    create_webhook_router,
+    create_git_http_router, create_internal_router, create_migration_router,
+    create_organization_router, create_repository_router, create_user_router,
 };
 
 pub use error::AppError;
@@ -116,18 +114,7 @@ fn create_router(app_state: AppState) -> Router {
         .merge(create_user_router())
         .merge(create_organization_router())
         .merge(create_repository_router())
-        .merge(create_question_router())
-        .merge(create_review_router())
-        .merge(create_build_router())
         .merge(create_migration_router())
-        .merge(create_webhook_router());
-    let api_router = api_router
-        .nest(
-            "/ci",
-            Router::new()
-                .merge(create_runner_router())
-                .merge(create_task_router()),
-        )
         .layer(api_middleware);
 
     let git_router = Router::new().merge(create_git_http_router());
