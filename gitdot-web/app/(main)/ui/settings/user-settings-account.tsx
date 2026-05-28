@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { cn } from "@/util";
-import { ChangeUsernameDialog } from "./change-username-dialog";
+import { UserChangeNameDialog } from "./user-change-name-dialog";
 
-export function SettingsAccount({
-  setSettingsOpen,
+export function UserSettingsAccount({
+  setUserSettingsOpen,
 }: {
-  setSettingsOpen: (open: boolean) => void;
+  setUserSettingsOpen: (open: boolean) => void;
 }) {
   const [changeOpen, setChangeOpen] = useState(false);
 
@@ -28,10 +28,10 @@ export function SettingsAccount({
           onAction={() => {}}
         />
       </div>
-      <ChangeUsernameDialog
+      <UserChangeNameDialog
         open={changeOpen}
         setOpen={setChangeOpen}
-        setSettingsOpen={setSettingsOpen}
+        setUserSettingsOpen={setUserSettingsOpen}
       />
     </>
   );

@@ -8,7 +8,7 @@ import {
   verifyUserEmailAction,
 } from "@/actions";
 
-export function SettingsEmails() {
+export function UserSettingsEmails() {
   const { emails, refreshUser } = useUserContext();
   const [draft, setDraft] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);

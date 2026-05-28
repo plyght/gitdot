@@ -7,7 +7,7 @@ import { MigrateRepoDialog } from "@/(main)/ui/migrate-repo-dialog";
 import { NewOrgDialog } from "@/(main)/ui/new-org-dialog";
 import { NewRepoDialog } from "@/(main)/ui/new-repo-dialog";
 import { RepoSwitcherDialog } from "@/(main)/ui/repo-switcher-dialog";
-import { SettingsDialog } from "@/(main)/ui/settings/settings-dialog";
+import { UserSettingsDialog } from "@/(main)/ui/settings/user-settings-dialog";
 import { DalProvider } from "./context/dal-provider";
 import { ShortcutsProvider } from "./context/shortcuts";
 import { TimezoneProvider } from "./context/timezone";
@@ -49,7 +49,7 @@ export default async function RootLayout({
     <NewOrgDialog key="new-org" />,
     <NewRepoDialog key="new-repo" />,
     <MigrateRepoDialog key="migrate-repo" />,
-    <SettingsDialog key="settings" />,
+    <UserSettingsDialog key="user-settings" />,
     <CommitDialog key="commit" />,
   ];
 

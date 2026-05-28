@@ -16,7 +16,7 @@ export function UserActions() {
     },
     {
       label: "settings",
-      onClick: () => window.dispatchEvent(new CustomEvent("openSettings")),
+      onClick: () => window.dispatchEvent(new CustomEvent("openUserSettings")),
     },
   ];
 

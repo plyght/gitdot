@@ -9,14 +9,14 @@ import { updateUserAction, validateUsername } from "@/actions";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import { cn } from "@/util";
 
-export function ChangeUsernameDialog({
+export function UserChangeNameDialog({
   open,
   setOpen,
-  setSettingsOpen,
+  setUserSettingsOpen,
 }: {
   open: boolean;
   setOpen: (open: boolean) => void;
-  setSettingsOpen: (open: boolean) => void;
+  setUserSettingsOpen: (open: boolean) => void;
 }) {
   const { refreshUser } = useUserContext();
   const router = useRouter();
@@ -79,7 +79,7 @@ export function ChangeUsernameDialog({
       }
       await refreshUser();
       setOpen(false);
-      setSettingsOpen(false);
+      setUserSettingsOpen(false);
       router.push(`/${username}`);
       await new Promise((resolve) => setTimeout(resolve, 600));
       toast.success("Username changed");

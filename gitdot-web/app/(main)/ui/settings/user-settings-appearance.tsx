@@ -15,7 +15,7 @@ const OPTIONS: { value: "system" | "light" | "dark"; label: string }[] = [
   { value: "dark", label: "Dark" },
 ];
 
-export function SettingsAppearance() {
+export function UserSettingsAppearance() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);

@@ -12,7 +12,7 @@ import { updateUserAction, uploadUserImageAction } from "@/actions";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { formatDate, timeAgo } from "@/util/date";
 
-export function SettingsProfile({ user }: { user: UserResource }) {
+export function UserSettingsProfile({ user }: { user: UserResource }) {
   const { refreshUser } = useUserContext();
   const router = useRouter();
   const pathname = usePathname();

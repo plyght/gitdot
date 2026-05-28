@@ -2,7 +2,7 @@
 
 import { cn } from "@/util";
 
-export type SettingsTab =
+export type UserSettingsTab =
   | "profile"
   | "emails"
   | "account"
@@ -10,32 +10,34 @@ export type SettingsTab =
   | "installations"
   | "migrations";
 
-const GROUPS: { label: string; tabs: { id: SettingsTab; label: string }[] }[] =
-  [
-    {
-      label: "General",
-      tabs: [
-        { id: "profile", label: "/profile" },
-        { id: "emails", label: "/emails" },
-        { id: "account", label: "/account" },
-        { id: "appearance", label: "/appearance" },
-      ],
-    },
-    {
-      label: "GitHub",
-      tabs: [
-        { id: "installations", label: "/installations" },
-        { id: "migrations", label: "/migrations" },
-      ],
-    },
-  ];
+const GROUPS: {
+  label: string;
+  tabs: { id: UserSettingsTab; label: string }[];
+}[] = [
+  {
+    label: "General",
+    tabs: [
+      { id: "profile", label: "/profile" },
+      { id: "emails", label: "/emails" },
+      { id: "account", label: "/account" },
+      { id: "appearance", label: "/appearance" },
+    ],
+  },
+  {
+    label: "GitHub",
+    tabs: [
+      { id: "installations", label: "/installations" },
+      { id: "migrations", label: "/migrations" },
+    ],
+  },
+];
 
-export function SettingsSidebar({
+export function UserSettingsSidebar({
   tab,
   onTabChange,
 }: {
-  tab: SettingsTab;
-  onTabChange: (tab: SettingsTab) => void;
+  tab: UserSettingsTab;
+  onTabChange: (tab: UserSettingsTab) => void;
 }) {
   return (
     <nav className="w-48 shrink-0 border-r border-border overflow-y-auto">

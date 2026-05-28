@@ -3,7 +3,7 @@
 import { useUserContext } from "@/(main)/context/user";
 import { getGithubAppInstallUrlAction } from "@/actions/migration";
 
-export function SettingsInstallations() {
+export function UserSettingsInstallations() {
   const { installations } = useUserContext();
 
   async function handleAddAccount() {

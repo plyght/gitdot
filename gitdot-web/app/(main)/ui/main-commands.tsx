@@ -112,7 +112,8 @@ export function MainCommands() {
       {
         type: "cmd",
         label: "settings",
-        execute: () => window.dispatchEvent(new CustomEvent("openSettings")),
+        execute: () =>
+          window.dispatchEvent(new CustomEvent("openUserSettings")),
       },
       {
         type: "cmd",

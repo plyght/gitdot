@@ -12,7 +12,7 @@ import {
 } from "@/ui/collapsible";
 import { formatDate } from "@/util/date";
 
-export function SettingsMigrations() {
+export function UserSettingsMigrations() {
   const tz = useTimezone();
   const [migrations, setMigrations] = useState<
     MigrationResource[] | null | undefined
