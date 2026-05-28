@@ -2,50 +2,27 @@
 
 import type { RepositoryResource } from "gitdot-api";
 import { Copy, Download, Settings, Star } from "lucide-react";
-import { useOptimistic, useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "@/(main)/context/toaster";
-import { useUserContext } from "@/(main)/context/user";
-import {
-  starRepositoryAction,
-  unstarRepositoryAction,
-} from "@/actions/repository";
 import { cn } from "@/util";
 import { RepoSettingsDialog } from "./settings/repo-settings-dialog";
 import type { RepoSettingsTab } from "./settings/repo-settings-sidebar";
 
 export function RepoActions({
   repository,
+  starred,
+  toggleStar,
   isAdmin,
 }: {
   repository: RepositoryResource;
+  starred: boolean;
+  toggleStar: () => void;
   isAdmin: boolean;
 }) {
-  const { requireAuth } = useUserContext();
-  const [, startTransition] = useTransition();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<RepoSettingsTab>("info");
-  const [optimistic, setOptimistic] = useOptimistic(
-    { starred: repository.user_star, count: repository.stars },
-    (state, next: boolean) => ({
-      starred: next,
-      count: state.count + (next ? 1 : 0) - (state.starred ? 1 : 0),
-    }),
-  );
-
-  const handleStar = () => {
-    if (requireAuth()) return;
-
-    const next = !optimistic.starred;
-    startTransition(async () => {
-      setOptimistic(next);
-      const result = next
-        ? await starRepositoryAction(repository.owner, repository.name)
-        : await unstarRepositoryAction(repository.owner, repository.name);
-      if ("error" in result) {
-        toast(result.error);
-      }
-    });
-  };
+  const count =
+    repository.stars + (starred ? 1 : 0) - (repository.user_star ? 1 : 0);
 
   const handleClone = () => {
     const url = `${window.location.origin}/${repository.owner}/${repository.name}`;
@@ -71,15 +48,12 @@ export function RepoActions({
       </span>
       <RepoActionButton
         icon={
-          <Star
-            className="size-3"
-            fill={optimistic.starred ? "currentColor" : "none"}
-          />
+          <Star className="size-3" fill={starred ? "currentColor" : "none"} />
         }
-        label={optimistic.starred ? "Starred" : "Star"}
-        count={optimistic.count}
-        active={optimistic.starred}
-        onClick={handleStar}
+        label={starred ? "Starred" : "Star"}
+        count={count}
+        active={starred}
+        onClick={toggleStar}
       />
       <RepoActionButton
         icon={<Download className="size-3" />}

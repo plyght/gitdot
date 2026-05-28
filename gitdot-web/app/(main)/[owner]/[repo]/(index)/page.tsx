@@ -42,6 +42,7 @@ export default async function Page({
       <RepoPanel
         repository={repository}
         activityPromise={activityPromise}
+        currentUser={current ?? null}
         isAdmin={isAdmin}
       />
     </div>

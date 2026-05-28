@@ -3,16 +3,21 @@
 import type {
   GetRepositoryActivityResponse,
   RepositoryActivityEventResource,
+  UserResource,
 } from "gitdot-api";
 import { Star } from "lucide-react";
-import { Suspense, use } from "react";
+import { Suspense, use, useMemo } from "react";
 import Link from "@/ui/link";
 import { timeAgo } from "@/util";
 
 export function RepoActivity({
   activityPromise,
+  starred,
+  currentUser,
 }: {
   activityPromise: Promise<GetRepositoryActivityResponse | null>;
+  starred: boolean;
+  currentUser: UserResource | null;
 }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col p-2">
@@ -26,7 +31,11 @@ export function RepoActivity({
           </span>
         }
       >
-        <ActivityList promise={activityPromise} />
+        <ActivityList
+          promise={activityPromise}
+          starred={starred}
+          currentUser={currentUser}
+        />
       </Suspense>
     </div>
   );
@@ -34,10 +43,33 @@ export function RepoActivity({
 
 function ActivityList({
   promise,
+  starred,
+  currentUser,
 }: {
   promise: Promise<GetRepositoryActivityResponse | null>;
+  starred: boolean;
+  currentUser: UserResource | null;
 }) {
-  const events = use(promise) ?? [];
+  const serverEvents = use(promise) ?? [];
+  const events = useMemo(() => {
+    if (!currentUser) return serverEvents;
+    const userStarEvent = serverEvents.find(
+      (e) => e.type === "starred" && e.user.id === currentUser.id,
+    );
+    const others = serverEvents.filter((e) => e !== userStarEvent);
+    return [
+      ...(starred
+        ? [
+            {
+              type: "starred" as const,
+              user: currentUser,
+              at: userStarEvent?.at ?? new Date().toISOString(),
+            },
+          ]
+        : []),
+      ...others,
+    ];
+  }, [serverEvents, starred, currentUser]);
 
   if (events.length === 0) {
     return (
