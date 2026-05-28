@@ -38,10 +38,10 @@ export function OrgSettingsMembers({
                 className={
                   member.role_description
                     ? "font-sans text-xs text-foreground"
-                    : "font-sans text-xs text-muted-foreground"
+                    : "font-sans text-xs text-muted-foreground italic"
                 }
               >
-                {member.role_description || "no description found"}
+                {member.role_description || "no description"}
               </p>
               <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
                 Joined {formatDate(new Date(member.created_at), tz)}

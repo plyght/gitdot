@@ -15,7 +15,7 @@ export function OrgProfile({ org }: { org: OrganizationResource }) {
       )}
       {location && <p className="text-xs text-muted-foreground">{location}</p>}
       {!displayName && !location && (
-        <p className="text-xs text-muted-foreground">no description</p>
+        <p className="text-xs text-muted-foreground italic">no description</p>
       )}
     </div>
   );

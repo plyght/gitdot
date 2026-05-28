@@ -42,10 +42,10 @@ export function UserOrgs({
               className={`col-start-2 col-end-4 ${
                 m.role_description
                   ? "text-xs text-foreground"
-                  : "text-xs text-muted-foreground"
+                  : "text-xs text-muted-foreground italic"
               }`}
             >
-              {m.role_description || "no description found"}
+              {m.role_description || "no description"}
             </p>
           </div>
         ))}

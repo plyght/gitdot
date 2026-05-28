@@ -18,7 +18,7 @@ export function UserProfile({ user }: { user: UserResource }) {
       )}
       {location && <p className="text-xs text-muted-foreground">{location}</p>}
       {!displayName && !location && (
-        <p className="text-xs text-muted-foreground">no description</p>
+        <p className="text-xs text-muted-foreground italic">no description</p>
       )}
     </div>
   );

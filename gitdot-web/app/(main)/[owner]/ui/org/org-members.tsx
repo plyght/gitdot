@@ -90,10 +90,10 @@ export function OrgMembers({
               className={`col-start-2 col-end-4 ${
                 member.role_description
                   ? "text-xs text-foreground"
-                  : "text-xs text-muted-foreground"
+                  : "text-xs text-muted-foreground italic"
               }`}
             >
-              {member.role_description || "no description found"}
+              {member.role_description || "no description"}
             </p>
           </div>
         ))}
