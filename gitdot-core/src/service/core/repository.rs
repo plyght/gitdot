@@ -626,10 +626,25 @@ where
         };
 
         let diff_start = Instant::now();
-        let files = self
-            .git_client
-            .get_repo_diff_files(&owner, &repo_name, left_ref, &sha)
-            .await?;
+        let paths: Vec<String> = commit.diffs.iter().map(|d| d.path.clone()).collect();
+        let (left, right) = tokio::try_join!(
+            self.git_client
+                .get_repo_blobs_at_ref(&owner, &repo_name, left_ref, &paths),
+            self.git_client
+                .get_repo_blobs_at_ref(&owner, &repo_name, Some(&sha), &paths),
+        )?;
+        let files: Vec<RepositoryDiffFileResponse> = commit
+            .diffs
+            .iter()
+            .enumerate()
+            .map(|(i, d)| RepositoryDiffFileResponse {
+                path: d.path.clone(),
+                left_content: left[i].clone(),
+                right_content: right[i].clone(),
+                lines_added: d.lines_added as u32,
+                lines_removed: d.lines_removed as u32,
+            })
+            .collect();
         let diff_files_ms = diff_start.elapsed().as_millis() as u64;
 
         tracing::error!(

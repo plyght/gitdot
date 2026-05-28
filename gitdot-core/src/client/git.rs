@@ -72,6 +72,15 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         paths: &[String],
     ) -> Result<RepositoryBlobsResponse, GitError>;
 
+    // TODO: delete get repo blob at refs once we simplify file blobs
+    async fn get_repo_blobs_at_ref(
+        &self,
+        owner: &str,
+        repo: &str,
+        ref_name: Option<&str>,
+        paths: &[String],
+    ) -> Result<Vec<Option<String>>, GitError>;
+
     async fn get_repo_blob_at_refs(
         &self,
         owner: &str,
@@ -632,6 +641,40 @@ impl GitClient for Git2Client {
         .await?
     }
 
+    async fn get_repo_blobs_at_ref(
+        &self,
+        owner: &str,
+        repo: &str,
+        ref_name: Option<&str>,
+        paths: &[String],
+    ) -> Result<Vec<Option<String>>, GitError> {
+        let ref_name = ref_name.map(str::to_string);
+        let paths = paths.to_vec();
+        let repository = self.open_repository(owner, repo)?;
+
+        task::spawn_blocking(move || {
+            let tree = match ref_name {
+                None => {
+                    let empty_oid = repository.treebuilder(None)?.write()?;
+                    repository.find_tree(empty_oid)?
+                }
+                Some(ref r) => Self::resolve_ref(&repository, r)?.tree()?,
+            };
+
+            let contents = paths
+                .iter()
+                .map(|path| {
+                    Self::get_blob(&repository, &tree, path)
+                        .ok()
+                        .map(|blob| Self::blob_content_string(&blob))
+                })
+                .collect();
+
+            Ok(contents)
+        })
+        .await?
+    }
+
     async fn get_repo_blob_at_refs(
         &self,
         owner: &str,
@@ -742,6 +785,7 @@ impl GitClient for Git2Client {
         .await?
     }
 
+    // TODO: only used by review diff files now
     async fn get_repo_diff_files(
         &self,
         owner: &str,

@@ -8,6 +8,7 @@ import {
 } from "gitdot-client";
 import { inferLanguage } from "gitdot-dal/client";
 import type { Element } from "hast";
+import { unstable_cache } from "next/cache";
 import {
   type DiffHunk,
   diffFiles,
@@ -63,7 +64,16 @@ export async function renderCommitDiffAction(
 ): Promise<DiffEntry[]> {
   const result = await getRepositoryCommitDiff(owner, repo, sha);
   if (!result) return [];
-  return renderDiffs(result.files);
+
+  // note: this is after the backend API call so authz works
+  // diffs never change given a set of files, so this is consistent per.
+  return unstable_cache(
+    () => renderDiffs(result.files),
+    ["commit-diff", owner, repo, sha],
+    {
+      tags: [`commit-diff:${owner}/${repo}/${sha}`],
+    },
+  )();
 }
 
 export async function renderReviewDiffAction(
