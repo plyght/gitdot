@@ -1,8 +1,8 @@
 "use client";
 
 import type { RepositoryResource } from "gitdot-api";
-import { Copy, Download, Star } from "lucide-react";
-import { useOptimistic, useTransition } from "react";
+import { Copy, Download, Rocket, Star } from "lucide-react";
+import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "@/(main)/context/toaster";
 import { useUserContext } from "@/(main)/context/user";
 import {
@@ -10,6 +10,7 @@ import {
   unstarRepositoryAction,
 } from "@/actions/repository";
 import { cn } from "@/util";
+import { RepoPromoteDialog } from "./repo-promote-dialog";
 
 export function RepoActions({
   repository,
@@ -18,6 +19,7 @@ export function RepoActions({
 }) {
   const { requireAuth } = useUserContext();
   const [, startTransition] = useTransition();
+  const [promoteOpen, setPromoteOpen] = useState(false);
   const [optimistic, setOptimistic] = useOptimistic(
     { starred: repository.user_star, count: repository.stars },
     (state, next: boolean) => ({
@@ -79,6 +81,19 @@ export function RepoActions({
         icon={<Download className="size-3" />}
         label="Clone"
         onClick={handleClone}
+      />
+      {repository.readonly && (
+        <RepoActionButton
+          icon={<Rocket className="size-3" />}
+          label="Promote"
+          onClick={() => setPromoteOpen(true)}
+        />
+      )}
+      <RepoPromoteDialog
+        open={promoteOpen}
+        setOpen={setPromoteOpen}
+        owner={repository.owner}
+        repo={repository.name}
       />
     </div>
   );

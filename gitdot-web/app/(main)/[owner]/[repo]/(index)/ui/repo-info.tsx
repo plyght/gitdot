@@ -6,6 +6,7 @@ import { formatDate } from "@/util/date";
 
 export function RepoInfo({ repository }: { repository: RepositoryResource }) {
   const tz = useTimezone();
+
   const rows: { label: string; value: string }[] = [
     { label: "visibility", value: repository.visibility },
     {
@@ -30,6 +31,16 @@ export function RepoInfo({ repository }: { repository: RepositoryResource }) {
             <span className="text-foreground">{row.value}</span>
           </div>
         ))}
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">status</span>
+          <span className="text-foreground">
+            {repository.readonly ? (
+              <span className="font-bold">read-only</span>
+            ) : (
+              "read-write"
+            )}
+          </span>
+        </div>
       </div>
     </div>
   );
