@@ -51,6 +51,7 @@ impl R2Client for R2ClientImpl {
             .bucket(&self.bucket_name)
             .key(key)
             .body(ByteStream::from(body))
+            .cache_control("public, max-age=31536000, immutable")
             .send()
             .await
             .map_err(|e| R2Error::UploadError(e.to_string()))?;
