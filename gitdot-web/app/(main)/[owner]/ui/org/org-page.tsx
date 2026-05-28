@@ -29,9 +29,9 @@ export default async function OrgPage({ org }: { org: OrganizationResource }) {
   const isMember = role !== "guest";
 
   return (
-    <div className="grid grid-cols-[8rem_minmax(0,3fr)_minmax(0,2fr)] h-full">
+    <div className="grid grid-cols-[15rem_minmax(0,3fr)_minmax(0,2fr)] h-full">
       <div className="overflow-y-auto scrollbar-none">
-        <div className="flex flex-col items-start pl-4 pr-2 my-2.5 pt-0.5 gap-6">
+        <div className="flex flex-col items-end pl-2 pr-4 my-2.5 pt-0.5 gap-6">
           <OrgProfile org={org} />
           <OrgLinks org={org} />
           <OrgActions

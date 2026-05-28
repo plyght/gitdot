@@ -1,5 +1,6 @@
 "use client";
 
+import { CommitDialog } from "@/(main)/ui/commit-dialog";
 import { MigrateRepoDialog } from "@/(main)/ui/migrate-repo-dialog";
 import { NewOrgDialog } from "@/(main)/ui/new-org-dialog";
 import { NewRepoDialog } from "@/(main)/ui/new-repo-dialog";
@@ -15,6 +16,7 @@ export function DialogsProvider({ children }: { children: React.ReactNode }) {
       <NewRepoDialog />
       <MigrateRepoDialog />
       <SettingsDialog />
+      <CommitDialog />
     </>
   );
 }

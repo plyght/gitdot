@@ -1,6 +1,7 @@
 "use client";
 
 import type { UserCommitResource } from "gitdot-api";
+import type { OpenCommitDialogDetail } from "@/(main)/ui/commit-dialog";
 import { dateInRange } from "@/util/date";
 
 export function UserCommitsLog({
@@ -69,22 +70,40 @@ function CommitLogRow({ c }: { c: UserCommitResource }) {
     );
   }
 
+  const { owner_name, repo_name, sha, message, author } = c;
+  if (!owner_name || !repo_name || !sha || !message || !author) return null;
+
   const added = c.diffs.reduce((s, d) => s + d.lines_added, 0);
   const removed = c.diffs.reduce((s, d) => s + d.lines_removed, 0);
-  const url = `/${c.owner_name}/${c.repo_name}/commits/${c.sha?.slice(0, 7)}`;
+  const url = `/${owner_name}/${repo_name}/commits/${sha.slice(0, 7)}`;
+
+  const detail: OpenCommitDialogDetail = {
+    commit: { owner_name, repo_name, sha, message, date: c.date, author },
+  };
 
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-center gap-2"
+    <div
+      tabIndex={-1}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey) {
+          window.open(url, "_blank", "noopener,noreferrer");
+          return;
+        }
+        window.dispatchEvent(new CustomEvent("openCommitDialog", { detail }));
+      }}
+      onAuxClick={(e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+      }}
+      className="group flex items-center gap-2 cursor-default select-none"
     >
       <span className="text-xs font-mono text-muted-foreground shrink-0">
-        {c.repo_name}
+        {repo_name}
       </span>
       <span className="text-sm flex-1 truncate underline decoration-transparent group-hover:decoration-current">
-        {c.message}
+        {message}
       </span>
       <span className="text-xs font-mono text-muted-foreground/50 shrink-0">
         {c.diffs.length} files
@@ -95,6 +114,6 @@ function CommitLogRow({ c }: { c: UserCommitResource }) {
       <span className="text-xs font-mono text-red-600 dark:text-red-500 shrink-0">
         -{removed}
       </span>
-    </a>
+    </div>
   );
 }

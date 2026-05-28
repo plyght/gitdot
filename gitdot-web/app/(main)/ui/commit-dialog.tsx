@@ -1,6 +1,6 @@
 "use client";
 
-import type { RepositoryCommitResource } from "gitdot-api";
+import type { CommitAuthorResource } from "gitdot-api";
 import { Suspense, use, useEffect, useState } from "react";
 import { CommitBody } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-body";
 import { CommitHeader } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-header";
@@ -9,18 +9,21 @@ import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import { Loading } from "@/ui/loading";
 
 export type OpenCommitDialogDetail = {
-  commit: RepositoryCommitResource;
+  commit: {
+    owner_name: string;
+    repo_name: string;
+    sha: string;
+    message: string;
+    date: string;
+    author: CommitAuthorResource;
+  };
 };
 
-export function RepoCommitDialog({
-  owner,
-  repo,
-}: {
-  owner: string;
-  repo: string;
-}) {
+export function CommitDialog() {
   const [open, setOpen] = useState(false);
-  const [commit, setCommit] = useState<RepositoryCommitResource | null>(null);
+  const [commit, setCommit] = useState<OpenCommitDialogDetail["commit"] | null>(
+    null,
+  );
   const [diffPromise, setDiffPromise] = useState<Promise<DiffEntry[]> | null>(
     null,
   );
@@ -29,12 +32,18 @@ export function RepoCommitDialog({
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<OpenCommitDialogDetail>).detail;
       setCommit(detail.commit);
-      setDiffPromise(renderCommitDiffAction(owner, repo, detail.commit.sha));
+      setDiffPromise(
+        renderCommitDiffAction(
+          detail.commit.owner_name,
+          detail.commit.repo_name,
+          detail.commit.sha,
+        ),
+      );
       setOpen(true);
     };
     window.addEventListener("openCommitDialog", handler);
     return () => window.removeEventListener("openCommitDialog", handler);
-  }, [owner, repo]);
+  }, []);
 
   if (!commit) return null;
   const shortSha = commit.sha.substring(0, 7);
@@ -53,9 +62,12 @@ export function RepoCommitDialog({
             className="w-full px-6 pt-4 pb-8 flex flex-col gap-6"
           >
             <CommitHeader
-              commit={commit}
-              owner={owner}
-              repo={repo}
+              owner={commit.owner_name}
+              repo={commit.repo_name}
+              sha={commit.sha}
+              message={commit.message}
+              date={commit.date}
+              author={commit.author}
               showOpenInTab
             />
             {diffPromise && (

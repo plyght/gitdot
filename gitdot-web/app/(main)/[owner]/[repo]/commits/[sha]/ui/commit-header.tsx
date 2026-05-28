@@ -1,6 +1,6 @@
 "use client";
 
-import type { RepositoryCommitResource } from "gitdot-api";
+import type { CommitAuthorResource } from "gitdot-api";
 import { ExternalLink } from "lucide-react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { useTimezone } from "@/(main)/context/timezone";
@@ -8,20 +8,25 @@ import Link from "@/ui/link";
 import { formatDateTime } from "@/util/date";
 
 export function CommitHeader({
-  commit,
   owner,
   repo,
+  sha,
+  message,
+  date,
+  author,
   showOpenInTab = false,
 }: {
-  commit: RepositoryCommitResource;
   owner: string;
   repo: string;
+  sha: string;
+  message: string;
+  date: string;
+  author: CommitAuthorResource;
   showOpenInTab?: boolean;
 }) {
   const tz = useTimezone();
-  const date = new Date(commit.date);
-  const shortSha = commit.sha.substring(0, 7);
-  const { author } = commit;
+  const dateObj = new Date(date);
+  const shortSha = sha.substring(0, 7);
   const linkedName = author.id && author.name ? author.name : null;
 
   return (
@@ -78,12 +83,12 @@ export function CommitHeader({
         )}
       </div>
       <div className="text-sm text-foreground whitespace-pre-wrap mt-1">
-        {commit.message}
+        {message}
       </div>
       <div className="flex items-baseline gap-1 text-xs font-mono text-muted-foreground mt-1">
-        <span>{formatDateTime(date, tz)}</span>
+        <span>{formatDateTime(dateObj, tz)}</span>
         <span>·</span>
-        <span>{commit.sha.substring(0, 7)}</span>
+        <span>{shortSha}</span>
       </div>
     </div>
   );

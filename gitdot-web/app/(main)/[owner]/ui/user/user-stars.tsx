@@ -5,7 +5,7 @@ export function UserStars({ stars }: { stars: RepositoryResource[] }) {
   if (!stars.length) return null;
 
   return (
-    <div className="flex flex-col items-start w-full min-w-0">
+    <div className="flex flex-col items-end w-full min-w-0 text-right">
       <p className="font-semibold dark:font-normal text-sm mb-0.5">stars</p>
       {stars.map((repo) => (
         <Link

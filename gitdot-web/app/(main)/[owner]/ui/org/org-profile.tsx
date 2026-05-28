@@ -2,17 +2,20 @@ import type { OrganizationResource } from "gitdot-api";
 import { OrgImage } from "./org-image";
 
 export function OrgProfile({ org }: { org: OrganizationResource }) {
+  const displayName = org.display_name?.trim();
+  const location = org.location?.trim();
   return (
-    <div className="flex flex-col items-start">
+    <div className="flex flex-col items-end">
       <div className="mb-0.5">
         <OrgImage px={36} orgId={org.id} />
       </div>
       <p className="font-semibold text-sm mb-0.5">{org.name}</p>
-      {org.display_name && (
-        <p className="text-xs text-muted-foreground">{org.display_name}</p>
+      {displayName && (
+        <p className="text-xs text-muted-foreground">{displayName}</p>
       )}
-      {org.location && (
-        <p className="text-xs text-muted-foreground">{org.location}</p>
+      {location && <p className="text-xs text-muted-foreground">{location}</p>}
+      {!displayName && !location && (
+        <p className="text-xs text-muted-foreground">no description</p>
       )}
     </div>
   );
