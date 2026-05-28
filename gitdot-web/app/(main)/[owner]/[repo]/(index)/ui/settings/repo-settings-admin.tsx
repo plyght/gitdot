@@ -6,7 +6,7 @@ import { cn } from "@/util";
 import { RepoDeleteDialog } from "./repo-delete-dialog";
 import { RepoPromoteDialog } from "./repo-promote-dialog";
 
-export function RepoSettingsGeneral({
+export function RepoSettingsAdmin({
   repository,
 }: {
   repository: RepositoryResource;

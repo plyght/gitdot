@@ -2,7 +2,8 @@
 
 import type { RepositoryResource } from "gitdot-api";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
-import { RepoSettingsGeneral } from "./repo-settings-general";
+import { RepoSettingsAdmin } from "./repo-settings-admin";
+import { RepoSettingsInfo } from "./repo-settings-info";
 import {
   RepoSettingsSidebar,
   type RepoSettingsTab,
@@ -35,9 +36,8 @@ export function RepoSettingsDialog({
           <RepoSettingsSidebar tab={tab} onTabChange={onTabChange} />
 
           <div className="flex-1 overflow-y-auto scrollbar-thin">
-            {tab === "general" && (
-              <RepoSettingsGeneral repository={repository} />
-            )}
+            {tab === "info" && <RepoSettingsInfo repository={repository} />}
+            {tab === "admin" && <RepoSettingsAdmin repository={repository} />}
           </div>
         </div>
       </DialogContent>

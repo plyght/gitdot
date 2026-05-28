@@ -2,6 +2,7 @@
 
 import type { RepositoryResource } from "gitdot-api";
 import { useTimezone } from "@/(main)/context/timezone";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { formatDate } from "@/util/date";
 
 export function RepoInfo({
@@ -52,7 +53,22 @@ export function RepoInfo({
           <span className="text-muted-foreground">status</span>
           <span className="text-foreground">
             {repository.readonly ? (
-              <span className="font-bold">read-only</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="font-bold hover:underline cursor-default">
+                    read-only
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  One-way sync from GitHub; pushes disabled.
+                  {isAdmin && (
+                    <>
+                      <br />
+                      Go to settings to promote.
+                    </>
+                  )}
+                </TooltipContent>
+              </Tooltip>
             ) : (
               "read-write"
             )}

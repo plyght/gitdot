@@ -2,7 +2,7 @@
 
 import { cn } from "@/util";
 
-export type RepoSettingsTab = "general";
+export type RepoSettingsTab = "info" | "admin";
 
 const GROUPS: {
   label: string;
@@ -10,7 +10,10 @@ const GROUPS: {
 }[] = [
   {
     label: "General",
-    tabs: [{ id: "general", label: "/general" }],
+    tabs: [
+      { id: "info", label: "/info" },
+      { id: "admin", label: "/admin" },
+    ],
   },
 ];
 

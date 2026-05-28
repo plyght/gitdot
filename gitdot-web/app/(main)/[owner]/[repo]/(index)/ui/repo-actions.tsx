@@ -23,7 +23,7 @@ export function RepoActions({
   const { requireAuth } = useUserContext();
   const [, startTransition] = useTransition();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<RepoSettingsTab>("general");
+  const [settingsTab, setSettingsTab] = useState<RepoSettingsTab>("info");
   const [optimistic, setOptimistic] = useOptimistic(
     { starred: repository.user_star, count: repository.stars },
     (state, next: boolean) => ({
@@ -92,7 +92,7 @@ export function RepoActions({
             icon={<Settings className="size-3" />}
             label="Settings"
             onClick={() => {
-              setSettingsTab("general");
+              setSettingsTab("info");
               setSettingsOpen(true);
             }}
           />
