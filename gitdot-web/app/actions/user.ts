@@ -2,9 +2,9 @@
 
 import type {
   CurrentUserResource,
-  OrganizationMemberResource,
   RepositoryResource,
   UserEmailResource,
+  UserOrganizationResource,
   UserResource,
 } from "gitdot-api";
 import {
@@ -111,7 +111,7 @@ export async function listUserRepositoriesAction(
 
 export async function listUserOrganizationsAction(
   username: string,
-): Promise<OrganizationMemberResource[]> {
+): Promise<UserOrganizationResource[]> {
   const result = await listUserOrganizations(username);
   return result?.data ?? [];
 }

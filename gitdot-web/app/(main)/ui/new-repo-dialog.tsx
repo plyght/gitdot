@@ -44,7 +44,7 @@ export function NewRepoDialog() {
   }, [open]);
 
   const ownerType = owner === user?.name ? "user" : "organization";
-  const selectedMembership = memberships?.find((m) => m.org_name === owner);
+  const selectedMembership = memberships?.find((m) => m.name === owner);
 
   const [state, formAction, isPending] = useActionState(
     createRepositoryAction,
@@ -140,10 +140,7 @@ export function NewRepoDialog() {
                       className="flex items-center gap-1.5 hover:text-muted-foreground transition-colors cursor-pointer"
                     >
                       {selectedMembership ? (
-                        <OrgImage
-                          orgId={selectedMembership.organization_id}
-                          px={14}
-                        />
+                        <OrgImage orgId={selectedMembership.id} px={14} />
                       ) : (
                         <UserImage userId={user?.id} px={14} />
                       )}
@@ -162,12 +159,12 @@ export function NewRepoDialog() {
                       )}
                       {memberships?.map((m) => (
                         <DropdownMenuItem
-                          key={m.organization_id}
+                          key={m.id}
                           className="text-xs"
-                          onClick={() => setOwner(m.org_name)}
+                          onClick={() => setOwner(m.name)}
                         >
-                          <OrgImage orgId={m.organization_id} px={14} />
-                          {m.org_name}
+                          <OrgImage orgId={m.id} px={14} />
+                          {m.name}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>

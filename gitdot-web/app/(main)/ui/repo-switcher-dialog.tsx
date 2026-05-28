@@ -1,7 +1,7 @@
 "use client";
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import type { OrganizationMemberResource, UserResource } from "gitdot-api";
+import type { UserOrganizationResource, UserResource } from "gitdot-api";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useShortcuts } from "@/(main)/context/shortcuts";
@@ -36,7 +36,7 @@ function RepoSwitcherDialogInner({
   memberships,
 }: {
   user: UserResource;
-  memberships: OrganizationMemberResource[];
+  memberships: UserOrganizationResource[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -69,7 +69,7 @@ function RepoSwitcherDialogInner({
     Promise.all([
       listUserRepositoriesAction(user.name),
       Promise.all(
-        memberships.map((m) => listOrganizationRepositoriesAction(m.org_name)),
+        memberships.map((m) => listOrganizationRepositoriesAction(m.name)),
       ),
       listUserStarsAction(user.name),
     ]).then(([userRepos, orgReposByOrg, starredRepos]) => {
@@ -141,7 +141,7 @@ function RepoSwitcherDialogInner({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className="max-w-[720px] min-w-[720px] border-black rounded-xs shadow-2xl top-[42%] p-0"
+        className="max-w-180 min-w-180 border-black rounded-xs shadow-2xl top-[42%] p-0"
         animations={false}
         showOverlay={false}
       >

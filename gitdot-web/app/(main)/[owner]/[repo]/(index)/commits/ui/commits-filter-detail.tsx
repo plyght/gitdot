@@ -87,8 +87,7 @@ export function CommitsFilterDetail({
 
   const { user, memberships } = useUserContext();
   const canSave =
-    user?.name === owner ||
-    (memberships ?? []).some((m) => m.org_name === owner);
+    user?.name === owner || (memberships ?? []).some((m) => m.name === owner);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">

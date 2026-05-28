@@ -1,6 +1,6 @@
 "use client";
 
-import type { OrganizationMemberResource } from "gitdot-api";
+import type { UserOrganizationResource } from "gitdot-api";
 import { useTimezone } from "@/(main)/context/timezone";
 import Link from "@/ui/link";
 import { formatDate } from "@/util/date";
@@ -9,7 +9,7 @@ import { OrgImage } from "../org/org-image";
 export function UserOrgs({
   memberships,
 }: {
-  memberships: OrganizationMemberResource[] | null;
+  memberships: UserOrganizationResource[] | null;
 }) {
   const tz = useTimezone();
   if (!memberships?.length) return null;
@@ -23,20 +23,17 @@ export function UserOrgs({
       <div className="flex flex-col gap-4">
         {memberships.map((m) => (
           <div key={m.id} className="grid grid-cols-[auto_1fr_auto] gap-x-3">
-            <Link
-              href={`/${m.org_name}`}
-              className="peer row-span-2 self-start"
-            >
-              <OrgImage orgId={m.organization_id} px={32} />
+            <Link href={`/${m.name}`} className="peer row-span-2 self-start">
+              <OrgImage orgId={m.id} px={32} />
             </Link>
             <Link
-              href={`/${m.org_name}`}
+              href={`/${m.name}`}
               className="text-sm font-medium dark:font-normal underline decoration-transparent hover:decoration-current peer-hover:decoration-current transition-colors duration-200 self-start"
             >
-              {m.org_name}
+              {m.name}
             </Link>
             <span className="text-xs font-mono text-muted-foreground self-start">
-              member since {formatDate(new Date(m.created_at), tz)}
+              member since {formatDate(new Date(m.joined_at), tz)}
             </span>
             <p
               className={`col-start-2 col-end-4 ${

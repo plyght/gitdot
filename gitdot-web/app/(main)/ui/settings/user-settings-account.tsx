@@ -92,11 +92,7 @@ function EmailsSection({
             </div>
           ))}
           {pending.map((e) => (
-            <PendingRow
-              key={e.email}
-              email={e.email}
-              onAddEmail={onAddEmail}
-            />
+            <PendingRow key={e.email} email={e.email} onAddEmail={onAddEmail} />
           ))}
         </div>
       )}

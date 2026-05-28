@@ -1,7 +1,6 @@
 import "server-only";
 
 import {
-  ListOrganizationMembersResponse,
   ListOrganizationRepositoriesResponse,
   OrganizationMemberResource,
   OrganizationResource,
@@ -20,20 +19,6 @@ export async function getOrganization(
 ): Promise<OrganizationResource | null> {
   const response = await authFetch(`${GITDOT_SERVER_URL}/organization/${name}`);
   return await handleResponse(response, OrganizationResource);
-}
-
-export async function listOrganizationMembers(
-  name: string,
-  opts?: { role?: string; cursor?: string; limit?: number },
-): Promise<ListOrganizationMembersResponse | null> {
-  const qs = toQueryString({
-    role: opts?.role,
-    cursor: opts?.cursor,
-    limit: opts?.limit,
-  });
-  const url = `${GITDOT_SERVER_URL}/organization/${name}/members${qs ? `?${qs}` : ""}`;
-  const response = await authFetch(url);
-  return await handleResponse(response, ListOrganizationMembersResponse);
 }
 
 export async function addOrganizationMember(

@@ -2,8 +2,8 @@
 
 import type {
   GitHubInstallationResource,
-  OrganizationMemberResource,
   UserEmailResource,
+  UserOrganizationResource,
   UserResource,
 } from "gitdot-api";
 import {
@@ -19,7 +19,7 @@ import { AuthDialog } from "../ui/auth-dialog";
 interface UserContext {
   user: UserResource | null | undefined;
   emails: UserEmailResource[] | null | undefined;
-  memberships: OrganizationMemberResource[] | null | undefined;
+  memberships: UserOrganizationResource[] | null | undefined;
   installations: GitHubInstallationResource[] | null | undefined;
   refreshUser: () => Promise<void>;
   requireAuth: () => boolean;
@@ -39,7 +39,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     undefined,
   );
   const [memberships, setMemberships] = useState<
-    OrganizationMemberResource[] | null | undefined
+    UserOrganizationResource[] | null | undefined
   >(undefined);
   const [installations, setInstallations] = useState<
     GitHubInstallationResource[] | null | undefined

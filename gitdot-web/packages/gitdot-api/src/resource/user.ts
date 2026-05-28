@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { OrganizationMemberResource } from "./organization";
 
 export const UserResource = z.object({
   id: z.uuid(),
@@ -20,11 +19,22 @@ export const UserEmailResource = z.object({
 });
 export type UserEmailResource = z.infer<typeof UserEmailResource>;
 
+export const UserOrganizationResource = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  display_name: z.string().nullable().optional(),
+
+  role: z.string(),
+  role_description: z.string().nullable().optional(),
+  joined_at: z.iso.datetime(),
+});
+export type UserOrganizationResource = z.infer<typeof UserOrganizationResource>;
+
 export const CurrentUserResource = z.object({
   id: z.uuid(),
   name: z.string(),
   emails: z.array(UserEmailResource),
-  memberships: z.array(OrganizationMemberResource),
+  memberships: z.array(UserOrganizationResource),
   location: z.string().nullable().optional(),
   readme: z.string().nullable().optional(),
   links: z.array(z.string()).default([]),

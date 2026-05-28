@@ -27,7 +27,7 @@ export default async function Page({
   const isAdmin =
     current?.name === owner ||
     (current?.memberships ?? []).some(
-      (m) => m.org_name === owner && m.role === "admin",
+      (m) => m.name === owner && m.role === "admin",
     );
 
   const resources = fetchResources({

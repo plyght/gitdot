@@ -1,9 +1,5 @@
 import type { OrganizationResource } from "gitdot-api";
-import {
-  getCurrentUser,
-  listOrganizationMembers,
-  listOrganizationRepositories,
-} from "gitdot-client";
+import { getCurrentUser, listOrganizationRepositories } from "gitdot-client";
 import { OrgActions } from "./org-actions";
 import { OrgLinks } from "./org-links";
 import { OrgMembers } from "./org-members";
@@ -12,21 +8,24 @@ import { OrgReadme } from "./org-readme";
 import { OrgRepositories } from "./org-repositories";
 
 export default async function OrgPage({ org }: { org: OrganizationResource }) {
-  const [membersResponse, reposResponse, current] = await Promise.all([
-    listOrganizationMembers(org.name),
+  const [reposResponse, current] = await Promise.all([
     listOrganizationRepositories(org.name),
     getCurrentUser(false),
   ]);
-  const members = membersResponse?.data ?? null;
+  const members = org.members ?? null;
   const repos = reposResponse?.data ?? null;
-  const membership =
-    current?.memberships.find((m) => m.org_name === org.name) ?? null;
-  const role: "guest" | "member" | "admin" = membership
-    ? membership.role === "admin"
+  const userMembership =
+    current?.memberships.find((m) => m.name === org.name) ?? null;
+  const role: "guest" | "member" | "admin" = userMembership
+    ? userMembership.role === "admin"
       ? "admin"
       : "member"
     : "guest";
   const isMember = role !== "guest";
+  const ownMember =
+    current && members
+      ? (members.find((m) => m.user_id === current.id) ?? null)
+      : null;
 
   return (
     <div className="grid grid-cols-[15rem_minmax(0,3fr)_minmax(0,2fr)] h-full">
@@ -38,7 +37,7 @@ export default async function OrgPage({ org }: { org: OrganizationResource }) {
             org={org}
             members={members}
             role={role}
-            membership={membership}
+            membership={ownMember}
           />
         </div>
       </div>

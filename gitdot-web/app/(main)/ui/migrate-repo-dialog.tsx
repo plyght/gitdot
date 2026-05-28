@@ -100,9 +100,7 @@ function NewMigration({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const selectedOrg = memberships?.find(
-    (m) => m.org_name === gitdotAccountName,
-  );
+  const selectedOrg = memberships?.find((m) => m.name === gitdotAccountName);
   const githubAccount =
     githubAccountId !== null
       ? installations?.find((i) => i.installation_id === githubAccountId)
@@ -258,7 +256,7 @@ function NewMigration({
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-1.5 hover:text-muted-foreground transition-colors cursor-pointer">
                   {selectedOrg ? (
-                    <OrgImage orgId={selectedOrg.organization_id} px={14} />
+                    <OrgImage orgId={selectedOrg.id} px={14} />
                   ) : (
                     <UserImage userId={user?.id} px={14} />
                   )}
@@ -279,12 +277,12 @@ function NewMigration({
                   )}
                   {memberships?.map((m) => (
                     <DropdownMenuItem
-                      key={m.organization_id}
+                      key={m.id}
                       className="text-xs"
-                      onClick={() => setGitdotAccount(m.org_name)}
+                      onClick={() => setGitdotAccount(m.name)}
                     >
-                      <OrgImage orgId={m.organization_id} px={14} />
-                      gitdot.io/{m.org_name}
+                      <OrgImage orgId={m.id} px={14} />
+                      gitdot.io/{m.name}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
