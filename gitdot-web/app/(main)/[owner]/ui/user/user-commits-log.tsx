@@ -1,7 +1,10 @@
 "use client";
 
 import type { UserCommitResource } from "gitdot-api";
-import type { OpenCommitDialogDetail } from "@/(main)/ui/commit-dialog";
+import {
+  type OpenCommitDialogDetail,
+  prefetchCommitDiff,
+} from "@/(main)/ui/commit-dialog";
 import { dateInRange } from "@/util/date";
 
 export function UserCommitsLog({
@@ -84,6 +87,7 @@ function CommitLogRow({ c }: { c: UserCommitResource }) {
   return (
     <div
       tabIndex={-1}
+      onPointerEnter={() => prefetchCommitDiff(owner_name, repo_name, sha)}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey) {
           window.open(url, "_blank", "noopener,noreferrer");

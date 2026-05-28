@@ -1,7 +1,7 @@
 "use client";
 
 import type { CommitAuthorResource } from "gitdot-api";
-import { Suspense, use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CommitBody } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-body";
 import { CommitHeader } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-header";
 import { type DiffEntry, renderCommitDiffAction } from "@/actions";
@@ -19,27 +19,42 @@ export type OpenCommitDialogDetail = {
   };
 };
 
+const diffCache = new Map<string, DiffEntry[]>();
+
+/** Warm the diff cache so the dialog opens instantly. Fire-and-forget. */
+export function prefetchCommitDiff(owner: string, repo: string, sha: string) {
+  const key = `${owner}/${repo}/${sha}`;
+  if (diffCache.has(key)) return;
+  renderCommitDiffAction(owner, repo, sha)
+    .then((entries) => diffCache.set(key, entries))
+    .catch(() => {});
+}
+
 export function CommitDialog() {
   const [open, setOpen] = useState(false);
   const [commit, setCommit] = useState<OpenCommitDialogDetail["commit"] | null>(
     null,
   );
-  const [diffPromise, setDiffPromise] = useState<Promise<DiffEntry[]> | null>(
-    null,
-  );
+  const [diffEntries, setDiffEntries] = useState<DiffEntry[] | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<OpenCommitDialogDetail>).detail;
+      const { owner_name, repo_name, sha } = detail.commit;
+      const key = `${owner_name}/${repo_name}/${sha}`;
       setCommit(detail.commit);
-      setDiffPromise(
-        renderCommitDiffAction(
-          detail.commit.owner_name,
-          detail.commit.repo_name,
-          detail.commit.sha,
-        ),
-      );
       setOpen(true);
+
+      const cached = diffCache.get(key);
+      if (cached) {
+        setDiffEntries(cached);
+        return;
+      }
+      setDiffEntries(null);
+      renderCommitDiffAction(owner_name, repo_name, sha).then((result) => {
+        diffCache.set(key, result);
+        setDiffEntries(result);
+      });
     };
     window.addEventListener("openCommitDialog", handler);
     return () => window.removeEventListener("openCommitDialog", handler);
@@ -70,19 +85,10 @@ export function CommitDialog() {
               author={commit.author}
               showOpenInTab
             />
-            {diffPromise && (
-              <Suspense fallback={<Loading />}>
-                <CommitBodyAsync promise={diffPromise} />
-              </Suspense>
-            )}
+            {diffEntries ? <CommitBody entries={diffEntries} /> : <Loading />}
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
-}
-
-function CommitBodyAsync({ promise }: { promise: Promise<DiffEntry[]> }) {
-  const entries = use(promise);
-  return <CommitBody entries={entries} />;
 }
