@@ -4,7 +4,6 @@ import { cn } from "@/util";
 
 export type UserSettingsTab =
   | "profile"
-  | "emails"
   | "account"
   | "appearance"
   | "installations"
@@ -18,7 +17,6 @@ const GROUPS: {
     label: "General",
     tabs: [
       { id: "profile", label: "/profile" },
-      { id: "emails", label: "/emails" },
       { id: "account", label: "/account" },
       { id: "appearance", label: "/appearance" },
     ],

@@ -1,5 +1,11 @@
 "use client";
 
+import type {
+  GetRepositoryActivityResponse,
+  RepositoryResource,
+  UserResource,
+} from "gitdot-api";
+import { useState } from "react";
 import { toast } from "@/(main)/context/toaster";
 import { useUserContext } from "@/(main)/context/user";
 import { useRightSidebar } from "@/(main)/hooks/use-sidebar";
@@ -7,12 +13,6 @@ import {
   starRepositoryAction,
   unstarRepositoryAction,
 } from "@/actions/repository";
-import type {
-  GetRepositoryActivityResponse,
-  RepositoryResource,
-  UserResource,
-} from "gitdot-api";
-import { useState } from "react";
 import { RepoActions } from "./repo-actions";
 import { RepoActivity } from "./repo-activity";
 import { RepoInfo } from "./repo-info";

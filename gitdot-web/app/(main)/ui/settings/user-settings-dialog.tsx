@@ -7,7 +7,6 @@ import { useUserContext } from "@/(main)/context/user";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import { UserSettingsAccount } from "./user-settings-account";
 import { UserSettingsAppearance } from "./user-settings-appearance";
-import { UserSettingsEmails } from "./user-settings-emails";
 import { UserSettingsInstallations } from "./user-settings-installations";
 import { UserSettingsMigrations } from "./user-settings-migrations";
 import { UserSettingsProfile } from "./user-settings-profile";
@@ -57,7 +56,6 @@ function UserSettingsDialogInner({ user }: { user: UserResource }) {
 
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {tab === "profile" && <UserSettingsProfile user={user} />}
-            {tab === "emails" && <UserSettingsEmails />}
             {tab === "account" && (
               <UserSettingsAccount setUserSettingsOpen={setOpen} />
             )}
