@@ -1,3 +1,12 @@
+//! Business-logic layer: one trait plus an `Impl` per domain.
+//!
+//! Services orchestrate [`repository`](crate::repository) data access and
+//! [`client`](crate::client) integrations, enforce authorization and domain
+//! rules, and return [`dto`](crate::dto) responses. Each service is generic over
+//! its repository/client traits so it can be unit-tested with mocks. Grouped
+//! into authentication, authorization, ci, core, metrics, migration, and
+//! webhook.
+
 mod authentication;
 mod authorization;
 mod ci;

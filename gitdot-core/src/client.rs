@@ -1,3 +1,11 @@
+//! Trait-and-impl wrappers around the external services gitdot talks to.
+//!
+//! Each integration exposes a trait (so it can be mocked in tests) alongside a
+//! concrete `Impl`: git via `git2` and the `git http-backend` CGI, GitHub
+//! (Octocrab), object storage (Cloudflare R2), Redis, Kafka, ClickHouse, S2
+//! durable streams, SMTP email, image processing, Google Secret Manager, the
+//! Slack bot API, and JWT/token generation.
+
 mod clickhouse;
 mod email;
 mod git;
