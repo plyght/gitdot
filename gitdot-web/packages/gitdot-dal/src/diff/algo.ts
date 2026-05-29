@@ -104,16 +104,11 @@ function mergeHunks(hunks: DiffHunk[]): DiffHunk[] {
   for (let i = 1; i < hunks.length; i++) {
     const prev = result[result.length - 1];
     const next = hunks[i];
-    const prevLast = prev.pairs.at(-1);
-    const nextFirst = next.pairs[0];
-    const prevL = prevLast?.[0];
-    const prevR = prevLast?.[1];
-    const nextL = nextFirst?.[0];
-
-    if (prevL == null || prevR == null || nextL == null) {
-      result.push(next);
-      continue;
-    }
+    const [prevL, prevR] = prev.pairs[prev.pairs.length - 1] as [
+      number,
+      number,
+    ];
+    const [nextL] = next.pairs[0] as [number, number];
 
     const gap = nextL - prevL - 1;
     if (gap <= 0 || gap > MERGE_THRESHOLD) {
