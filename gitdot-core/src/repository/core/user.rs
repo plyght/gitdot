@@ -628,7 +628,7 @@ mod tests {
 
     use super::{AuthProvider, UserRepository, UserRepositoryImpl};
     use crate::repository::test_common::{
-        insert_commit, insert_org, insert_repo, insert_star, insert_user,
+        insert_commit, insert_org, insert_star, insert_user, insert_user_repo,
     };
 
     #[sqlx::test]
@@ -921,8 +921,8 @@ mod tests {
 
         let pub_repo = Uuid::new_v4();
         let priv_repo = Uuid::new_v4();
-        insert_repo(&pool, pub_repo, "pub", alice, "public").await;
-        insert_repo(&pool, priv_repo, "priv", alice, "private").await;
+        insert_user_repo(&pool, pub_repo, "pub", alice, "public").await;
+        insert_user_repo(&pool, priv_repo, "priv", alice, "private").await;
 
         let now = Utc::now();
         // Alice authored two commits in her public repo, ...
@@ -987,8 +987,8 @@ mod tests {
 
         let public_repo = Uuid::new_v4();
         let private_repo = Uuid::new_v4();
-        insert_repo(&pool, public_repo, "pub", alice, "public").await;
-        insert_repo(&pool, private_repo, "priv", alice, "private").await;
+        insert_user_repo(&pool, public_repo, "pub", alice, "public").await;
+        insert_user_repo(&pool, private_repo, "priv", alice, "private").await;
         insert_star(&pool, alice, public_repo).await;
         insert_star(&pool, alice, private_repo).await;
 
@@ -1024,8 +1024,8 @@ mod tests {
 
         let recent_repo = Uuid::new_v4();
         let old_repo = Uuid::new_v4();
-        insert_repo(&pool, recent_repo, "recent", alice, "public").await;
-        insert_repo(&pool, old_repo, "old", alice, "public").await;
+        insert_user_repo(&pool, recent_repo, "recent", alice, "public").await;
+        insert_user_repo(&pool, old_repo, "old", alice, "public").await;
 
         let now = Utc::now();
         insert_commit(

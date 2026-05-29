@@ -32,7 +32,13 @@ pub async fn insert_org_at(pool: &PgPool, id: Uuid, name: &str, created_at: Date
         .unwrap();
 }
 
-pub async fn insert_repo(pool: &PgPool, id: Uuid, name: &str, owner_id: Uuid, visibility: &str) {
+pub async fn insert_user_repo(
+    pool: &PgPool,
+    id: Uuid,
+    name: &str,
+    owner_id: Uuid,
+    visibility: &str,
+) {
     sqlx::query(
         "INSERT INTO core.repositories (id, name, owner_id, owner_type, visibility)
          VALUES ($1, $2, $3, 'user', $4::core.repository_visibility)",
@@ -40,6 +46,20 @@ pub async fn insert_repo(pool: &PgPool, id: Uuid, name: &str, owner_id: Uuid, vi
     .bind(id)
     .bind(name)
     .bind(owner_id)
+    .bind(visibility)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+pub async fn insert_org_repo(pool: &PgPool, id: Uuid, name: &str, org_id: Uuid, visibility: &str) {
+    sqlx::query(
+        "INSERT INTO core.repositories (id, name, owner_id, owner_type, visibility)
+         VALUES ($1, $2, $3, 'organization', $4::core.repository_visibility)",
+    )
+    .bind(id)
+    .bind(name)
+    .bind(org_id)
     .bind(visibility)
     .execute(pool)
     .await
@@ -60,6 +80,28 @@ pub async fn insert_commit(
     .bind(repo_id)
     .bind(author_id)
     .bind(sha)
+    .bind(created_at)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+pub async fn insert_commit_on(
+    pool: &PgPool,
+    repo_id: Uuid,
+    author_id: Option<Uuid>,
+    sha: &str,
+    ref_name: &str,
+    created_at: DateTime<Utc>,
+) {
+    sqlx::query(
+        "INSERT INTO core.commits (repo_id, author_id, sha, ref_name, message, created_at)
+         VALUES ($1, $2, $3, $4, 'msg', $5)",
+    )
+    .bind(repo_id)
+    .bind(author_id)
+    .bind(sha)
+    .bind(ref_name)
     .bind(created_at)
     .execute(pool)
     .await

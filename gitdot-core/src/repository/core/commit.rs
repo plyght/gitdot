@@ -302,51 +302,18 @@ impl CommitRepository for CommitRepositoryImpl {
 mod tests {
     use std::collections::HashMap;
 
-    use chrono::{DateTime, Duration, Utc};
+    use chrono::{Duration, Utc};
     use sqlx::PgPool;
     use uuid::Uuid;
 
     use super::{Commit, CommitDiff, CommitRepository, CommitRepositoryImpl};
     use crate::{
         model::OrganizationRole,
-        repository::test_common::{insert_membership_at, insert_org, insert_repo, insert_user},
+        repository::test_common::{
+            insert_commit_on, insert_membership_at, insert_org, insert_org_repo, insert_user,
+            insert_user_repo,
+        },
     };
-
-    async fn insert_org_repo(pool: &PgPool, id: Uuid, name: &str, org_id: Uuid, visibility: &str) {
-        sqlx::query(
-            "INSERT INTO core.repositories (id, name, owner_id, owner_type, visibility)
-             VALUES ($1, $2, $3, 'organization', $4::core.repository_visibility)",
-        )
-        .bind(id)
-        .bind(name)
-        .bind(org_id)
-        .bind(visibility)
-        .execute(pool)
-        .await
-        .unwrap();
-    }
-
-    async fn insert_commit_on(
-        pool: &PgPool,
-        repo_id: Uuid,
-        author_id: Option<Uuid>,
-        sha: &str,
-        ref_name: &str,
-        created_at: DateTime<Utc>,
-    ) {
-        sqlx::query(
-            "INSERT INTO core.commits (repo_id, author_id, sha, ref_name, message, created_at)
-             VALUES ($1, $2, $3, $4, 'msg', $5)",
-        )
-        .bind(repo_id)
-        .bind(author_id)
-        .bind(sha)
-        .bind(ref_name)
-        .bind(created_at)
-        .execute(pool)
-        .await
-        .unwrap();
-    }
 
     fn access_by_repo(rows: Vec<(Commit, bool)>) -> HashMap<String, bool> {
         rows.into_iter()
@@ -360,7 +327,7 @@ mod tests {
         let alice = Uuid::new_v4();
         let repo_id = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
-        insert_repo(&pool, repo_id, "proj", alice, "public").await;
+        insert_user_repo(&pool, repo_id, "proj", alice, "public").await;
         let sha = "a".repeat(40);
         insert_commit_on(
             &pool,
@@ -413,7 +380,7 @@ mod tests {
         let alice = Uuid::new_v4();
         let repo_id = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
-        insert_repo(&pool, repo_id, "proj", alice, "public").await;
+        insert_user_repo(&pool, repo_id, "proj", alice, "public").await;
 
         let now = Utc::now();
         insert_commit_on(
@@ -492,7 +459,7 @@ mod tests {
         let repo_id = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         insert_user(&pool, bob, "bob").await;
-        insert_repo(&pool, repo_id, "proj", alice, "public").await;
+        insert_user_repo(&pool, repo_id, "proj", alice, "public").await;
 
         let now = Utc::now();
         insert_commit_on(
@@ -578,8 +545,8 @@ mod tests {
         let private_repo = Uuid::new_v4();
         let org_id = Uuid::new_v4();
         let org_repo = Uuid::new_v4();
-        insert_repo(&pool, public_repo, "pub", alice, "public").await;
-        insert_repo(&pool, private_repo, "priv", alice, "private").await;
+        insert_user_repo(&pool, public_repo, "pub", alice, "public").await;
+        insert_user_repo(&pool, private_repo, "priv", alice, "private").await;
         insert_org(&pool, org_id, "acme").await;
         insert_org_repo(&pool, org_repo, "orgproj", org_id, "private").await;
         insert_membership_at(&pool, member, org_id, OrganizationRole::Member, Utc::now()).await;
@@ -669,7 +636,7 @@ mod tests {
         let alice = Uuid::new_v4();
         let repo_id = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
-        insert_repo(&pool, repo_id, "proj", alice, "public").await;
+        insert_user_repo(&pool, repo_id, "proj", alice, "public").await;
 
         let now = Utc::now();
         let sha_a = "a".repeat(40);
