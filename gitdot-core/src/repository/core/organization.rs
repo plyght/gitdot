@@ -423,3 +423,398 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
         Ok((orgs, next_cursor))
     }
 }
+
+#[cfg(all(test, feature = "db-tests"))]
+mod tests {
+    use chrono::{DateTime, Duration, Utc};
+    use sqlx::PgPool;
+    use uuid::Uuid;
+
+    use super::{OrganizationRepository, OrganizationRepositoryImpl, OrganizationRole};
+
+    async fn insert_user(pool: &PgPool, id: Uuid, name: &str) {
+        sqlx::query("INSERT INTO core.users (id, name) VALUES ($1, $2)")
+            .bind(id)
+            .bind(name)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    async fn insert_org_at(pool: &PgPool, id: Uuid, name: &str, created_at: DateTime<Utc>) {
+        sqlx::query("INSERT INTO core.organizations (id, name, created_at) VALUES ($1, $2, $3)")
+            .bind(id)
+            .bind(name)
+            .bind(created_at)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    async fn insert_membership_at(
+        pool: &PgPool,
+        user_id: Uuid,
+        org_id: Uuid,
+        role: OrganizationRole,
+        created_at: DateTime<Utc>,
+    ) {
+        sqlx::query(
+            "INSERT INTO core.organization_members (user_id, organization_id, role, created_at)
+             VALUES ($1, $2, $3, $4)",
+        )
+        .bind(user_id)
+        .bind(org_id)
+        .bind(role)
+        .bind(created_at)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[sqlx::test]
+    async fn create_persists_org_and_owner_admin_membership(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+
+        let org = repo
+            .create("acme", owner, Some("hello".to_string()))
+            .await
+            .unwrap();
+        assert_eq!(org.name, "acme");
+        assert_eq!(org.readme.as_deref(), Some("hello"));
+
+        // The creator is enrolled as an admin member in the same transaction.
+        assert!(repo.is_member(org.id, owner).await.unwrap());
+        assert_eq!(
+            repo.get_member_role("acme", owner).await.unwrap(),
+            Some(OrganizationRole::Admin)
+        );
+    }
+
+    #[sqlx::test]
+    async fn get_returns_org_with_members(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        repo.create("acme", owner, None).await.unwrap();
+
+        let org = repo.get("acme").await.unwrap().expect("org exists");
+        let members = org.members.expect("members projected");
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].user_name, "owner");
+        assert_eq!(members[0].role, OrganizationRole::Admin);
+
+        assert!(repo.get("missing").await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn get_id_round_trips(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        let org = repo.create("acme", owner, None).await.unwrap();
+
+        assert_eq!(repo.get_id("acme").await.unwrap(), Some(org.id));
+        assert!(repo.get_id("missing").await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn touch_image_advances_timestamp(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let id = Uuid::new_v4();
+        // Seed with an old image timestamp so the touch is observable.
+        sqlx::query(
+            "INSERT INTO core.organizations (id, name, image_updated_at)
+             VALUES ($1, $2, NOW() - INTERVAL '1 day')",
+        )
+        .bind(id)
+        .bind("acme")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let before = repo.get("acme").await.unwrap().unwrap().image_updated_at;
+        repo.touch_image(id).await.unwrap();
+        let after = repo.get("acme").await.unwrap().unwrap().image_updated_at;
+        assert!(after > before, "expected {after} > {before}");
+    }
+
+    #[sqlx::test]
+    async fn is_member_reflects_membership(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        let outsider = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        insert_user(&pool, outsider, "outsider").await;
+        let org = repo.create("acme", owner, None).await.unwrap();
+
+        assert!(repo.is_member(org.id, owner).await.unwrap());
+        assert!(!repo.is_member(org.id, outsider).await.unwrap());
+    }
+
+    #[sqlx::test]
+    async fn add_member_inserts_then_is_idempotent(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        let bob = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        insert_user(&pool, bob, "bob").await;
+        repo.create("acme", owner, None).await.unwrap();
+
+        let member = repo
+            .add_member(
+                "acme",
+                "bob",
+                OrganizationRole::Member,
+                Some("maintainer".to_string()),
+            )
+            .await
+            .unwrap()
+            .expect("member inserted");
+        assert_eq!(member.user_id, bob);
+        assert_eq!(member.user_name, "bob");
+        assert_eq!(member.role, OrganizationRole::Member);
+        assert_eq!(member.role_description.as_deref(), Some("maintainer"));
+
+        // A second add for the same (user, org) hits ON CONFLICT DO NOTHING.
+        assert!(
+            repo.add_member("acme", "bob", OrganizationRole::Member, None)
+                .await
+                .unwrap()
+                .is_none()
+        );
+
+        // A nonexistent user produces no row to insert.
+        assert!(
+            repo.add_member("acme", "ghost", OrganizationRole::Member, None)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn get_member_role_resolves_by_org_and_user(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        let outsider = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        insert_user(&pool, outsider, "outsider").await;
+        repo.create("acme", owner, None).await.unwrap();
+
+        assert_eq!(
+            repo.get_member_role("acme", owner).await.unwrap(),
+            Some(OrganizationRole::Admin)
+        );
+        assert!(
+            repo.get_member_role("acme", outsider)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(repo.get_member_role("missing", owner).await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn get_member_fetches_by_member_id(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        let bob = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        insert_user(&pool, bob, "bob").await;
+        repo.create("acme", owner, None).await.unwrap();
+        let added = repo
+            .add_member("acme", "bob", OrganizationRole::Member, None)
+            .await
+            .unwrap()
+            .unwrap();
+
+        let member = repo
+            .get_member("acme", added.id)
+            .await
+            .unwrap()
+            .expect("member found");
+        assert_eq!(member.id, added.id);
+        assert_eq!(member.user_name, "bob");
+
+        assert!(
+            repo.get_member("acme", Uuid::new_v4())
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn update_changes_only_provided_fields(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        repo.create("acme", owner, None).await.unwrap();
+
+        let updated = repo
+            .update(
+                "acme",
+                Some("Earth".to_string()),
+                Some("readme".to_string()),
+                Some(vec!["https://example.com".to_string()]),
+                Some("Acme Inc".to_string()),
+            )
+            .await
+            .unwrap()
+            .expect("org updated");
+        assert_eq!(updated.location.as_deref(), Some("Earth"));
+        assert_eq!(updated.readme.as_deref(), Some("readme"));
+        assert_eq!(updated.links, vec!["https://example.com".to_string()]);
+        assert_eq!(updated.display_name.as_deref(), Some("Acme Inc"));
+
+        // A partial update touches only the provided field.
+        let again = repo
+            .update("acme", Some("Mars".to_string()), None, None, None)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(again.location.as_deref(), Some("Mars"));
+        assert_eq!(again.readme.as_deref(), Some("readme"));
+        assert_eq!(again.display_name.as_deref(), Some("Acme Inc"));
+
+        // Updating a missing org yields no row.
+        assert!(
+            repo.update("missing", Some("x".to_string()), None, None, None)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn update_member_coalesces_role_description(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        let bob = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        insert_user(&pool, bob, "bob").await;
+        repo.create("acme", owner, None).await.unwrap();
+        let added = repo
+            .add_member(
+                "acme",
+                "bob",
+                OrganizationRole::Member,
+                Some("first".to_string()),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+
+        let updated = repo
+            .update_member("acme", added.id, Some("second".to_string()))
+            .await
+            .unwrap()
+            .expect("member updated");
+        assert_eq!(updated.role_description.as_deref(), Some("second"));
+
+        // A None description is coalesced to the existing value, not cleared.
+        let unchanged = repo
+            .update_member("acme", added.id, None)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(unchanged.role_description.as_deref(), Some("second"));
+
+        assert!(
+            repo.update_member("acme", Uuid::new_v4(), Some("x".to_string()))
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn list_paginates_newest_first(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let now = Utc::now();
+        let (o1, o2, o3) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+        insert_org_at(&pool, o1, "first", now - Duration::days(3)).await;
+        insert_org_at(&pool, o2, "second", now - Duration::days(2)).await;
+        insert_org_at(&pool, o3, "third", now - Duration::days(1)).await;
+
+        let (page, cursor) = repo.list(None, 2).await.unwrap();
+        assert_eq!(page.len(), 2);
+        assert_eq!(page[0].name, "third");
+        assert_eq!(page[1].name, "second");
+        let cursor = cursor.expect("more rows remain");
+
+        let (page, cursor) = repo.list(Some(cursor), 2).await.unwrap();
+        assert_eq!(page.len(), 1);
+        assert_eq!(page[0].name, "first");
+        assert!(cursor.is_none());
+    }
+
+    #[sqlx::test]
+    async fn list_by_user_id_returns_member_orgs(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        let outsider = Uuid::new_v4();
+        insert_user(&pool, owner, "owner").await;
+        insert_user(&pool, outsider, "outsider").await;
+        repo.create("acme", owner, None).await.unwrap();
+        repo.create("globex", owner, None).await.unwrap();
+        repo.create("initech", outsider, None).await.unwrap();
+
+        let owner_orgs = repo.list_by_user_id(owner).await.unwrap();
+        let mut names: Vec<_> = owner_orgs.iter().map(|o| o.name.clone()).collect();
+        names.sort();
+        assert_eq!(names, vec!["acme".to_string(), "globex".to_string()]);
+
+        let outsider_orgs = repo.list_by_user_id(outsider).await.unwrap();
+        assert_eq!(outsider_orgs.len(), 1);
+        assert_eq!(outsider_orgs[0].name, "initech");
+
+        assert!(
+            repo.list_by_user_id(Uuid::new_v4())
+                .await
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[sqlx::test]
+    async fn list_memberships_paginates_newest_first(pool: PgPool) {
+        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let user = Uuid::new_v4();
+        insert_user(&pool, user, "member").await;
+
+        let now = Utc::now();
+        let (o1, o2, o3) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+        insert_org_at(&pool, o1, "first", now).await;
+        insert_org_at(&pool, o2, "second", now).await;
+        insert_org_at(&pool, o3, "third", now).await;
+        insert_membership_at(&pool, user, o1, OrganizationRole::Admin, now - Duration::days(3))
+            .await;
+        insert_membership_at(&pool, user, o2, OrganizationRole::Member, now - Duration::days(2))
+            .await;
+        insert_membership_at(&pool, user, o3, OrganizationRole::Admin, now - Duration::days(1))
+            .await;
+
+        // Ordered by join time (membership created_at) descending.
+        let (page, cursor) = repo
+            .list_memberships_by_user_id(user, None, 2)
+            .await
+            .unwrap();
+        assert_eq!(page.len(), 2);
+        assert_eq!(page[0].name, "third");
+        assert_eq!(page[0].role, OrganizationRole::Admin);
+        assert_eq!(page[1].name, "second");
+        assert_eq!(page[1].role, OrganizationRole::Member);
+        let cursor = cursor.expect("more rows remain");
+
+        let (page, cursor) = repo
+            .list_memberships_by_user_id(user, Some(cursor), 2)
+            .await
+            .unwrap();
+        assert_eq!(page.len(), 1);
+        assert_eq!(page[0].name, "first");
+        assert!(cursor.is_none());
+    }
+}
