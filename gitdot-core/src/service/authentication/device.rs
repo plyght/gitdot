@@ -16,15 +16,39 @@ use crate::{
     util::crypto::hash_string,
 };
 
+/// Implements the OAuth 2.0 device authorization flow. A client requests a
+/// device/user code pair, the user approves the user code in a browser, and
+/// the client polls until it can exchange the device code for an access token.
 #[async_trait]
 pub trait DeviceService: Send + Sync + 'static {
+    /// Starts a device authorization: generates a device code (returned in the
+    /// clear, stored only as a hash), a human-readable user code, and persists
+    /// a pending authorization that expires after the configured device-code
+    /// window. Returns the codes alongside the verification URL, expiry, and
+    /// the recommended polling interval.
     async fn request_device_code(
         &self,
         request: DeviceCodeRequest,
     ) -> Result<DeviceCodeResponse, DeviceError>;
 
+    /// Polls the status of a pending authorization by device code and, once
+    /// authorized, issues a personal access token for the approving user.
+    ///
+    /// A successful authorization consumes the request: the device
+    /// authorization is expired after the token is created, so the token can
+    /// be retrieved only once.
+    ///
+    /// # Errors
+    /// - [`DeviceError::NotFound`] — no authorization matches the device code
+    /// - [`DeviceError::TokenPending`] — user has not yet approved the user code
+    /// - [`DeviceError::TokenExpired`] — the device code lapsed before approval
     async fn poll_token(&self, request: PollTokenRequest) -> Result<TokenResponse, DeviceError>;
 
+    /// Approves a pending authorization by binding the user code to the
+    /// approving user, unblocking the client's next `poll_token` call.
+    ///
+    /// # Errors
+    /// - [`DeviceError::NotFound`] — no pending authorization matches the user code
     async fn authorize_device(&self, request: AuthorizeDeviceRequest) -> Result<(), DeviceError>;
 }
 

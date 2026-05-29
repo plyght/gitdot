@@ -29,10 +29,29 @@ struct GraceEntry {
     expires_at: DateTime<Utc>,
 }
 
+/// Owns user login sessions: email magic-code sign-in, GitHub OAuth, refresh
+/// token rotation, and logout. Issues short-lived access JWTs paired with
+/// rotating refresh tokens organized into per-session families.
 #[async_trait]
 pub trait SessionService: Send + Sync + 'static {
+    /// Emails a one-time login code to `request.email`, creating the user on
+    /// first contact.
+    ///
+    /// If no user exists for the email, one is created (unverified, via the
+    /// email provider) and a generated avatar is uploaded best-effort. A
+    /// readable auth code is then persisted with the configured expiry and
+    /// mailed to the address.
     async fn send_auth_email(&self, request: SendAuthEmailRequest) -> Result<(), SessionError>;
 
+    /// Verifies an emailed login code and, on success, marks the user's email
+    /// verified and issues an access/refresh token pair on a fresh session
+    /// family. The code is single-use and marked consumed before tokens are
+    /// minted. `is_new` reflects whether the email was previously unverified.
+    ///
+    /// # Errors
+    /// - [`SessionError::NotFound`] — no auth code matches
+    /// - [`SessionError::TokenRevoked`] — the code was already used
+    /// - [`SessionError::TokenExpired`] — the code lapsed before verification
     async fn verify_auth_code(
         &self,
         request: VerifyAuthCodeRequest,
@@ -66,10 +85,33 @@ pub trait SessionService: Send + Sync + 'static {
         request: RefreshSessionRequest,
     ) -> Result<AuthTokensResponse, SessionError>;
 
+    /// Revokes the session backing the supplied refresh token, ending it.
+    ///
+    /// Only the single session is revoked, not its whole family. A subsequent
+    /// `refresh_session` with the same token therefore falls outside any grace
+    /// window and is treated as reuse.
+    ///
+    /// # Errors
+    /// - [`SessionError::NotFound`] — no session matches the refresh token
     async fn logout(&self, request: LogoutRequest) -> Result<(), SessionError>;
 
+    /// Builds the GitHub OAuth authorization URL, embedding a freshly generated
+    /// signed `state` value that is echoed back for CSRF verification during
+    /// the code exchange.
     fn get_github_authorization_url(&self) -> OAuthRedirectResponse;
 
+    /// Completes GitHub OAuth: validates `state`, exchanges the code for a
+    /// GitHub token, and signs the user in, returning an access/refresh pair.
+    ///
+    /// Requires a verified primary email on the GitHub account. On first login
+    /// the user is created (email pre-verified), and the account's other
+    /// verified GitHub emails are upserted as additional verified emails. Each
+    /// successful exchange starts a new session family.
+    ///
+    /// # Errors
+    /// - [`SessionError::Unauthorized`] — `state` failed verification
+    /// - [`SessionError::GitHubError`] — code exchange failed or no verified
+    ///   primary email was found
     async fn exchange_github_code(
         &self,
         request: ExchangeGitHubCodeRequest,

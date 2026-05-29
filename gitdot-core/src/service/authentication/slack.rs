@@ -7,8 +7,18 @@ use crate::{
     repository::{SlackRepository, SlackRepositoryImpl},
 };
 
+/// Links a Slack identity to a Gitdot user, completing the Slack app's
+/// account-connection flow.
 #[async_trait]
 pub trait SlackService: Send + Sync + 'static {
+    /// Links a Slack account to a Gitdot user.
+    ///
+    /// Verifies the signed `state` from the Slack flow to recover the Slack
+    /// user, team, and channel, persists the link, and notifies the user in
+    /// Slack that linking completed.
+    ///
+    /// # Errors
+    /// - [`SlackError::Unauthorized`] — `state` failed verification
     async fn link_slack_account(
         &self,
         request: LinkSlackAccountRequest,

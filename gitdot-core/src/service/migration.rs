@@ -29,43 +29,117 @@ use crate::{
     },
 };
 
+/// Importing repositories into gitdot from external services. Currently covers
+/// the GitHub flow end to end: app installation, browsing installation repos,
+/// planning a migration, and mirroring the selected repos into gitdot.
 #[async_trait]
 pub trait MigrationService: Send + Sync + 'static {
+    /// Fetches a single migration by its per-user `number`, scoped to
+    /// `request.user_id`.
+    ///
+    /// # Errors
+    /// - [`MigrationError::NotFound`] if no such migration exists for the user.
     async fn get_migration(
         &self,
         request: GetMigrationRequest,
     ) -> Result<MigrationResponse, MigrationError>;
 
+    /// Lists a user's migrations, cursor-paginated.
     async fn list_migrations(
         &self,
         request: ListMigrationsRequest,
     ) -> Result<Page<MigrationResponse>, MigrationError>;
 
+    /// Completes a GitHub App installation OAuth callback and records it.
+    ///
+    /// Verifies the signed `state` and that its `user_id` matches
+    /// `request.owner_id`, exchanges the OAuth `code` for an access token, and
+    /// fetches the installation. For a user installation the GitHub login must
+    /// match the installation account; for an organization installation the
+    /// caller must be an active `admin` member. The caller's verified GitHub
+    /// emails are upserted onto their gitdot user, then the installation is
+    /// persisted. Returns the installation plus the original `action`.
+    ///
+    /// # Errors
+    /// - [`GitHubError::InvalidState`] if the state's user does not match.
+    /// - [`GitHubError::Unauthorized`] if the caller fails the user/org
+    ///   ownership or admin checks.
+    ///
+    /// [`GitHubError::InvalidState`]: crate::error::GitHubError::InvalidState
+    /// [`GitHubError::Unauthorized`]: crate::error::GitHubError::Unauthorized
     async fn create_github_installation(
         &self,
         request: CreateGitHubInstallationRequest,
     ) -> Result<CreateGitHubInstallationResponse, MigrationError>;
 
+    /// Builds the GitHub App installation URL for the owner and action.
     async fn get_github_app_install_url(
         &self,
         request: GetGitHubAppInstallUrlRequest,
     ) -> Result<GetGitHubAppInstallUrlResponse, MigrationError>;
 
+    /// Lists an owner's recorded GitHub App installations, cursor-paginated.
     async fn list_github_installations(
         &self,
         request: ListGitHubInstallationsRequest,
     ) -> Result<Page<GitHubInstallationResponse>, MigrationError>;
 
+    /// Lists the repositories accessible to a GitHub App installation.
+    ///
+    /// First validates that the installation is owned by `request.owner_id`,
+    /// then queries GitHub for the installation's repositories.
+    ///
+    /// # Errors
+    /// - [`MigrationError::NotFound`] if the installation is not owned by the
+    ///   caller (or does not exist).
     async fn list_github_installation_repositories(
         &self,
         request: ListGitHubInstallationRepositoriesRequest,
     ) -> Result<ListGitHubInstallationRepositoriesResponse, MigrationError>;
 
+    /// Plans a GitHub migration, persisting the migration and its per-repo rows.
+    ///
+    /// Resolves the destination owner (the org by name for [`Organization`]
+    /// destinations, otherwise the author). For each requested repository the
+    /// matching GitHub repo determines visibility (private repos map to
+    /// [`Private`]) and origin creation time, and a migration-repository row is
+    /// recorded. This only records the plan; no mirroring happens yet.
+    ///
+    /// # Errors
+    /// - [`MigrationError::NotFound`] if an organization destination does not
+    ///   exist.
+    /// - [`MigrationError::Input`] if a requested repository is not present in
+    ///   the installation.
+    ///
+    /// [`Organization`]: crate::model::RepositoryOwnerType::Organization
+    /// [`Private`]: crate::model::RepositoryVisibility::Private
     async fn create_github_migration(
         &self,
         request: CreateGitHubMigrationRequest,
     ) -> Result<CreateGitHubMigrationResponse, MigrationError>;
 
+    /// Executes a planned migration, mirroring each repo into gitdot.
+    ///
+    /// Obtains an installation access token and marks the migration
+    /// [`MigrationStatus::Running`]. Each repository is migrated concurrently in
+    /// its own task: the per-repo status moves to [`Running`], the repo is
+    /// mirror-cloned, git hooks are
+    /// installed, and a gitdot repository row is created. On per-repo failure
+    /// the partially mirrored repo is cleaned up and the row is marked [`Failed`]
+    /// with the error message; on success it is marked [`Completed`] and linked
+    /// to the new repository. The overall migration ends [`MigrationStatus::Completed`]
+    /// only if every repo succeeded, otherwise [`MigrationStatus::Failed`]. The
+    /// response contains info only for the repos that migrated successfully.
+    ///
+    /// A repo whose name already exists for the destination owner fails with a
+    /// conflict recorded on that repo's row (it does not abort the others).
+    ///
+    /// [`Running`]: crate::model::MigrationRepositoryStatus::Running
+    /// [`Failed`]: crate::model::MigrationRepositoryStatus::Failed
+    /// [`Completed`]: crate::model::MigrationRepositoryStatus::Completed
+    /// [`MigrationStatus::Running`]: crate::model::MigrationStatus::Running
+    /// [`MigrationStatus::Completed`]: crate::model::MigrationStatus::Completed
+    /// [`MigrationStatus::Failed`]: crate::model::MigrationStatus::Failed
     async fn migrate_github_repositories(
         &self,
         request: MigrateGitHubRepositoriesRequest,

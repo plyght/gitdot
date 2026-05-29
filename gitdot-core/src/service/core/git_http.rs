@@ -6,15 +6,28 @@ use crate::{
     error::GitHttpError,
 };
 
+/// Smart HTTP git protocol surface. Delegates to a [`GitHttpClient`] that shells
+/// out to `git http-backend` (CGI) against the bare repo for the given owner/repo,
+/// returning the backend's raw response (status, headers, streamed body).
 #[async_trait]
 pub trait GitHttpService: Send + Sync + 'static {
+    /// Handles `GET /info/refs?service=...`, the ref-advertisement step of a
+    /// clone/fetch/push handshake. Forwards `service` (e.g. `git-upload-pack` or
+    /// `git-receive-pack`) to `git http-backend`.
     async fn info_refs(&self, request: InfoRefsRequest) -> Result<GitHttpResponse, GitHttpError>;
 
+    /// Handles the `git-upload-pack` RPC (clone/fetch): streams `request.body`
+    /// into `git http-backend` and returns the packfile response. No extra
+    /// environment is injected.
     async fn upload_pack(
         &self,
         request: UploadPackRequest,
     ) -> Result<GitHttpResponse, GitHttpError>;
 
+    /// Handles the `git-receive-pack` RPC (push): streams `request.body` into
+    /// `git http-backend`. When `request.pusher_id` is set it is exported as the
+    /// `GITDOT_PUSHER_ID` environment variable so the receive hooks can attribute
+    /// the push.
     async fn receive_pack(
         &self,
         request: ReceivePackRequest,

@@ -16,60 +16,120 @@ use crate::{
     util::cursor,
 };
 
+/// Manages a repository's Q&A: questions, their answers, comments on both, and
+/// voting across all three.
+///
+/// Questions are scoped to a repository and identified by a repo-scoped number;
+/// answers and comments hang off questions, and votes can target a question, an
+/// answer, or a comment.
 #[async_trait]
 pub trait QuestionService: Send + Sync + 'static {
+    /// Creates a new question in a repository with the given title and body.
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the repository
+    ///   does not exist.
     async fn create_question(
         &self,
         request: CreateQuestionRequest,
     ) -> Result<QuestionResponse, QuestionError>;
 
+    /// Updates an existing question's title and body.
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the repository or
+    ///   the question does not exist.
     async fn update_question(
         &self,
         request: UpdateQuestionRequest,
     ) -> Result<QuestionResponse, QuestionError>;
 
+    /// Returns a single question by its repo-scoped number.
+    ///
+    /// The requesting user's id is passed through so the response can reflect
+    /// that user's vote state.
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the repository or
+    ///   the question does not exist.
     async fn get_question(
         &self,
         request: GetQuestionRequest,
     ) -> Result<QuestionResponse, QuestionError>;
 
+    /// Lists a repository's questions as a cursor-paginated page.
+    ///
+    /// The requesting user's id is passed through for per-user vote state, and a
+    /// `next_cursor` is returned when more pages remain.
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the repository
+    ///   does not exist.
     async fn list_questions(
         &self,
         request: ListQuestionsRequest,
     ) -> Result<Page<QuestionResponse>, QuestionError>;
 
+    /// Creates an answer to a question.
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the target
+    ///   question does not exist.
     async fn create_answer(
         &self,
         request: CreateAnswerRequest,
     ) -> Result<AnswerResponse, QuestionError>;
 
+    /// Updates the body of an existing answer.
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the answer does
+    ///   not exist.
     async fn update_answer(
         &self,
         request: UpdateAnswerRequest,
     ) -> Result<AnswerResponse, QuestionError>;
 
+    /// Creates a comment on a question.
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the target
+    ///   question does not exist.
     async fn create_question_comment(
         &self,
         request: CreateQuestionCommentRequest,
     ) -> Result<CommentResponse, QuestionError>;
 
+    /// Creates a comment on an answer.
     async fn create_answer_comment(
         &self,
         request: CreateAnswerCommentRequest,
     ) -> Result<CommentResponse, QuestionError>;
 
+    /// Updates the body of an existing comment (on a question or answer).
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the comment does
+    ///   not exist.
     async fn update_comment(
         &self,
         request: UpdateCommentRequest,
     ) -> Result<CommentResponse, QuestionError>;
 
+    /// Casts (or changes/clears) the requesting user's vote on a question.
+    ///
+    /// # Errors
+    /// - [`QuestionError::NotFound`] if the question does
+    ///   not exist.
     async fn vote_question(
         &self,
         request: VoteQuestionRequest,
     ) -> Result<VoteResponse, QuestionError>;
 
+    /// Casts (or changes/clears) the requesting user's vote on an answer.
     async fn vote_answer(&self, request: VoteAnswerRequest) -> Result<VoteResponse, QuestionError>;
 
+    /// Casts (or changes/clears) the requesting user's vote on a comment.
     async fn vote_comment(
         &self,
         request: VoteCommentRequest,

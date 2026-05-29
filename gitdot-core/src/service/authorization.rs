@@ -17,58 +17,148 @@ use crate::{
     },
 };
 
+/// Centralizes access-control checks across repositories, organizations, and
+/// their content (questions, answers, comments, reviews, migrations).
+///
+/// Every method asserts authorization and returns `Ok(())` when the caller is
+/// permitted; otherwise it fails with an [`AuthorizationError`]. These checks
+/// gate other services rather than returning data.
 #[async_trait]
 pub trait AuthorizationService: Send + Sync + 'static {
+    /// Asserts the caller may create a repository under `request.owner`.
+    ///
+    /// For a [`RepositoryOwnerType::User`] owner the caller must be the user
+    /// whose name (case-insensitively) matches `owner`. For an
+    /// [`RepositoryOwnerType::Organization`] owner the caller must be any
+    /// member of that org.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the user/org cannot be found,
+    ///   the name does not match, or the caller is not a member.
     async fn verify_authorized_for_repository_creation(
         &self,
         request: RepositoryCreationAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller has `request.permission` on `owner/repo`.
+    ///
+    /// Precedence: a [`RepositoryPermission::Write`] request on a readonly repo
+    /// is rejected outright. A [`RepositoryPermission::Read`] on a public repo
+    /// is allowed for anyone, including anonymous callers. Otherwise a
+    /// `user_id` is required. For user-owned repos the caller must be the
+    /// owner. For org-owned repos, [`RepositoryPermission::Admin`] requires the
+    /// org [`OrganizationRole::Admin`] role while Read/Write require any
+    /// membership.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::NotFound`] — the repository does not exist.
+    /// - [`AuthorizationError::ReadonlyRepository`] — write requested on a
+    ///   readonly repo.
+    /// - [`AuthorizationError::Unauthorized`] — no `user_id` for a protected
+    ///   action, or the caller lacks the required ownership/role/membership.
     async fn verify_authorized_for_repository(
         &self,
         request: RepositoryAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller is an [`OrganizationRole::Admin`] of the organization.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the caller is not an admin (or
+    ///   not a member at all).
     async fn verify_authorized_for_organization(
         &self,
         request: OrganizationAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller may act on the membership row identified by
+    /// `request.member_id` within `request.org_name`.
+    ///
+    /// Permitted when the caller is acting on their own membership, or when the
+    /// caller is an [`OrganizationRole::Admin`] of the org.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the target membership does not
+    ///   exist, or the caller is neither the member nor an admin.
     async fn verify_authorized_for_organization_member(
         &self,
         request: OrganizationMemberAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller authored the question `owner/repo#number`.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the question does not exist or
+    ///   the caller is not its author.
     async fn verify_authorized_for_question(
         &self,
         request: QuestionAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller authored the answer identified by `request.answer_id`.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the answer does not exist or the
+    ///   caller is not its author.
     async fn verify_authorized_for_answer(
         &self,
         request: AnswerAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller authored the comment identified by
+    /// `request.comment_id`.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the comment does not exist or
+    ///   the caller is not its author.
     async fn verify_authorized_for_comment(
         &self,
         request: CommentAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller authored the review `owner/repo#number`.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the review does not exist or the
+    ///   caller is not its author.
     async fn verify_authorized_for_review(
         &self,
         request: ReviewAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller authored the review comment identified by
+    /// `request.comment_id`.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the comment does not exist or
+    ///   the caller is not its author.
     async fn verify_authorized_for_review_comment(
         &self,
         request: ReviewCommentAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller may participate in reviewing `owner/repo#number`.
+    ///
+    /// Permitted when the caller is the review author or one of its assigned
+    /// reviewers.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the review does not exist, or
+    ///   the caller is neither the author nor an assigned reviewer.
     async fn verify_authorized_for_reviewing(
         &self,
         request: ReviewingAuthorizationRequest,
     ) -> Result<(), AuthorizationError>;
 
+    /// Asserts the caller may migrate a repository into `request.owner_name`.
+    ///
+    /// Mirrors repository-creation rules: for a [`RepositoryOwnerType::User`]
+    /// owner the caller's name must match (case-insensitively); for a
+    /// [`RepositoryOwnerType::Organization`] owner the caller must be a member.
+    ///
+    /// # Errors
+    /// - [`AuthorizationError::Unauthorized`] — the user/org cannot be found,
+    ///   the name does not match, or the caller is not a member.
     async fn verify_authorized_for_migration(
         &self,
         request: MigrationAuthorizationRequest,

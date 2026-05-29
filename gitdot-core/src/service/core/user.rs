@@ -18,52 +18,132 @@ use crate::{
     util::{auth::is_reserved_name, cursor},
 };
 
+/// User accounts and their public profiles: the authenticated caller's own
+/// profile (with emails and org memberships), name lookups and rename, avatar
+/// uploads, and viewer-scoped listings of a user's repositories, stars,
+/// contributions, organizations, reviews, and commits.
 #[async_trait]
 pub trait UserService: Send + Sync + 'static {
+    /// Assembles the authenticated caller's full profile from `request.user_id`,
+    /// bundling the user's own fields together with their email addresses and
+    /// org memberships (capped at [`MAX_PER_PAGE_LIMIT`]).
+    ///
+    /// # Errors
+    /// - [`UserError::NotFound`] when no user exists for `request.user_id`.
     async fn get_current_user(
         &self,
         request: GetCurrentUserRequest,
     ) -> Result<GetCurrentUserResponse, UserError>;
 
+    /// Updates the authenticated caller's profile and returns the new state.
+    ///
+    /// When `request.name` is set and differs from the current name, the name is
+    /// rejected if it is reserved or already taken, otherwise the user is
+    /// renamed. The rename is applied to the on-disk bare-repo owner directory
+    /// *before* the DB write so a filesystem failure aborts the rename; if the DB
+    /// write then fails, the directory rename is reverted. A name equal to the
+    /// current name is treated as a no-op rename.
+    ///
+    /// # Errors
+    /// - [`UserError::Conflict`] when the new name is reserved or already taken.
+    /// - [`UserError::NotFound`] when the user no longer exists.
     async fn update_current_user(
         &self,
         request: UpdateCurrentUserRequest,
     ) -> Result<UserResponse, UserError>;
 
+    /// Sets the authenticated caller's avatar.
+    ///
+    /// Converts the uploaded bytes to WebP, stores them in object storage under
+    /// `users/{user_id}.webp`, and bumps the user's `image_updated_at`.
     async fn update_current_user_image(
         &self,
         request: UpdateCurrentUserImageRequest,
     ) -> Result<(), UserError>;
 
+    /// Reports whether `request.name` is unavailable as a new user name.
+    ///
+    /// Returns `Ok(())` when the name is reserved or already taken (i.e. cannot
+    /// be claimed). Note this conflates "exists" with "reserved"; it does not
+    /// confirm that a real user owns the name.
+    ///
+    /// # Errors
+    /// - [`UserError::NotFound`] when the name is both free and not reserved.
     async fn has_user(&self, request: HasUserRequest) -> Result<(), UserError>;
 
+    /// Returns the public profile for the user named `request.user_name`.
+    ///
+    /// # Errors
+    /// - [`UserError::NotFound`] when no such user exists.
     async fn get_user(&self, request: GetUserRequest) -> Result<UserResponse, UserError>;
 
+    /// Lists the repositories owned by `request.user_name`, paginated.
+    ///
+    /// Visibility is filtered in SQL by `request.viewer_id`. Each row carries the
+    /// profile user's own commit count and last-commit time in that repo (NULL
+    /// when they have no commits there).
+    ///
+    /// # Errors
+    /// - [`UserError::NotFound`] when no such user exists.
     async fn list_repositories(
         &self,
         request: ListUserRepositoriesRequest,
     ) -> Result<Page<UserRepositoryResponse>, UserError>;
 
+    /// Lists the repositories starred by `request.user_name`, paginated.
+    ///
+    /// Visibility is filtered in SQL by `request.viewer_id`. Commit stats are not
+    /// surfaced for starred repos.
+    ///
+    /// # Errors
+    /// - [`UserError::NotFound`] when no such user exists.
     async fn list_starred_repositories(
         &self,
         request: ListUserStarredRepositoriesRequest,
     ) -> Result<Page<UserRepositoryResponse>, UserError>;
 
+    /// Lists repositories `request.user_name` has contributed to, paginated.
+    ///
+    /// Visibility is filtered in SQL by `request.viewer_id`, optionally bounded by
+    /// `request.from`. Each row carries the user's commit count and last-commit
+    /// time in that repo.
+    ///
+    /// # Errors
+    /// - [`UserError::NotFound`] when no such user exists.
     async fn list_contributed_repositories(
         &self,
         request: ListUserContributedRepositoriesRequest,
     ) -> Result<Page<UserRepositoryResponse>, UserError>;
 
+    /// Lists the organizations `request.user_name` is a member of, paginated.
+    ///
+    /// # Errors
+    /// - [`UserError::NotFound`] when no such user exists.
     async fn list_organizations(
         &self,
         request: ListUserOrganizationsRequest,
     ) -> Result<Page<UserOrganizationResponse>, UserError>;
 
+    /// Lists reviews authored by `request.user_name`, paginated.
+    ///
+    /// Results are scoped to what `request.viewer_id` may see and may be further
+    /// filtered by status and by a specific `owner`/`repo`. Does not first verify
+    /// the user exists.
     async fn list_reviews(
         &self,
         request: ListUserReviewsRequest,
     ) -> Result<Page<ReviewResponse>, UserError>;
 
+    /// Lists commits authored by `request.user_name`, paginated.
+    ///
+    /// Visibility is decided in SQL: each row carries a `viewer_has_access`
+    /// boolean mirroring repository access rules (public, viewer-owned, or
+    /// org-owned with the viewer as a member). Commits the viewer cannot access
+    /// are returned as redacted stubs rather than omitted. Bounded by the
+    /// optional `request.from`/`request.to` range.
+    ///
+    /// # Errors
+    /// - [`UserError::NotFound`] when no such user exists.
     async fn list_commits(
         &self,
         request: ListUserCommitsRequest,

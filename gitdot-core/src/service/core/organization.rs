@@ -16,43 +16,98 @@ use crate::{
     util::cursor,
 };
 
+/// Organizations and their membership: creating and reading orgs, editing org
+/// profile and avatar, managing members (add/update with `admin`/`member`
+/// roles), and listing an org's repositories or all organizations.
 #[async_trait]
 pub trait OrganizationService: Send + Sync + 'static {
+    /// Creates an organization named `request.org_name` owned by
+    /// `request.owner_id`.
+    ///
+    /// The name must be free across *both* organizations and users (owner names
+    /// share one namespace). On success a default avatar is generated and
+    /// uploaded to `orgs/{org_id}.webp` on a best-effort basis — avatar
+    /// generation or upload failures are swallowed and do not fail creation.
+    ///
+    /// # Errors
+    /// - [`OrganizationError::Conflict`] when the name is already taken by an
+    ///   organization or a user.
     async fn create_organization(
         &self,
         request: CreateOrganizationRequest,
     ) -> Result<OrganizationResponse, OrganizationError>;
 
+    /// Returns the organization named `request.org_name`.
+    ///
+    /// # Errors
+    /// - [`OrganizationError::NotFound`] when no such organization exists.
     async fn get_organization(
         &self,
         request: GetOrganizationRequest,
     ) -> Result<OrganizationResponse, OrganizationError>;
 
+    /// Updates the profile fields (location, readme, links, display name) of the
+    /// organization named `request.org_name` and returns the new state.
+    ///
+    /// # Errors
+    /// - [`OrganizationError::NotFound`] when no such organization exists.
     async fn update_organization(
         &self,
         request: UpdateOrganizationRequest,
     ) -> Result<OrganizationResponse, OrganizationError>;
 
+    /// Sets the avatar for the organization named `request.org_name`.
+    ///
+    /// Converts the uploaded bytes to WebP, stores them under
+    /// `orgs/{org_id}.webp`, and bumps the org's `image_updated_at`.
+    ///
+    /// # Errors
+    /// - [`OrganizationError::NotFound`] when no such organization exists.
     async fn update_organization_image(
         &self,
         request: UpdateOrganizationImageRequest,
     ) -> Result<(), OrganizationError>;
 
+    /// Adds the user `request.user_name` to the organization `request.org_name`
+    /// with the given role and optional role description.
+    ///
+    /// When the insert affects no row the cause is disambiguated by re-checking
+    /// existence, surfacing a not-found for a missing org or user, otherwise a
+    /// conflict for an already-existing membership.
+    ///
+    /// # Errors
+    /// - [`OrganizationError::NotFound`] when the organization or user does not
+    ///   exist.
+    /// - [`OrganizationError::Conflict`] when the user is already a member.
     async fn add_member(
         &self,
         request: AddMemberRequest,
     ) -> Result<OrganizationMemberResponse, OrganizationError>;
 
+    /// Updates the role description of member `request.member_id` within the
+    /// organization `request.org_name`.
+    ///
+    /// Only the role description is mutable here; the member's role is not
+    /// changed.
+    ///
+    /// # Errors
+    /// - [`OrganizationError::NotFound`] when no matching membership exists.
     async fn update_member(
         &self,
         request: UpdateOrganizationMemberRequest,
     ) -> Result<OrganizationMemberResponse, OrganizationError>;
 
+    /// Lists the repositories owned by the organization `request.org_name`,
+    /// paginated. Visibility is filtered in SQL by `request.viewer_id`.
+    ///
+    /// # Errors
+    /// - [`OrganizationError::NotFound`] when no such organization exists.
     async fn list_repositories(
         &self,
         request: ListOrganizationRepositoriesRequest,
     ) -> Result<Page<RepositoryResponse>, OrganizationError>;
 
+    /// Lists all organizations, paginated.
     async fn list_organizations(
         &self,
         request: ListOrganizationsRequest,
@@ -325,59 +380,65 @@ mod tests {
 
     #[tokio::test]
     async fn create_organization_succeeds() {
-        let mut svc = create_service();
+        let mut service = create_service();
         // Neither an org nor a user already owns the name.
-        svc.org_repo.expect_get().returning(|_| Ok(None));
-        svc.user_repo.expect_get().returning(|_| Ok(None));
-        svc.org_repo
+        service.org_repo.expect_get().returning(|_| Ok(None));
+        service.user_repo.expect_get().returning(|_| Ok(None));
+        service
+            .org_repo
             .expect_create()
             .returning(|_, _, _| Ok(create_organization("acme")));
         // Avatar generation + upload are best-effort but still invoked.
-        svc.image_client
+        service
+            .image_client
             .expect_generate_org_image()
             .returning(|_| Ok(Bytes::from_static(b"webp")));
-        svc.r2_client
+        service
+            .r2_client
             .expect_upload_object()
             .returning(|_, _| Ok(()));
 
         let req = CreateOrganizationRequest::new("acme", Uuid::new_v4(), None).unwrap();
-        let resp = svc.create_organization(req).await.unwrap();
+        let resp = service.create_organization(req).await.unwrap();
         assert_eq!(resp.name, "acme");
     }
 
     #[tokio::test]
     async fn create_organization_conflicts_when_org_name_exists() {
-        let mut svc = create_service();
-        svc.org_repo
+        let mut service = create_service();
+        service
+            .org_repo
             .expect_get()
             .returning(|_| Ok(Some(create_organization("acme"))));
 
         let req = CreateOrganizationRequest::new("acme", Uuid::new_v4(), None).unwrap();
-        let err = svc.create_organization(req).await.unwrap_err();
+        let err = service.create_organization(req).await.unwrap_err();
         assert!(matches!(err, OrganizationError::Conflict(_)));
     }
 
     #[tokio::test]
     async fn create_organization_conflicts_when_user_name_exists() {
-        let mut svc = create_service();
-        svc.org_repo.expect_get().returning(|_| Ok(None));
-        svc.user_repo
+        let mut service = create_service();
+        service.org_repo.expect_get().returning(|_| Ok(None));
+        service
+            .user_repo
             .expect_get()
             .returning(|_| Ok(Some(create_user("acme"))));
 
         let req = CreateOrganizationRequest::new("acme", Uuid::new_v4(), None).unwrap();
-        let err = svc.create_organization(req).await.unwrap_err();
+        let err = service.create_organization(req).await.unwrap_err();
         assert!(matches!(err, OrganizationError::Conflict(_)));
     }
 
     #[tokio::test]
     async fn get_organization_returns_response() {
-        let mut svc = create_service();
-        svc.org_repo
+        let mut service = create_service();
+        service
+            .org_repo
             .expect_get()
             .returning(|_| Ok(Some(create_organization("acme"))));
 
-        let resp = svc
+        let resp = service
             .get_organization(GetOrganizationRequest::new("acme").unwrap())
             .await
             .unwrap();
@@ -386,10 +447,10 @@ mod tests {
 
     #[tokio::test]
     async fn get_organization_missing_is_not_found() {
-        let mut svc = create_service();
-        svc.org_repo.expect_get().returning(|_| Ok(None));
+        let mut service = create_service();
+        service.org_repo.expect_get().returning(|_| Ok(None));
 
-        let err = svc
+        let err = service
             .get_organization(GetOrganizationRequest::new("ghost").unwrap())
             .await
             .unwrap_err();
@@ -398,8 +459,8 @@ mod tests {
 
     #[tokio::test]
     async fn update_organization_updates_fields() {
-        let mut svc = create_service();
-        svc.org_repo.expect_update().returning(|_, _, _, _, _| {
+        let mut service = create_service();
+        service.org_repo.expect_update().returning(|_, _, _, _, _| {
             let mut org = create_organization("acme");
             org.location = Some("Earth".to_string());
             Ok(Some(org))
@@ -408,126 +469,139 @@ mod tests {
         let req =
             UpdateOrganizationRequest::new("acme", Some("Earth".to_string()), None, None, None)
                 .unwrap();
-        let resp = svc.update_organization(req).await.unwrap();
+        let resp = service.update_organization(req).await.unwrap();
         assert_eq!(resp.location.as_deref(), Some("Earth"));
     }
 
     #[tokio::test]
     async fn update_organization_image_uploads_and_touches() {
-        let mut svc = create_service();
-        svc.org_repo
+        let mut service = create_service();
+        service
+            .org_repo
             .expect_get_id()
             .returning(|_| Ok(Some(Uuid::new_v4())));
-        svc.image_client
+        service
+            .image_client
             .expect_convert_to_webp()
             .returning(|_| Ok(Bytes::from_static(b"webp")));
-        svc.r2_client
+        service
+            .r2_client
             .expect_upload_object()
             .returning(|_, _| Ok(()));
-        svc.org_repo.expect_touch_image().returning(|_| Ok(()));
+        service.org_repo.expect_touch_image().returning(|_| Ok(()));
 
         let req = UpdateOrganizationImageRequest::new("acme", Bytes::from_static(b"png")).unwrap();
-        svc.update_organization_image(req).await.unwrap();
+        service.update_organization_image(req).await.unwrap();
     }
 
     #[tokio::test]
     async fn update_organization_image_missing_is_not_found() {
-        let mut svc = create_service();
-        svc.org_repo.expect_get_id().returning(|_| Ok(None));
+        let mut service = create_service();
+        service.org_repo.expect_get_id().returning(|_| Ok(None));
 
         let req = UpdateOrganizationImageRequest::new("ghost", Bytes::from_static(b"png")).unwrap();
-        let err = svc.update_organization_image(req).await.unwrap_err();
+        let err = service.update_organization_image(req).await.unwrap_err();
         assert!(matches!(err, OrganizationError::NotFound(_)));
     }
 
     #[tokio::test]
     async fn add_member_succeeds() {
-        let mut svc = create_service();
-        svc.org_repo
+        let mut service = create_service();
+        service
+            .org_repo
             .expect_add_member()
             .returning(|_, _, _, _| Ok(Some(create_member("bob", OrganizationRole::Member))));
 
         let req = AddMemberRequest::new("acme", "bob", "member", None).unwrap();
-        let resp = svc.add_member(req).await.unwrap();
+        let resp = service.add_member(req).await.unwrap();
         assert_eq!(resp.user_name, "bob");
         assert_eq!(resp.role, OrganizationRole::Member);
     }
 
     #[tokio::test]
     async fn add_member_missing_org_is_not_found() {
-        let mut svc = create_service();
-        svc.org_repo
+        let mut service = create_service();
+        service
+            .org_repo
             .expect_add_member()
             .returning(|_, _, _, _| Ok(None));
-        svc.org_repo.expect_get().returning(|_| Ok(None));
+        service.org_repo.expect_get().returning(|_| Ok(None));
 
         let req = AddMemberRequest::new("ghost", "bob", "member", None).unwrap();
-        let err = svc.add_member(req).await.unwrap_err();
+        let err = service.add_member(req).await.unwrap_err();
         assert!(matches!(err, OrganizationError::NotFound(_)));
     }
 
     #[tokio::test]
     async fn add_member_missing_user_is_not_found() {
-        let mut svc = create_service();
-        svc.org_repo
+        let mut service = create_service();
+        service
+            .org_repo
             .expect_add_member()
             .returning(|_, _, _, _| Ok(None));
-        svc.org_repo
+        service
+            .org_repo
             .expect_get()
             .returning(|_| Ok(Some(create_organization("acme"))));
-        svc.user_repo.expect_get().returning(|_| Ok(None));
+        service.user_repo.expect_get().returning(|_| Ok(None));
 
         let req = AddMemberRequest::new("acme", "ghost", "member", None).unwrap();
-        let err = svc.add_member(req).await.unwrap_err();
+        let err = service.add_member(req).await.unwrap_err();
         assert!(matches!(err, OrganizationError::NotFound(_)));
     }
 
     #[tokio::test]
     async fn add_member_existing_member_is_conflict() {
-        let mut svc = create_service();
+        let mut service = create_service();
         // A null insert with both org and user present means the row already exists.
-        svc.org_repo
+        service
+            .org_repo
             .expect_add_member()
             .returning(|_, _, _, _| Ok(None));
-        svc.org_repo
+        service
+            .org_repo
             .expect_get()
             .returning(|_| Ok(Some(create_organization("acme"))));
-        svc.user_repo
+        service
+            .user_repo
             .expect_get()
             .returning(|_| Ok(Some(create_user("bob"))));
 
         let req = AddMemberRequest::new("acme", "bob", "member", None).unwrap();
-        let err = svc.add_member(req).await.unwrap_err();
+        let err = service.add_member(req).await.unwrap_err();
         assert!(matches!(err, OrganizationError::Conflict(_)));
     }
 
     #[tokio::test]
     async fn update_member_updates() {
-        let mut svc = create_service();
-        svc.org_repo.expect_update_member().returning(|_, _, _| {
-            let mut m = create_member("bob", OrganizationRole::Admin);
-            m.role_description = Some("lead".to_string());
-            Ok(Some(m))
-        });
+        let mut service = create_service();
+        service
+            .org_repo
+            .expect_update_member()
+            .returning(|_, _, _| {
+                let mut m = create_member("bob", OrganizationRole::Admin);
+                m.role_description = Some("lead".to_string());
+                Ok(Some(m))
+            });
 
         let req =
             UpdateOrganizationMemberRequest::new("acme", Uuid::new_v4(), Some("lead".to_string()))
                 .unwrap();
-        let resp = svc.update_member(req).await.unwrap();
+        let resp = service.update_member(req).await.unwrap();
         assert_eq!(resp.role_description.as_deref(), Some("lead"));
     }
 
     #[tokio::test]
     async fn list_organizations_maps_page() {
-        let mut svc = create_service();
-        svc.org_repo.expect_list().returning(|_, _| {
+        let mut service = create_service();
+        service.org_repo.expect_list().returning(|_, _| {
             Ok((
                 vec![create_organization("a"), create_organization("b")],
                 None,
             ))
         });
 
-        let page = svc
+        let page = service
             .list_organizations(ListOrganizationsRequest::new(None, None).unwrap())
             .await
             .unwrap();
@@ -537,11 +611,13 @@ mod tests {
 
     #[tokio::test]
     async fn list_repositories_returns_repos_from_list_by_owner() {
-        let mut svc = create_service();
-        svc.org_repo
+        let mut service = create_service();
+        service
+            .org_repo
             .expect_get()
             .returning(|_| Ok(Some(create_organization("acme"))));
-        svc.repo_repo
+        service
+            .repo_repo
             .expect_list_by_owner()
             .returning(|_, _, _, _| {
                 let owner = Uuid::new_v4();
@@ -565,17 +641,17 @@ mod tests {
         let req =
             ListOrganizationRepositoriesRequest::new("acme", None, None, Some(Uuid::new_v4()))
                 .unwrap();
-        let page = svc.list_repositories(req).await.unwrap();
+        let page = service.list_repositories(req).await.unwrap();
         assert_eq!(page.data.len(), 2);
     }
 
     #[tokio::test]
     async fn list_repositories_missing_org_is_not_found() {
-        let mut svc = create_service();
-        svc.org_repo.expect_get().returning(|_| Ok(None));
+        let mut service = create_service();
+        service.org_repo.expect_get().returning(|_| Ok(None));
 
         let req = ListOrganizationRepositoriesRequest::new("ghost", None, None, None).unwrap();
-        let err = svc.list_repositories(req).await.unwrap_err();
+        let err = service.list_repositories(req).await.unwrap_err();
         assert!(matches!(err, OrganizationError::NotFound(_)));
     }
 }

@@ -18,6 +18,9 @@ use crate::{
     },
 };
 
+/// Manages a user's account emails: adding secondary emails, issuing
+/// emailed verification codes, and verifying them. Each code is single-use,
+/// time-limited, and scoped to the requesting user.
 #[async_trait]
 pub trait AccountService: Send + Sync + 'static {
     /// Adds an email to the user's account in an unverified state and emails a

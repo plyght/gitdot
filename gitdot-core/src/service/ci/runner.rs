@@ -16,25 +16,60 @@ use crate::{
     util::cursor,
 };
 
+/// CI runners: registering runners under a user or organization, liveness
+/// checks, and minting/rotating their access tokens.
 #[async_trait]
 pub trait RunnerService: Send + Sync + 'static {
+    /// Registers a runner owned by a user or organization.
+    ///
+    /// For [`Organization`] owners the org is resolved by name to its ID; for
+    /// [`User`] owners the request's `user_id` is used directly.
+    ///
+    /// # Errors
+    /// - [`RunnerError::NotFound`] if an organization owner does not exist.
+    ///
+    /// [`Organization`]: crate::model::RunnerOwnerType::Organization
+    /// [`User`]: crate::model::RunnerOwnerType::User
     async fn create_runner(
         &self,
         request: CreateRunnerRequest,
     ) -> Result<CreateRunnerResponse, RunnerError>;
 
+    /// Records a liveness heartbeat for a runner, updating its `last_active`.
+    ///
+    /// # Errors
+    /// - [`RunnerError::NotFound`] if no runner has `request.runner_id`.
     async fn verify_runner(&self, request: VerifyRunnerRequest) -> Result<(), RunnerError>;
 
+    /// Fetches a runner by owner name and runner name.
+    ///
+    /// # Errors
+    /// - [`RunnerError::NotFound`] if the runner does not exist.
     async fn get_runner(&self, request: GetRunnerRequest)
     -> Result<GetRunnerResponse, RunnerError>;
 
+    /// Deletes a runner identified by owner name and runner name.
+    ///
+    /// # Errors
+    /// - [`RunnerError::NotFound`] if the runner does not exist.
     async fn delete_runner(&self, request: DeleteRunnerRequest) -> Result<(), RunnerError>;
 
+    /// Rotates a runner's access token, returning the new raw token.
+    ///
+    /// Any existing token for the runner is deleted before a fresh [`Runner`]
+    /// token is generated and persisted (only its hash is stored). The raw token
+    /// is returned once and cannot be retrieved again.
+    ///
+    /// # Errors
+    /// - [`RunnerError::NotFound`] if the runner does not exist.
+    ///
+    /// [`Runner`]: crate::model::TokenType::Runner
     async fn refresh_runner_token(
         &self,
         request: CreateRunnerTokenRequest,
     ) -> Result<CreateRunnerTokenResponse, RunnerError>;
 
+    /// Lists runners for an owner, cursor-paginated.
     async fn list_runners(
         &self,
         request: ListRunnersRequest,

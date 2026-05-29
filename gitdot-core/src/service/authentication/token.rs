@@ -18,23 +18,50 @@ use crate::{
     },
 };
 
+/// Validates and issues machine-facing credentials: opaque access tokens,
+/// internal service-to-service task JWTs, and inbound webhook signatures
+/// (GitHub, Slack bot).
 #[async_trait]
 pub trait TokenService: Send + Sync + 'static {
+    /// Validates an opaque access token and resolves its principal.
+    ///
+    /// Checks the token's format and type prefix, looks it up by hash, and
+    /// updates its last-used timestamp on success. Returns the principal the
+    /// token authenticates.
+    ///
+    /// # Errors
+    /// - [`TokenServiceError::Unauthorized`] — malformed token, wrong type
+    ///   prefix, or no matching token
     async fn validate_token(
         &self,
         request: ValidateTokenRequest,
     ) -> Result<ValidateTokenResponse, TokenServiceError>;
 
+    /// Issues a short-lived JWT scoped to a task for internal service-to-service
+    /// calls.
+    ///
+    /// The token is issued by the gitdot server, audienced to the gitdot and
+    /// s2 servers, subject to the task id, and expires after the requested
+    /// duration.
     async fn issue_task_token(
         &self,
         request: IssueTaskJwtRequest,
     ) -> Result<IssueTaskJwtResponse, TokenServiceError>;
 
+    /// Verifies an inbound GitHub webhook's signature against its raw body.
+    ///
+    /// # Errors
+    /// - [`TokenServiceError::Unauthorized`] — signature did not match
     fn verify_github_signature(
         &self,
         request: VerifyGithubSignatureRequest,
     ) -> Result<(), TokenServiceError>;
 
+    /// Verifies an inbound Slack bot request's signature against its timestamp
+    /// and raw body.
+    ///
+    /// # Errors
+    /// - [`TokenServiceError::Unauthorized`] — signature did not match
     fn verify_slack_bot_signature(
         &self,
         request: VerifySlackBotSignatureRequest,

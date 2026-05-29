@@ -12,28 +12,70 @@ use crate::{
     util::cursor,
 };
 
+/// Manages a repository's outbound HTTP webhooks (url, secret, and subscribed
+/// event types). Every operation is scoped to the repository resolved from the
+/// request's owner/name.
 #[async_trait]
 pub trait WebhookService: Send + Sync + 'static {
+    /// Creates a webhook on the resolved repository with the given url, secret,
+    /// and subscribed events.
+    ///
+    /// # Errors
+    /// - [`WebhookError::NotFound`] if no repository matches owner/name.
+    /// - [`WebhookError::DatabaseError`] if persisting the webhook fails.
     async fn create_webhook(
         &self,
         request: CreateWebhookRequest,
     ) -> Result<WebhookResponse, WebhookError>;
 
+    /// Lists a repository's webhooks as a cursor-paginated page.
+    ///
+    /// Uses the request's cursor and limit; the returned page carries an encoded
+    /// `next_cursor` when more results remain.
+    ///
+    /// # Errors
+    /// - [`WebhookError::NotFound`] if no repository matches owner/name.
+    /// - [`WebhookError::DatabaseError`] if the query fails.
     async fn list_webhooks(
         &self,
         request: ListWebhooksRequest,
     ) -> Result<Page<WebhookResponse>, WebhookError>;
 
+    /// Fetches a single webhook by id.
+    ///
+    /// The webhook must belong to the resolved repository; a mismatch is
+    /// reported as not found rather than leaking the webhook's existence.
+    ///
+    /// # Errors
+    /// - [`WebhookError::NotFound`] if the repository or webhook does not exist, or the webhook belongs to another repository.
+    /// - [`WebhookError::DatabaseError`] if the query fails.
     async fn get_webhook(
         &self,
         request: GetWebhookRequest,
     ) -> Result<WebhookResponse, WebhookError>;
 
+    /// Updates a webhook's url, secret, and/or events.
+    ///
+    /// Only fields present in the request are changed (others left as-is). The
+    /// webhook must belong to the resolved repository, otherwise it is treated
+    /// as not found.
+    ///
+    /// # Errors
+    /// - [`WebhookError::NotFound`] if the repository or webhook does not exist, or the webhook belongs to another repository.
+    /// - [`WebhookError::DatabaseError`] if persisting the update fails.
     async fn update_webhook(
         &self,
         request: UpdateWebhookRequest,
     ) -> Result<WebhookResponse, WebhookError>;
 
+    /// Deletes a webhook by id.
+    ///
+    /// The webhook must belong to the resolved repository, otherwise it is
+    /// treated as not found.
+    ///
+    /// # Errors
+    /// - [`WebhookError::NotFound`] if the repository or webhook does not exist, or the webhook belongs to another repository.
+    /// - [`WebhookError::DatabaseError`] if deleting the webhook fails.
     async fn delete_webhook(&self, request: DeleteWebhookRequest) -> Result<(), WebhookError>;
 }
 

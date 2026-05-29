@@ -15,8 +15,25 @@ use crate::{
     },
 };
 
+/// Ingests pushed git history into the database, materializing commit rows (with
+/// per-file diff stats) for a repository's ref.
 #[async_trait]
 pub trait CommitService: Send + Sync + 'static {
+    /// Records every commit in the range `old_sha..new_sha` on `request.ref_name`
+    /// for the owner/repo as `commits` rows.
+    ///
+    /// Resolves the range via `git rev-list`; if it is empty (no new commits)
+    /// returns an empty `Vec` without touching the database. For each commit it
+    /// computes per-file diff stats against the parent and bulk-inserts the
+    /// commits in one call. Author emails are matched against existing users so
+    /// `author_id` is populated when the committer has a gitdot account
+    /// (otherwise null, keeping the git author name/email). A missing parent
+    /// (root commit) is stored as the all-zero SHA. `request.review_number` and
+    /// `request.diff_positions` (keyed by SHA) are attached when present.
+    ///
+    /// # Errors
+    /// - [`CommitError`] wrapping a not-found error when the owner/repo does not
+    ///   resolve to a repository.
     async fn create_commits(
         &self,
         request: CreateCommitsRequest,

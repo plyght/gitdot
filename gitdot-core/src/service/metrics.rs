@@ -7,8 +7,15 @@ use crate::{
 
 const CLIENT_PERFORMANCE_TABLE: &str = "client_performance";
 
+/// Ingestion of client-side observability data (web-vitals/performance events)
+/// into the analytics store.
 #[async_trait]
 pub trait MetricsService: Send + Sync + 'static {
+    /// Records a batch of client web-vital events into ClickHouse.
+    ///
+    /// Each event is enriched with the request-level context shared across the
+    /// batch (geo location, user, IP, user agent) before insertion into the
+    /// `client_performance` table.
     async fn log_web_vital(&self, request: LogWebVitalRequest) -> Result<(), MetricsError>;
 }
 

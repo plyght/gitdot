@@ -14,13 +14,37 @@ use crate::{
     util::{git::ZERO_SHA, github::get_github_clone_url},
 };
 
+/// Handles inbound GitHub App webhook events that keep migrated repositories in
+/// sync with their GitHub origin and track the App installation lifecycle.
 #[async_trait]
 pub trait GithubWebhookService: Send + Sync + 'static {
+    /// Mirrors a GitHub push into any readonly destination repositories migrated
+    /// from the origin.
+    ///
+    /// Only acts on pushes to the origin's default branch with a non-zero
+    /// `after` sha; anything else returns an empty response without side
+    /// effects. For each migration of the origin repository it resolves the
+    /// destination, skips it unless it exists and is readonly, then fetches the
+    /// pushed ref into the destination using an installation access token to
+    /// authenticate the clone URL. Per-destination fetch failures are logged and
+    /// skipped (not propagated); only successfully synced repositories are
+    /// returned.
+    ///
+    /// # Errors
+    /// - [`WebhookError::GitHubError`] if obtaining the installation access token fails.
+    /// - [`WebhookError::DatabaseError`] if listing migrations or loading destinations fails.
     async fn process_github_push(
         &self,
         request: ProcessGithubPushRequest,
     ) -> Result<ProcessGithubPushResponse, WebhookError>;
 
+    /// Reacts to GitHub App installation events.
+    ///
+    /// On the `deleted` action, removes all GitHub repository records tied to the
+    /// installation id. Any other action is logged and ignored.
+    ///
+    /// # Errors
+    /// - [`WebhookError::DatabaseError`] if deleting the installation's records fails.
     async fn process_github_installation(
         &self,
         request: ProcessGithubInstallationRequest,

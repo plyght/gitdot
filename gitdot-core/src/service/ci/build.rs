@@ -19,15 +19,58 @@ use crate::{
     util::{cursor, git::DEFAULT_BRANCH},
 };
 
+/// CI builds: creating a build for a commit from the repository's
+/// `.gitdot-ci.toml`, fanning it out into tasks, and reporting build status
+/// aggregated from its tasks.
 #[async_trait]
 pub trait BuildService: Send + Sync + 'static {
+    /// Creates a build for `request.commit_sha` and fans it out into tasks.
+    ///
+    /// Resolves the commit, reads `.gitdot-ci.toml` at that commit, and parses
+    /// it. The trigger is [`PushToMain`] when `request.ref_name` is (or ends in)
+    /// the default branch, otherwise [`PullRequest`]; the matching build config
+    /// selects which tasks to create. UUIDs are pre-generated for every task so
+    /// `waits_for` dependencies can reference each other by ID. Each task gets a
+    /// dedicated S2 log stream and is created [`Blocked`] if it has
+    /// dependencies, otherwise [`Pending`]. The returned response always reports
+    /// [`Running`] with `completed_tasks` of 0.
+    ///
+    /// # Errors
+    /// - [`BuildError::NotFound`] if the repository, commit, or `.gitdot-ci.toml`
+    ///   (missing, or a folder) is absent.
+    /// - [`BuildError::InvalidConfig`] if the config cannot be parsed or has no
+    ///   matching build config for the trigger.
+    /// - [`BuildError::S2Error`] if a task log stream cannot be created.
+    ///
+    /// [`PushToMain`]: gitdot_config::ci::BuildTrigger::PushToMain
+    /// [`PullRequest`]: gitdot_config::ci::BuildTrigger::PullRequest
+    /// [`Blocked`]: crate::model::TaskStatus::Blocked
+    /// [`Pending`]: crate::model::TaskStatus::Pending
+    /// [`Running`]: crate::model::BuildStatus::Running
     async fn create_build(&self, request: CreateBuildRequest) -> Result<BuildResponse, BuildError>;
 
+    /// Lists builds for a repository, newest first, cursor-paginated.
+    ///
+    /// # Errors
+    /// - [`BuildError::NotFound`] if the repository does not exist.
     async fn list_builds(
         &self,
         request: ListBuildsRequest,
     ) -> Result<Page<BuildResponse>, BuildError>;
 
+    /// Fetches a single build by its per-repository `number`.
+    ///
+    /// Build status and `updated_at` are derived from the build's tasks:
+    /// [`Failure`] if any task failed, [`Success`] if all tasks succeeded,
+    /// otherwise (including a build with no tasks) [`Running`]; `updated_at` is
+    /// the latest task update, falling back to the build's creation time.
+    ///
+    /// # Errors
+    /// - [`BuildError::NotFound`] if the repository or build does not exist.
+    ///
+    /// [`Failure`]: crate::model::BuildStatus::Failure
+    /// [`Success`]: crate::model::BuildStatus::Success
+    /// [`Running`]: crate::model::BuildStatus::Running
     async fn get_build(
         &self,
         owner: &str,
@@ -35,6 +78,10 @@ pub trait BuildService: Send + Sync + 'static {
         number: i32,
     ) -> Result<BuildResponse, BuildError>;
 
+    /// Lists all tasks belonging to a build identified by its `number`.
+    ///
+    /// # Errors
+    /// - [`BuildError::NotFound`] if the repository or build does not exist.
     async fn list_build_tasks(
         &self,
         owner: &str,

@@ -22,10 +22,28 @@ use crate::{
     },
 };
 
+/// Manages code reviews: their diffs, revisions, reviewers, comments, and the
+/// git refs that track each review's commit history.
+///
+/// Reviews originate from pushes to magic `refs/for/<branch>` refs (see
+/// [`create_review`](ReviewService::create_review) and
+/// [`process_review_update`](ReviewService::process_review_update)) and progress
+/// through draft, open, and closed statuses as diffs are published, reviewed,
+/// and merged back onto their target branch.
 #[async_trait]
 pub trait ReviewService: Send + Sync + 'static {
+    /// Returns a single review by its repo-scoped number.
+    ///
+    /// # Errors
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if no review with that
+    ///   number exists in the repository.
     async fn get_review(&self, request: GetReviewRequest) -> Result<ReviewResponse, ReviewError>;
 
+    /// Lists reviews in a repository as a cursor-paginated page.
+    ///
+    /// Results are scoped to the requesting viewer and returned in the
+    /// repository's default review ordering, with a `next_cursor` when more
+    /// pages remain.
     async fn list_reviews(
         &self,
         request: ListReviewsRequest,
@@ -76,61 +94,164 @@ pub trait ReviewService: Send + Sync + 'static {
         request: ProcessReviewRequest,
     ) -> Result<ReviewResponse, ReviewError>;
 
+    /// Publishes a draft review, transitioning it from `draft` to `open`.
+    ///
+    /// Requires the review to be in `draft` status and every diff to have left
+    /// `draft` (i.e. be `open`); otherwise the review is not yet ready for
+    /// reviewers.
+    ///
+    /// # Errors
+    /// - [`ReviewError::ReviewNotPublishable`] if the review is not in `draft`
+    ///   status, or if one or more diffs are still in `draft`.
     async fn publish_review(
         &self,
         request: PublishReviewRequest,
     ) -> Result<ReviewResponse, ReviewError>;
 
+    /// Updates a review's title and/or description.
+    ///
+    /// Does not change the review's status.
     async fn update_review(
         &self,
         request: UpdateReviewRequest,
     ) -> Result<ReviewResponse, ReviewError>;
 
+    /// Returns the file-level diff for one diff position within a review.
+    ///
+    /// The right-hand side is the requested revision (or the latest revision if
+    /// `revision` is omitted). The left-hand side is another revision when
+    /// `compare_to` is given, otherwise the requested revision's parent commit.
+    ///
+    /// # Errors
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if the review, the
+    ///   diff at the position, or a referenced revision does not exist.
     async fn get_review_diff(
         &self,
         request: GetReviewDiffRequest,
     ) -> Result<ReviewDiffResponse, ReviewError>;
 
+    /// Updates the message/description of a single diff within a review.
+    ///
+    /// # Errors
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if the review has no
+    ///   diff at the requested position.
     async fn update_review_diff(
         &self,
         request: UpdateReviewDiffRequest,
     ) -> Result<ReviewResponse, ReviewError>;
 
+    /// Publishes a single draft diff, transitioning it from `draft` to `open`.
+    ///
+    /// Only valid while the review itself is still in `draft`; once a diff is
+    /// open it becomes visible to reviewers without publishing the whole review.
+    ///
+    /// # Errors
+    /// - [`ReviewError::DiffNotPublishable`] if the review is not in `draft`
+    ///   status, or the targeted diff is not in `draft` status.
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if no diff exists at
+    ///   the requested position.
     async fn publish_review_diff(
         &self,
         request: PublishReviewDiffRequest,
     ) -> Result<ReviewResponse, ReviewError>;
 
+    /// Merges all open diffs up to and including the given position onto the
+    /// review's target branch.
+    ///
+    /// If the target branch has not moved since the diffs were created, the
+    /// merge fast-forwards to the last diff's commit. Otherwise each diff is
+    /// cherry-picked onto the advanced target in order, and each diff's current
+    /// ref and stored revision SHA are updated to the rebased commits. The
+    /// target branch ref is then advanced to the resulting commit and every
+    /// merged diff is marked `merged`. The review is closed once all of its
+    /// diffs are merged.
+    ///
+    /// # Errors
+    /// - [`ReviewError::DiffNotMergeable`] if the review is not `open`, or a
+    ///   cherry-pick hits a merge conflict (the review must be updated to
+    ///   resolve conflicts first).
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if there are no
+    ///   unmerged diffs at or before the position, or a diff has no revisions.
     async fn merge_review_diff(
         &self,
         request: MergeReviewDiffRequest,
     ) -> Result<ReviewResponse, ReviewError>;
 
+    /// Adds a user as a reviewer on a review.
+    ///
+    /// The review author cannot be added as a reviewer of their own review.
+    ///
+    /// # Errors
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if the user or review
+    ///   does not exist.
+    /// - [`ReviewError::CannotReviewOwnReview`] if the user is the review author.
+    /// - [`ConflictError`] (via [`ReviewError::Conflict`]) if the user is already
+    ///   a reviewer.
     async fn add_review_reviewer(
         &self,
         request: AddReviewReviewerReqeuest,
     ) -> Result<ReviewerResponse, ReviewError>;
 
+    /// Removes a reviewer from a review.
+    ///
+    /// # Errors
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if the named user or
+    ///   the review does not exist, or the user is not currently a reviewer.
     async fn remove_review_reviewer(
         &self,
         request: RemoveReviewReviewerRequest,
     ) -> Result<(), ReviewError>;
 
+    /// Creates a reply to an existing review comment.
+    ///
+    /// The reply inherits the parent comment's review, diff, and revision
+    /// association and is linked to the parent as a threaded reply.
+    ///
+    /// # Errors
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if the parent comment
+    ///   does not exist.
     async fn reply_to_review_comment(
         &self,
         request: ReplyToReviewCommentRequest,
     ) -> Result<ReviewCommentResponse, ReviewError>;
 
+    /// Updates the body text of a review comment.
     async fn update_review_comment(
         &self,
         request: UpdateReviewCommentRequest,
     ) -> Result<ReviewCommentResponse, ReviewError>;
 
+    /// Marks a top-level review comment as resolved or unresolved.
+    ///
+    /// Replies cannot be resolved directly; resolution applies only to the
+    /// parent comment of a thread.
+    ///
+    /// # Errors
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if the comment does
+    ///   not exist.
+    /// - [`InputError`] (via [`ReviewError::Input`]) if the comment is a reply
+    ///   rather than a top-level comment.
     async fn resolve_review_comment(
         &self,
         request: ResolveReviewCommentRequest,
     ) -> Result<ReviewCommentResponse, ReviewError>;
 
+    /// Submits a reviewer's verdict and/or comments on a single diff.
+    ///
+    /// The action may be `Approve`, `Reject`, or `Comment`. Approve/Reject
+    /// record a verdict against the diff's latest revision; a plain `Comment`
+    /// action only attaches comments. Any inline comments in the request are
+    /// created regardless of action.
+    ///
+    /// For non-`Comment` actions the diff must not already be merged, and a
+    /// reviewer may not record a verdict on their own diff (the review author).
+    ///
+    /// # Errors
+    /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if the review, diff,
+    ///   or latest revision does not exist.
+    /// - [`ReviewError::DiffAlreadyMerged`] if approving/rejecting a merged diff.
+    /// - [`ReviewError::CannotReviewOwnDiff`] if the reviewer is the review
+    ///   author and the action is not `Comment`.
     async fn review_review_diff(
         &self,
         request: ReviewReviewDiffRequest,

@@ -14,12 +14,45 @@ use crate::{
     },
 };
 
+/// CI task execution: serving task details, applying runner-reported status
+/// transitions (with dependency unblocking), and long-polling for runners to
+/// claim the next pending task.
 #[async_trait]
 pub trait TaskService: Send + Sync + 'static {
+    /// Fetches a task by ID, returning `None` if it does not exist.
     async fn get_task(&self, id: Uuid) -> Result<Option<TaskResponse>, TaskError>;
 
+    /// Applies a runner-reported status transition to a task.
+    ///
+    /// When the task transitions to [`Success`], sibling tasks in the same build
+    /// that were [`Blocked`] solely on this (and other now-succeeded)
+    /// dependencies are unblocked to [`Pending`].
+    ///
+    /// # Errors
+    /// - [`TaskError::NotFound`] if no task has `req.id`.
+    ///
+    /// [`Success`]: crate::model::TaskStatus::Success
+    /// [`Blocked`]: crate::model::TaskStatus::Blocked
+    /// [`Pending`]: crate::model::TaskStatus::Pending
     async fn update_task(&self, req: UpdateTaskRequest) -> Result<TaskResponse, TaskError>;
 
+    /// Long-polls for the next task a runner may execute, claiming it atomically.
+    ///
+    /// Heartbeats the runner, then resolves the repositories owned by the
+    /// runner's owner and atomically claims a [`Pending`] task from one of them
+    /// (oldest first, skipping rows already locked by other runners), marking it
+    /// [`Assigned`] to this runner. Polls once per second for up to 60 seconds,
+    /// returning the claimed task or `None` if none became available before the
+    /// deadline.
+    ///
+    /// Note: repository visibility currently scopes claims to PUBLIC repos only
+    /// (see the in-code TODO).
+    ///
+    /// # Errors
+    /// - [`TaskError::NotFound`] if no runner has `runner_id`.
+    ///
+    /// [`Pending`]: crate::model::TaskStatus::Pending
+    /// [`Assigned`]: crate::model::TaskStatus::Assigned
     async fn poll_task(&self, runner_id: Uuid) -> Result<Option<TaskResponse>, TaskError>;
 }
 

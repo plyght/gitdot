@@ -34,45 +34,95 @@ use crate::{
     },
 };
 
+/// Repository domain: lifecycle (create/update/delete), browsing (blobs, paths,
+/// commits, diffs), discovery (latest/trending), stars, activity, and per-repo
+/// commit filters. Bridges the database (`RepositoryRepository`/`CommitRepository`)
+/// and the on-disk bare git repos accessed through a [`GitClient`].
 #[async_trait]
 pub trait RepositoryService: Send + Sync + 'static {
+    /// Creates a new repository, both on disk and in the database.
+    ///
+    /// Creates the bare git repo under `GIT_PROJECT_ROOT` and installs the
+    /// pre-receive, post-receive and proc-receive hooks, then inserts the
+    /// `repositories` row (owner resolved to a user or organization id by
+    /// `owner_type`). If any requested seed files are present (README from
+    /// `init_readme`, `.gitignore`, `LICENSE`), an initial commit is written on
+    /// the default branch and recorded.
+    ///
+    /// Failures are unwound: the on-disk repo (and DB row, for a failed initial
+    /// commit) are best-effort deleted before the error is returned.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::Conflict`] if a repo with the same name already
+    ///   exists on disk for the owner.
+    /// - [`RepositoryError::NotFound`] if `owner_type` is organization and no
+    ///   such organization exists, or the committing user/email is missing.
     async fn create_repository(
         &self,
         request: CreateRepositoryRequest,
     ) -> Result<RepositoryResponse, RepositoryError>;
 
+    /// Returns repository metadata for `owner/repo`, scoped to `request.user_id`
+    /// so private repos are only visible to permitted viewers.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if no matching (visible) repository exists.
     async fn get_repository(
         &self,
         request: GetRepositoryRequest,
     ) -> Result<RepositoryResponse, RepositoryError>;
 
+    /// Returns a single blob (file contents or a folder listing) at `ref_name`
+    /// and `path`, read directly from the bare git repo.
     async fn get_repository_blob(
         &self,
         request: GetRepositoryBlobRequest,
     ) -> Result<RepositoryBlobResponse, RepositoryError>;
 
+    /// Returns multiple blobs in one call. When more than one ref is given,
+    /// reads the single `paths[0]` across all `refs`; otherwise reads all
+    /// `paths` at the single `refs[0]`.
     async fn get_repository_blobs(
         &self,
         request: GetRepositoryBlobsRequest,
     ) -> Result<RepositoryBlobsResponse, RepositoryError>;
 
+    /// Returns the repository's full tree of paths at `ref_name`.
     async fn get_repository_paths(
         &self,
         request: GetRepositoryPathsRequest,
     ) -> Result<RepositoryPathsResponse, RepositoryError>;
 
+    /// Returns repository metadata by id, unscoped (no visibility filtering).
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if no repository has that id.
     async fn get_repository_by_id(&self, id: Uuid) -> Result<RepositoryResponse, RepositoryError>;
 
+    /// Deletes `owner/repo` from both disk and the database.
+    ///
+    /// Removes the bare git repo via the [`GitClient`] first, then the DB row.
+    /// Unscoped — does not filter by viewer.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository does not exist.
     async fn delete_repository(
         &self,
         request: DeleteRepositoryRequest,
     ) -> Result<(), RepositoryError>;
 
+    /// Updates the repository's `description` and/or `readonly` flag and returns
+    /// the updated metadata. Unscoped lookup by `owner/repo`.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository does not exist.
     async fn update_repository(
         &self,
         request: UpdateRepositoryRequest,
     ) -> Result<RepositoryResponse, RepositoryError>;
 
+    /// Resolves `ref_name` (branch, tag, or revision) to its commit SHA in the
+    /// bare git repo.
     async fn resolve_ref_sha(
         &self,
         owner: &str,
@@ -80,57 +130,125 @@ pub trait RepositoryService: Send + Sync + 'static {
         ref_name: &str,
     ) -> Result<String, RepositoryError>;
 
+    /// Returns, for one file `path`, the diff between consecutive commits in
+    /// `commit_shas`.
+    ///
+    /// Reads the file's blob at each commit and computes added/removed line
+    /// counts for each adjacent pair via a git2 patch. The result maps each
+    /// commit SHA to its diff against the next entry.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotAFile`] if `path` resolves to a folder at any ref.
     async fn get_repository_blob_diffs(
         &self,
         request: GetRepositoryBlobDiffsRequest,
     ) -> Result<RepositoryBlobDiffsResponse, RepositoryError>;
 
+    /// Returns a single stored commit (metadata plus its per-file diff stats)
+    /// for `owner/repo` at `sha`, read from the database.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository or the commit is absent.
     async fn get_repository_commit(
         &self,
         request: GetRepositoryCommitRequest,
     ) -> Result<CommitResponse, RepositoryError>;
 
+    /// Returns the before/after blob pairs for every file touched by the commit
+    /// `sha`, suitable for rendering a diff view.
+    ///
+    /// Looks up the stored commit to find its parent and changed paths, then
+    /// reads each path's blob at the parent and at the commit (concurrently).
+    /// For a root commit (all-zero parent SHA) the "old" side is empty.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository or the commit is absent.
     async fn get_repository_commit_blobs(
         &self,
         request: GetRepositoryCommitBlobsRequest,
     ) -> Result<Vec<RepositoryBlobPairResponse>, RepositoryError>;
 
+    /// Lists commits for `owner/repo` on a ref, cursor-paginated.
+    ///
+    /// `ref_name` is normalized: `HEAD` resolves to the repo's default ref, a
+    /// bare branch name is expanded to `refs/heads/<name>`, and a fully-qualified
+    /// `refs/...` name is used as-is. Optional `from`/`to` bound the range. The
+    /// returned page carries an encoded `next_cursor` when more results exist.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository does not exist.
     async fn list_repository_commits(
         &self,
         request: ListRepositoryCommitsRequest,
     ) -> Result<Page<CommitResponse>, RepositoryError>;
 
+    /// Returns up to 100 most recently created repositories, for discovery.
     async fn list_latest_repositories(&self) -> Result<Vec<RepositoryResponse>, RepositoryError>;
 
+    /// Returns up to 100 trending repositories, for discovery.
     async fn list_trending_repositories(&self) -> Result<Vec<RepositoryResponse>, RepositoryError>;
 
+    /// Stars `owner/repo` on behalf of `request.user_id`.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository does not exist.
+    /// - [`RepositoryError::Conflict`] if the user has already starred it.
     async fn star_repository(&self, request: StarRepositoryRequest) -> Result<(), RepositoryError>;
 
+    /// Removes `request.user_id`'s star from `owner/repo`.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository does not exist.
+    /// - [`RepositoryError::Conflict`] if no star existed to remove.
     async fn unstar_repository(
         &self,
         request: UnstarRepositoryRequest,
     ) -> Result<(), RepositoryError>;
 
+    /// Returns the repository's recent activity feed (up to 25 events).
+    ///
+    /// Currently surfaces the most recent stars as `Starred` events.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository does not exist.
     async fn get_repository_activity(
         &self,
         request: GetRepositoryActivityRequest,
     ) -> Result<Vec<RepositoryActivityEvent>, RepositoryError>;
 
+    /// Lists a repository's saved commit filters, cursor-paginated.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository does not exist.
     async fn list_repository_commit_filters(
         &self,
         request: ListRepositoryCommitFiltersRequest,
     ) -> Result<Page<RepositoryCommitFilterResponse>, RepositoryError>;
 
+    /// Creates a named commit filter (by authors, tags, and/or paths) for the
+    /// repository. Names must be unique within the repository.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if the repository does not exist.
+    /// - [`RepositoryError::Conflict`] if a filter with the same name exists.
     async fn create_repository_commit_filter(
         &self,
         request: CreateRepositoryCommitFilterRequest,
     ) -> Result<RepositoryCommitFilterResponse, RepositoryError>;
 
+    /// Updates an existing commit filter by id and returns it.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if no filter has that id.
     async fn update_repository_commit_filter(
         &self,
         request: UpdateRepositoryCommitFilterRequest,
     ) -> Result<RepositoryCommitFilterResponse, RepositoryError>;
 
+    /// Deletes a commit filter by id.
+    ///
+    /// # Errors
+    /// - [`RepositoryError::NotFound`] if no filter has that id.
     async fn delete_repository_commit_filter(
         &self,
         request: DeleteRepositoryCommitFilterRequest,

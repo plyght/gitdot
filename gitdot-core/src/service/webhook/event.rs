@@ -8,8 +8,21 @@ use crate::{
     repository::{UserRepository, UserRepositoryImpl},
 };
 
+/// Publishes domain events for repository activity onto Kafka so downstream
+/// consumers (webhook delivery, notifications) can react asynchronously.
 #[async_trait]
 pub trait EventService: Send + Sync + 'static {
+    /// Builds a [`RepoPushEvent`] for a push and publishes it to Kafka.
+    ///
+    /// Looks up the pusher to attach their display name, then runs `rev_list`
+    /// between `old_sha` and `new_sha` to collect the commits introduced by the
+    /// push (sha + message). The event is stamped with the current time and
+    /// emitted via the Kafka client; no webhooks are delivered directly here.
+    ///
+    /// # Errors
+    /// - [`WebhookError::NotFound`] if no user matches `pusher_id`.
+    /// - [`WebhookError::GitError`] if listing the pushed commits fails.
+    /// - [`WebhookError::KafkaError`] if publishing the event fails.
     async fn publish_repo_push(&self, request: PublishRepoPushRequest) -> Result<(), WebhookError>;
 }
 
