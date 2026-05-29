@@ -4,6 +4,7 @@ pub mod has_user;
 pub mod list_user_commits;
 pub mod list_user_organizations;
 pub mod list_user_repositories;
+pub mod list_user_repositories_contributed;
 pub mod list_user_repositories_starred;
 pub mod list_user_reviews;
 pub mod update_current_user;

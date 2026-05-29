@@ -9,7 +9,7 @@ use crate::{
     model::{Commit, CommitDiff},
 };
 
-const COMMIT_PROJECTION: &str = "
+const COMMIT_PROJECTION_QUERY: &str = "
     c.id, c.repo_id, c.author_id, c.git_author_name, c.git_author_email,
     c.ref_name, c.sha, c.parent_sha, c.message, c.created_at,
     c.review_number, c.diff_position, c.diffs,
@@ -23,7 +23,7 @@ const COMMIT_PROJECTION: &str = "
     ) AS repository
 ";
 
-const COMMIT_JOINS: &str = "
+const COMMIT_JOINS_QUERY: &str = "
     JOIN core.repositories r ON c.repo_id = r.id
     LEFT JOIN core.users u
       ON r.owner_id = u.id AND r.owner_type = 'user'
@@ -102,8 +102,8 @@ impl CommitRepository for CommitRepositoryImpl {
              FROM core.commits c
              {joins}
              WHERE c.repo_id = $1 AND c.sha_short = $2",
-            projection = COMMIT_PROJECTION,
-            joins = COMMIT_JOINS,
+            projection = COMMIT_PROJECTION_QUERY,
+            joins = COMMIT_JOINS_QUERY,
         );
 
         let commit = sqlx::query_as::<_, Commit>(&query)
@@ -134,8 +134,8 @@ impl CommitRepository for CommitRepositoryImpl {
                AND ($5::timestamptz IS NULL OR (c.created_at, c.id) < ($5, $6))
              ORDER BY c.created_at DESC, c.id DESC
              LIMIT $7",
-            projection = COMMIT_PROJECTION,
-            joins = COMMIT_JOINS,
+            projection = COMMIT_PROJECTION_QUERY,
+            joins = COMMIT_JOINS_QUERY,
         );
 
         let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
@@ -194,8 +194,8 @@ impl CommitRepository for CommitRepositoryImpl {
                AND ($4::timestamptz IS NULL OR (c.created_at, c.id) < ($4, $5))
              ORDER BY c.created_at DESC, c.id DESC
              LIMIT $6",
-            projection = COMMIT_PROJECTION,
-            joins = COMMIT_JOINS,
+            projection = COMMIT_PROJECTION_QUERY,
+            joins = COMMIT_JOINS_QUERY,
         );
 
         let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
@@ -274,8 +274,8 @@ impl CommitRepository for CommitRepositoryImpl {
             FROM inserted c
             {joins}
             "#,
-            projection = COMMIT_PROJECTION,
-            joins = COMMIT_JOINS,
+            projection = COMMIT_PROJECTION_QUERY,
+            joins = COMMIT_JOINS_QUERY,
         );
 
         let rows = sqlx::query_as::<_, Commit>(&query)

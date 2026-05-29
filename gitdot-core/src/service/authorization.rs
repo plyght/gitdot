@@ -514,6 +514,7 @@ mod tests {
             async fn get_email_for_user(&self, user_id: Uuid, email: &str) -> Result<Option<UserEmail>, crate::error::DatabaseError>;
             async fn upsert_verified_emails(&self, user_id: Uuid, emails: &[String]) -> Result<(), crate::error::DatabaseError>;
             async fn list_starred_repositories(&self, user_id: Uuid, viewer_id: Option<Uuid>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Repository>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
+            async fn list_contributed_repositories(&self, user_id: Uuid, viewer_id: Option<Uuid>, since: chrono::DateTime<chrono::Utc>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<(Repository, i64, chrono::DateTime<chrono::Utc>)>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
         }
     }
 

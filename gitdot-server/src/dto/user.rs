@@ -2,7 +2,7 @@ use gitdot_api::resource::{repository as repo_api, user as api};
 use gitdot_core::{
     dto::{
         GetCurrentUserResponse, UserCommitResponse, UserEmailResponse, UserOrganizationResponse,
-        UserResponse,
+        UserRepositoryResponse, UserResponse,
     },
     model::OrganizationRole,
 };
@@ -69,6 +69,21 @@ impl IntoApi for UserOrganizationResponse {
             role_description: self.role_description,
             joined_at: self.joined_at,
             image_updated_at: self.image_updated_at,
+        }
+    }
+}
+
+impl IntoApi for UserRepositoryResponse {
+    type ApiType = api::UserRepositoryResource;
+    fn into_api(self) -> Self::ApiType {
+        api::UserRepositoryResource {
+            owner: self.owner,
+            name: self.name,
+            description: self.description,
+            stars: self.stars,
+            visibility: self.visibility,
+            commit_count: self.commit_count,
+            last_commit_at: self.last_commit_at,
         }
     }
 }

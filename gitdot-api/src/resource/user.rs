@@ -42,9 +42,8 @@ pub struct CurrentUserResource {
     pub image_updated_at: DateTime<Utc>,
 }
 
-/// An organization as surfaced from a user's perspective — basic org info plus
-/// the viewer's own membership metadata (`role`, `joined_at`). Used by
-/// `list_user_organizations` and `CurrentUserResource.memberships`.
+/// An organization as surfaced from a user's perspective. It contains basic org
+/// info plus the viewer's own membership metadata (`role`, `joined_at`).
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserOrganizationResource {
     pub id: Uuid,
@@ -57,10 +56,23 @@ pub struct UserOrganizationResource {
     pub image_updated_at: DateTime<Utc>,
 }
 
+/// A repository as surfaced on a user's profile. It contains the viewer-visible
+/// subset of repo fields plus the user's contribution stats.
+#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserRepositoryResource {
+    pub owner: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub stars: u32,
+    pub visibility: String,
+    pub commit_count: u32,
+    pub last_commit_at: DateTime<Utc>,
+}
+
 /// A commit as surfaced on a user's profile. Most fields are optional so that
 /// commits in private repositories the viewer cannot access can be returned as
-/// a redacted stub (timestamp + `redacted: true` only) — enough to drive a
-/// "user committed something on this date" surface without leaking content.
+/// a redacted stub (timestamp + `redacted: true` only)
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserCommitResource {
     pub id: Uuid,

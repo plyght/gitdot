@@ -4,10 +4,11 @@ use crate::{
     client::{Git2Client, GitClient, ImageClient, ImageClientImpl, R2Client, R2ClientImpl},
     dto::{
         GetCurrentUserRequest, GetCurrentUserResponse, GetUserRequest, HasUserRequest,
-        ListUserCommitsRequest, ListUserOrganizationsRequest, ListUserRepositoriesRequest,
-        ListUserReviewsRequest, ListUserStarredRepositoriesRequest, MAX_PER_PAGE_LIMIT, Page,
-        RepositoryResponse, ReviewResponse, UpdateCurrentUserImageRequest,
-        UpdateCurrentUserRequest, UserCommitResponse, UserOrganizationResponse, UserResponse,
+        ListUserCommitsRequest, ListUserContributedRepositoriesRequest,
+        ListUserOrganizationsRequest, ListUserRepositoriesRequest, ListUserReviewsRequest,
+        ListUserStarredRepositoriesRequest, MAX_PER_PAGE_LIMIT, Page, RepositoryResponse,
+        ReviewResponse, UpdateCurrentUserImageRequest, UpdateCurrentUserRequest,
+        UserCommitResponse, UserOrganizationResponse, UserRepositoryResponse, UserResponse,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, UserError},
     repository::{
@@ -48,6 +49,11 @@ pub trait UserService: Send + Sync + 'static {
         &self,
         request: ListUserStarredRepositoriesRequest,
     ) -> Result<Page<RepositoryResponse>, UserError>;
+
+    async fn list_contributed_repositories(
+        &self,
+        request: ListUserContributedRepositoriesRequest,
+    ) -> Result<Page<UserRepositoryResponse>, UserError>;
 
     async fn list_organizations(
         &self,
@@ -333,6 +339,39 @@ where
 
         Ok(Page {
             data: repositories.into_iter().map(|r| r.into()).collect(),
+            next_cursor: next_cursor.as_ref().map(cursor::encode),
+        })
+    }
+
+    async fn list_contributed_repositories(
+        &self,
+        request: ListUserContributedRepositoriesRequest,
+    ) -> Result<Page<UserRepositoryResponse>, UserError> {
+        let user_name = request.user_name.to_string();
+        let user = self
+            .user_repo
+            .get(&user_name)
+            .await?
+            .or_not_found("user", &user_name)?;
+
+        let (rows, next_cursor) = self
+            .user_repo
+            .list_contributed_repositories(
+                user.id,
+                request.viewer_id,
+                request.from,
+                request.cursor,
+                request.limit as i64,
+            )
+            .await?;
+
+        Ok(Page {
+            data: rows
+                .into_iter()
+                .map(|(repo, count, last)| {
+                    UserRepositoryResponse::from_repository(repo, count, last)
+                })
+                .collect(),
             next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
     }

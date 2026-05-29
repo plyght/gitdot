@@ -11,7 +11,7 @@ use crate::{
     util::user::DEFAULT_USER_README,
 };
 
-const USER_PROJECTION: &str = r#"
+const USER_PROJECTION_QUERY: &str = r#"
 SELECT
     u.id, u.name, u.provider, u.created_at, u.image_updated_at, u.display_name, u.location, u.readme, u.links,
     COALESCE(
@@ -27,14 +27,6 @@ SELECT
         '[]'::json
     ) AS emails
 "#;
-
-#[derive(FromRow)]
-struct StarredRepoRow {
-    #[sqlx(flatten)]
-    repository: Repository,
-    starred_at: DateTime<Utc>,
-    star_id: Uuid,
-}
 
 #[async_trait]
 pub trait UserRepository: Send + Sync + Clone + 'static {
@@ -92,6 +84,15 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
         cursor: Option<Cursor>,
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError>;
+
+    async fn list_contributed_repositories(
+        &self,
+        user_id: Uuid,
+        viewer_id: Option<Uuid>,
+        since: DateTime<Utc>,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<(Repository, i64, DateTime<Utc>)>, Option<Cursor>), DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -163,7 +164,7 @@ impl UserRepository for UserRepositoryImpl {
 
     async fn get(&self, user_name: &str) -> Result<Option<User>, DatabaseError> {
         let user = sqlx::query_as::<_, User>(&format!(
-            "{USER_PROJECTION} FROM core.users u WHERE u.name = $1"
+            "{USER_PROJECTION_QUERY} FROM core.users u WHERE u.name = $1"
         ))
         .bind(user_name)
         .fetch_optional(&self.pool)
@@ -204,7 +205,7 @@ impl UserRepository for UserRepositoryImpl {
             .push(" WHERE id = ")
             .push_bind(id)
             .push(" RETURNING id, name, provider, created_at, image_updated_at, display_name, location, readme, links) ")
-            .push(USER_PROJECTION)
+            .push(USER_PROJECTION_QUERY)
             .push(" FROM u");
 
         let user = builder
@@ -216,7 +217,7 @@ impl UserRepository for UserRepositoryImpl {
 
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DatabaseError> {
         let user = sqlx::query_as::<_, User>(&format!(
-            "{USER_PROJECTION} FROM core.users u WHERE u.id = $1"
+            "{USER_PROJECTION_QUERY} FROM core.users u WHERE u.id = $1"
         ))
         .bind(id)
         .fetch_optional(&self.pool)
@@ -236,7 +237,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DatabaseError> {
         let user = sqlx::query_as::<_, User>(&format!(
             r#"
-            {USER_PROJECTION}
+            {USER_PROJECTION_QUERY}
             FROM core.users u
             JOIN core.user_emails ue ON ue.user_id = u.id AND ue.is_primary
             WHERE ue.email = $1
@@ -388,6 +389,14 @@ impl UserRepository for UserRepositoryImpl {
         cursor: Option<Cursor>,
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError> {
+        #[derive(FromRow)]
+        struct StarredRepoRow {
+            #[sqlx(flatten)]
+            repository: Repository,
+            starred_at: DateTime<Utc>,
+            star_id: Uuid,
+        }
+
         let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
         let cursor_id = cursor.as_ref().map(|c| c.id);
 
@@ -429,6 +438,84 @@ impl UserRepository for UserRepositoryImpl {
 
         Ok((
             rows.into_iter().map(|r| r.repository).collect(),
+            next_cursor,
+        ))
+    }
+
+    async fn list_contributed_repositories(
+        &self,
+        user_id: Uuid,
+        viewer_id: Option<Uuid>,
+        since: DateTime<Utc>,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<(Vec<(Repository, i64, DateTime<Utc>)>, Option<Cursor>), DatabaseError> {
+        #[derive(FromRow)]
+        struct ContributedRepoRow {
+            #[sqlx(flatten)]
+            repository: Repository,
+            commit_count: i64,
+            last_commit_at: DateTime<Utc>,
+        }
+
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut rows = sqlx::query_as::<_, ContributedRepoRow>(
+            r#"
+            WITH viewer_orgs AS (
+                SELECT organization_id FROM core.organization_members WHERE user_id = $5
+            ),
+            agg AS (
+                SELECT c.repo_id, COUNT(*) AS commit_count, MAX(c.created_at) AS last_commit_at
+                FROM core.commits c
+                WHERE c.author_id = $1 AND c.created_at >= $6
+                GROUP BY c.repo_id
+            )
+            SELECT r.id, r.name, r.owner_id, COALESCE(ru.name, ro.name) AS owner_name,
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
+                   EXISTS(SELECT 1 FROM core.stars vs WHERE vs.repository_id = r.id AND vs.user_id = $5) AS user_star,
+                   agg.commit_count, agg.last_commit_at
+            FROM agg
+            JOIN core.repositories r ON r.id = agg.repo_id
+            LEFT JOIN core.users ru
+              ON r.owner_id = ru.id AND r.owner_type = 'user'
+            LEFT JOIN core.organizations ro
+              ON r.owner_id = ro.id AND r.owner_type = 'organization'
+            WHERE (
+                r.visibility = 'public'
+                OR (r.owner_type = 'user' AND r.owner_id = $5)
+                OR (r.owner_type = 'organization'
+                    AND r.owner_id IN (SELECT organization_id FROM viewer_orgs))
+            )
+              AND ($2::timestamptz IS NULL OR (agg.last_commit_at, r.id) < ($2, $3))
+            ORDER BY agg.last_commit_at DESC, r.id DESC
+            LIMIT $4
+            "#,
+        )
+        .bind(user_id)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
+        .bind(viewer_id)
+        .bind(since)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let next_cursor = if rows.len() as i64 > limit {
+            rows.pop();
+            rows.last().map(|last| Cursor {
+                created_at: last.last_commit_at,
+                id: last.repository.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((
+            rows.into_iter()
+                .map(|r| (r.repository, r.commit_count, r.last_commit_at))
+                .collect(),
             next_cursor,
         ))
     }

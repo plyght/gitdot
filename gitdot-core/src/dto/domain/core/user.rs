@@ -4,6 +4,7 @@ mod has_user;
 mod list_user_commits;
 mod list_user_organizations;
 mod list_user_repositories;
+mod list_user_repositories_contributed;
 mod list_user_repositories_starred;
 mod list_user_reviews;
 mod update_current_user;
@@ -12,7 +13,7 @@ mod update_current_user_image;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::model::{OrganizationRole, User, UserEmail, UserOrganization};
+use crate::model::{OrganizationRole, Repository, User, UserEmail, UserOrganization};
 
 pub use get_current_user::GetCurrentUserRequest;
 pub use get_user::GetUserRequest;
@@ -20,6 +21,7 @@ pub use has_user::HasUserRequest;
 pub use list_user_commits::ListUserCommitsRequest;
 pub use list_user_organizations::ListUserOrganizationsRequest;
 pub use list_user_repositories::ListUserRepositoriesRequest;
+pub use list_user_repositories_contributed::ListUserContributedRepositoriesRequest;
 pub use list_user_repositories_starred::ListUserStarredRepositoriesRequest;
 pub use list_user_reviews::ListUserReviewsRequest;
 pub use update_current_user::UpdateCurrentUserRequest;
@@ -50,6 +52,35 @@ impl From<User> for UserResponse {
             display_name: user.display_name,
             created_at: user.created_at,
             image_updated_at: user.image_updated_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UserRepositoryResponse {
+    pub owner: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub stars: u32,
+    pub visibility: String,
+    pub commit_count: u32,
+    pub last_commit_at: DateTime<Utc>,
+}
+
+impl UserRepositoryResponse {
+    pub fn from_repository(
+        repo: Repository,
+        commit_count: i64,
+        last_commit_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            owner: repo.owner_name,
+            name: repo.name,
+            description: repo.description,
+            stars: repo.stars as u32,
+            visibility: repo.visibility.into(),
+            commit_count: commit_count as u32,
+            last_commit_at,
         }
     }
 }
