@@ -656,46 +656,9 @@ mod tests {
         Repository, RepositoryOwnerType, RepositoryRepository, RepositoryRepositoryImpl,
         RepositoryVisibility,
     };
-
-    async fn insert_user(pool: &PgPool, id: Uuid, name: &str) {
-        sqlx::query("INSERT INTO core.users (id, name) VALUES ($1, $2)")
-            .bind(id)
-            .bind(name)
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-
-    async fn insert_org(pool: &PgPool, id: Uuid, name: &str) {
-        sqlx::query("INSERT INTO core.organizations (id, name) VALUES ($1, $2)")
-            .bind(id)
-            .bind(name)
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-
-    async fn insert_star_at(pool: &PgPool, user_id: Uuid, repo_id: Uuid, created_at: DateTime<Utc>) {
-        sqlx::query("INSERT INTO core.stars (user_id, repository_id, created_at) VALUES ($1, $2, $3)")
-            .bind(user_id)
-            .bind(repo_id)
-            .bind(created_at)
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-
-    async fn insert_filter_at(pool: &PgPool, repo_id: Uuid, name: &str, created_at: DateTime<Utc>) {
-        sqlx::query(
-            "INSERT INTO core.commit_filters (repository_id, name, created_at) VALUES ($1, $2, $3)",
-        )
-        .bind(repo_id)
-        .bind(name)
-        .bind(created_at)
-        .execute(pool)
-        .await
-        .unwrap();
-    }
+    use crate::repository::test_common::{
+        insert_filter_at, insert_org, insert_star_at, insert_user,
+    };
 
     // The common case: a user-owned, non-readonly repo with no description.
     async fn make_repo(
@@ -777,9 +740,16 @@ mod tests {
         insert_user(&pool, alice, "alice").await;
         let created = make_repo(&repo, "proj", alice, RepositoryVisibility::Public, None).await;
 
-        let by_name = repo.get("alice", "proj", None).await.unwrap().expect("found");
+        let by_name = repo
+            .get("alice", "proj", None)
+            .await
+            .unwrap()
+            .expect("found");
         assert_eq!(by_name.id, created.id);
-        assert_eq!(repo.get_id("alice", "proj").await.unwrap(), Some(created.id));
+        assert_eq!(
+            repo.get_id("alice", "proj").await.unwrap(),
+            Some(created.id)
+        );
         let by_id = repo
             .get_by_id(created.id, None)
             .await
@@ -790,7 +760,12 @@ mod tests {
         assert!(repo.get("alice", "missing", None).await.unwrap().is_none());
         assert!(repo.get("ghost", "proj", None).await.unwrap().is_none());
         assert!(repo.get_id("alice", "missing").await.unwrap().is_none());
-        assert!(repo.get_by_id(Uuid::new_v4(), None).await.unwrap().is_none());
+        assert!(
+            repo.get_by_id(Uuid::new_v4(), None)
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[sqlx::test]
@@ -801,9 +776,30 @@ mod tests {
         insert_user(&pool, alice, "alice").await;
         insert_user(&pool, bob, "bob").await;
         let now = Utc::now();
-        make_repo(&repo, "first", alice, RepositoryVisibility::Public, Some(now - Duration::days(3))).await;
-        make_repo(&repo, "second", alice, RepositoryVisibility::Public, Some(now - Duration::days(2))).await;
-        make_repo(&repo, "third", alice, RepositoryVisibility::Public, Some(now - Duration::days(1))).await;
+        make_repo(
+            &repo,
+            "first",
+            alice,
+            RepositoryVisibility::Public,
+            Some(now - Duration::days(3)),
+        )
+        .await;
+        make_repo(
+            &repo,
+            "second",
+            alice,
+            RepositoryVisibility::Public,
+            Some(now - Duration::days(2)),
+        )
+        .await;
+        make_repo(
+            &repo,
+            "third",
+            alice,
+            RepositoryVisibility::Public,
+            Some(now - Duration::days(1)),
+        )
+        .await;
         // A repo owned by someone else must not appear in alice's listing.
         make_repo(&repo, "other", bob, RepositoryVisibility::Public, Some(now)).await;
 
@@ -828,9 +824,30 @@ mod tests {
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let now = Utc::now();
-        make_repo(&repo, "older", alice, RepositoryVisibility::Public, Some(now - Duration::days(2))).await;
-        make_repo(&repo, "newer", alice, RepositoryVisibility::Public, Some(now - Duration::days(1))).await;
-        make_repo(&repo, "secret", alice, RepositoryVisibility::Private, Some(now)).await;
+        make_repo(
+            &repo,
+            "older",
+            alice,
+            RepositoryVisibility::Public,
+            Some(now - Duration::days(2)),
+        )
+        .await;
+        make_repo(
+            &repo,
+            "newer",
+            alice,
+            RepositoryVisibility::Public,
+            Some(now - Duration::days(1)),
+        )
+        .await;
+        make_repo(
+            &repo,
+            "secret",
+            alice,
+            RepositoryVisibility::Private,
+            Some(now),
+        )
+        .await;
 
         let repos = repo.list_latest(10).await.unwrap();
         let names: Vec<_> = repos.iter().map(|r| r.name.as_str()).collect();
@@ -947,22 +964,26 @@ mod tests {
         insert_user(&pool, bob, "bob").await;
         let created = make_repo(&repo, "proj", alice, RepositoryVisibility::Public, None).await;
 
-        let star = repo
-            .star(created.id, bob)
-            .await
-            .unwrap()
-            .expect("starred");
+        let star = repo.star(created.id, bob).await.unwrap().expect("starred");
         assert_eq!(star.user_id, bob);
         assert_eq!(star.repository_id, created.id);
 
-        let after = repo.get_by_id(created.id, Some(bob)).await.unwrap().unwrap();
+        let after = repo
+            .get_by_id(created.id, Some(bob))
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(after.stars, 1);
         assert!(after.user_star);
 
         // A repeat star is a no-op and must not double-count.
         assert!(repo.star(created.id, bob).await.unwrap().is_none());
         assert_eq!(
-            repo.get_by_id(created.id, None).await.unwrap().unwrap().stars,
+            repo.get_by_id(created.id, None)
+                .await
+                .unwrap()
+                .unwrap()
+                .stars,
             1
         );
     }
@@ -979,14 +1000,22 @@ mod tests {
 
         assert!(repo.unstar(created.id, bob).await.unwrap());
         assert_eq!(
-            repo.get_by_id(created.id, None).await.unwrap().unwrap().stars,
+            repo.get_by_id(created.id, None)
+                .await
+                .unwrap()
+                .unwrap()
+                .stars,
             0
         );
 
         // Unstarring again reports false and the count floors at zero.
         assert!(!repo.unstar(created.id, bob).await.unwrap());
         assert_eq!(
-            repo.get_by_id(created.id, None).await.unwrap().unwrap().stars,
+            repo.get_by_id(created.id, None)
+                .await
+                .unwrap()
+                .unwrap()
+                .stars,
             0
         );
     }

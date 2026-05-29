@@ -627,66 +627,9 @@ mod tests {
     use uuid::Uuid;
 
     use super::{AuthProvider, UserRepository, UserRepositoryImpl};
-
-    async fn insert_user(pool: &PgPool, id: Uuid, name: &str) {
-        sqlx::query("INSERT INTO core.users (id, name) VALUES ($1, $2)")
-            .bind(id)
-            .bind(name)
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-
-    async fn insert_repo(pool: &PgPool, id: Uuid, name: &str, owner_id: Uuid, visibility: &str) {
-        sqlx::query(
-            "INSERT INTO core.repositories (id, name, owner_id, owner_type, visibility)
-             VALUES ($1, $2, $3, 'user', $4::core.repository_visibility)",
-        )
-        .bind(id)
-        .bind(name)
-        .bind(owner_id)
-        .bind(visibility)
-        .execute(pool)
-        .await
-        .unwrap();
-    }
-
-    async fn star(pool: &PgPool, user_id: Uuid, repo_id: Uuid) {
-        sqlx::query("INSERT INTO core.stars (user_id, repository_id) VALUES ($1, $2)")
-            .bind(user_id)
-            .bind(repo_id)
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-
-    async fn insert_org(pool: &PgPool, name: &str) {
-        sqlx::query("INSERT INTO core.organizations (name) VALUES ($1)")
-            .bind(name)
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-
-    async fn insert_commit(
-        pool: &PgPool,
-        repo_id: Uuid,
-        author_id: Uuid,
-        sha: &str,
-        created_at: chrono::DateTime<Utc>,
-    ) {
-        sqlx::query(
-            "INSERT INTO core.commits (repo_id, author_id, sha, ref_name, message, created_at)
-             VALUES ($1, $2, $3, 'refs/heads/main', 'msg', $4)",
-        )
-        .bind(repo_id)
-        .bind(author_id)
-        .bind(sha)
-        .bind(created_at)
-        .execute(pool)
-        .await
-        .unwrap();
-    }
+    use crate::repository::test_common::{
+        insert_commit, insert_org, insert_repo, insert_star, insert_user,
+    };
 
     #[sqlx::test]
     async fn create_persists_user_with_primary_email(pool: PgPool) {
@@ -866,7 +809,7 @@ mod tests {
             .create("n@x.com", true, AuthProvider::Email)
             .await
             .unwrap();
-        insert_org(&pool, "acme").await;
+        insert_org(&pool, Uuid::new_v4(), "acme").await;
 
         assert!(repo.is_name_taken(&user.name).await.unwrap());
         assert!(repo.is_name_taken("acme").await.unwrap());
@@ -1046,8 +989,8 @@ mod tests {
         let private_repo = Uuid::new_v4();
         insert_repo(&pool, public_repo, "pub", alice, "public").await;
         insert_repo(&pool, private_repo, "priv", alice, "private").await;
-        star(&pool, alice, public_repo).await;
-        star(&pool, alice, private_repo).await;
+        insert_star(&pool, alice, public_repo).await;
+        insert_star(&pool, alice, private_repo).await;
 
         // Owner sees both their public and private starred repos.
         let (repos, _) = repo

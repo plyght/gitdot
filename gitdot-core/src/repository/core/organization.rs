@@ -426,50 +426,12 @@ impl OrganizationRepository for OrganizationRepositoryImpl {
 
 #[cfg(all(test, feature = "db-tests"))]
 mod tests {
-    use chrono::{DateTime, Duration, Utc};
+    use chrono::{Duration, Utc};
     use sqlx::PgPool;
     use uuid::Uuid;
 
     use super::{OrganizationRepository, OrganizationRepositoryImpl, OrganizationRole};
-
-    async fn insert_user(pool: &PgPool, id: Uuid, name: &str) {
-        sqlx::query("INSERT INTO core.users (id, name) VALUES ($1, $2)")
-            .bind(id)
-            .bind(name)
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-
-    async fn insert_org_at(pool: &PgPool, id: Uuid, name: &str, created_at: DateTime<Utc>) {
-        sqlx::query("INSERT INTO core.organizations (id, name, created_at) VALUES ($1, $2, $3)")
-            .bind(id)
-            .bind(name)
-            .bind(created_at)
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-
-    async fn insert_membership_at(
-        pool: &PgPool,
-        user_id: Uuid,
-        org_id: Uuid,
-        role: OrganizationRole,
-        created_at: DateTime<Utc>,
-    ) {
-        sqlx::query(
-            "INSERT INTO core.organization_members (user_id, organization_id, role, created_at)
-             VALUES ($1, $2, $3, $4)",
-        )
-        .bind(user_id)
-        .bind(org_id)
-        .bind(role)
-        .bind(created_at)
-        .execute(pool)
-        .await
-        .unwrap();
-    }
+    use crate::repository::test_common::{insert_membership_at, insert_org_at, insert_user};
 
     #[sqlx::test]
     async fn create_persists_org_and_owner_admin_membership(pool: PgPool) {
@@ -613,7 +575,12 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert!(repo.get_member_role("missing", owner).await.unwrap().is_none());
+        assert!(
+            repo.get_member_role("missing", owner)
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[sqlx::test]
@@ -790,12 +757,30 @@ mod tests {
         insert_org_at(&pool, o1, "first", now).await;
         insert_org_at(&pool, o2, "second", now).await;
         insert_org_at(&pool, o3, "third", now).await;
-        insert_membership_at(&pool, user, o1, OrganizationRole::Admin, now - Duration::days(3))
-            .await;
-        insert_membership_at(&pool, user, o2, OrganizationRole::Member, now - Duration::days(2))
-            .await;
-        insert_membership_at(&pool, user, o3, OrganizationRole::Admin, now - Duration::days(1))
-            .await;
+        insert_membership_at(
+            &pool,
+            user,
+            o1,
+            OrganizationRole::Admin,
+            now - Duration::days(3),
+        )
+        .await;
+        insert_membership_at(
+            &pool,
+            user,
+            o2,
+            OrganizationRole::Member,
+            now - Duration::days(2),
+        )
+        .await;
+        insert_membership_at(
+            &pool,
+            user,
+            o3,
+            OrganizationRole::Admin,
+            now - Duration::days(1),
+        )
+        .await;
 
         // Ordered by join time (membership created_at) descending.
         let (page, cursor) = repo
