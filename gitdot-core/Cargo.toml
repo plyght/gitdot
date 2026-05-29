@@ -41,6 +41,7 @@ rdkafka = { workspace = true }
 redis = { workspace = true }
 reqwest = { workspace = true }
 resvg = { workspace = true }
+rustrict = { version = "0.7.38", default-features = false, features = ["censor"] }
 s2-sdk = { workspace = true }
 secrecy = { workspace = true }
 serde = { workspace = true }

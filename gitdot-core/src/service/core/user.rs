@@ -15,7 +15,10 @@ use crate::{
         CommitRepository, OrganizationRepository, PgCommitRepository, PgOrganizationRepository,
         PgReviewRepository, PgUserRepository, ReviewRepository, UserRepository,
     },
-    util::{auth::is_reserved_name, cursor},
+    util::{
+        auth::{is_offensive_name, is_reserved_name, validate_name},
+        cursor,
+    },
 };
 
 /// User accounts and their public profiles: the authenticated caller's own
@@ -256,11 +259,7 @@ where
         let rename: Option<(String, String)> = match request.name {
             Some(n) => {
                 let new_name = n.to_string();
-                if is_reserved_name(&new_name) {
-                    return Err(
-                        ConflictError::new("user name", format!("{new_name} is reserved")).into(),
-                    );
-                }
+                validate_name("user name", &new_name)?;
                 if self.user_repo.is_name_taken(&new_name).await? {
                     return Err(ConflictError::new(
                         "user name",
@@ -332,7 +331,10 @@ where
     async fn has_user(&self, request: HasUserRequest) -> Result<(), UserError> {
         let name = request.name.to_string();
 
-        if is_reserved_name(&name) || self.user_repo.is_name_taken(&name).await? {
+        if is_reserved_name(&name)
+            || is_offensive_name(&name)
+            || self.user_repo.is_name_taken(&name).await?
+        {
             return Ok(());
         }
         Err(NotFoundError::new("user", name).into())

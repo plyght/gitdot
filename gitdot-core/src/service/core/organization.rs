@@ -13,7 +13,7 @@ use crate::{
         OrganizationRepository, PgOrganizationRepository, PgRepositoryRepository, PgUserRepository,
         RepositoryRepository, UserRepository,
     },
-    util::{auth::is_reserved_name, cursor},
+    util::{auth::validate_name, cursor},
 };
 
 /// Organizations and their membership: creating and reading orgs, editing org
@@ -172,16 +172,12 @@ where
         request: CreateOrganizationRequest,
     ) -> Result<OrganizationResponse, OrganizationError> {
         let org_name = request.org_name.to_string();
-        if is_reserved_name(&org_name) {
-            return Err(
-                ConflictError::new("organization", format!("{org_name} is reserved")).into(),
-            );
-        }
+        validate_name("organization name", &org_name)?;
         if self.org_repo.get(&org_name).await?.is_some() {
-            return Err(ConflictError::new("organization", &org_name).into());
+            return Err(ConflictError::new("organization name", &org_name).into());
         }
         if self.user_repo.get(&org_name).await?.is_some() {
-            return Err(ConflictError::new("organization", &org_name).into());
+            return Err(ConflictError::new("organization name", &org_name).into());
         }
 
         let org = self
