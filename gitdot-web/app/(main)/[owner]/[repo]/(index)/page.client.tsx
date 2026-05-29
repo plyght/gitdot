@@ -30,7 +30,7 @@ export function PageClient({
 function Readme({ promise }: { promise: ResourcePromises["readme"] }) {
   const readme = use(promise);
 
-  if (readme && readme.type === "file") {
+  if (readme) {
     return (
       <div className="p-4 w-full">
         <MarkdownBody content={readme.content} />

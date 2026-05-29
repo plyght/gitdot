@@ -2,7 +2,7 @@ import { renderMermaidSVG } from "beautiful-mermaid";
 import type { Element, ElementContent } from "hast";
 import React from "react";
 import Markdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
+import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import Link from "@/ui/link";
 import { highlightMarkdownCode } from "./markdown-highlighter";
@@ -43,8 +43,7 @@ export function MarkdownBody({
 }) {
   return (
     <Markdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw]}
+      remarkPlugins={[remarkGfm, remarkBreaks]}
       components={{
         h1: ({ node, children, ...props }) => (
           <h1

@@ -34,6 +34,7 @@ impl From<Git2Error> for RepositoryError {
             Git2Error::NotFound(path) => {
                 RepositoryError::NotFound(NotFoundError::new("repository", path))
             }
+            Git2Error::NotABlob(path) => RepositoryError::NotAFile(path),
             other => RepositoryError::GitError(other),
         }
     }

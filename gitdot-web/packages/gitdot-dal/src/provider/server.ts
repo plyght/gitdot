@@ -100,7 +100,7 @@ export class ServerProvider extends GitdotProvider {
       path,
       ...(ref && { ref_name: ref }),
     });
-    if (!blob || blob.type === "folder") return null;
+    if (!blob) return null;
     const lang = inferLanguage(path);
     return renderHast(blob.content, lang, "vitesse");
   }

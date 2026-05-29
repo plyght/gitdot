@@ -4,8 +4,8 @@ use gitdot_core::{
         CommitAuthorResponse, CommitResponse, PathType, RepositoryActivityEvent,
         RepositoryBlobDiffsResponse, RepositoryBlobPairResponse, RepositoryBlobResponse,
         RepositoryBlobsResponse, RepositoryCommitFilterResponse, RepositoryCommitResponse,
-        RepositoryCommitsResponse, RepositoryDiffFileResponse, RepositoryFileResponse,
-        RepositoryFolderResponse, RepositoryPath, RepositoryPathsResponse, RepositoryResponse,
+        RepositoryCommitsResponse, RepositoryDiffFileResponse, RepositoryPath,
+        RepositoryPathsResponse, RepositoryResponse,
     },
     model::CommitDiff,
 };
@@ -95,10 +95,10 @@ impl IntoApi for CommitAuthorResponse {
     }
 }
 
-impl IntoApi for RepositoryFileResponse {
-    type ApiType = api::RepositoryFileResource;
+impl IntoApi for RepositoryBlobResponse {
+    type ApiType = api::RepositoryBlobResource;
     fn into_api(self) -> Self::ApiType {
-        api::RepositoryFileResource {
+        api::RepositoryBlobResource {
             commit_sha: self.commit_sha,
             path: self.path,
             sha: self.sha,
@@ -108,32 +108,11 @@ impl IntoApi for RepositoryFileResponse {
     }
 }
 
-impl IntoApi for RepositoryFolderResponse {
-    type ApiType = api::RepositoryFolderResource;
-    fn into_api(self) -> Self::ApiType {
-        api::RepositoryFolderResource {
-            commit_sha: self.commit_sha,
-            path: self.path,
-            entries: self.entries.into_api(),
-        }
-    }
-}
-
 impl IntoApi for RepositoryBlobsResponse {
     type ApiType = api::RepositoryBlobsResource;
     fn into_api(self) -> Self::ApiType {
         api::RepositoryBlobsResource {
             blobs: self.blobs.into_api(),
-        }
-    }
-}
-
-impl IntoApi for RepositoryBlobResponse {
-    type ApiType = api::RepositoryBlobResource;
-    fn into_api(self) -> Self::ApiType {
-        match self {
-            RepositoryBlobResponse::File(f) => api::RepositoryBlobResource::File(f.into_api()),
-            RepositoryBlobResponse::Folder(f) => api::RepositoryBlobResource::Folder(f.into_api()),
         }
     }
 }

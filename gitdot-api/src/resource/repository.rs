@@ -47,7 +47,7 @@ pub enum PathType {
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepositoryFileResource {
+pub struct RepositoryBlobResource {
     pub commit_sha: String,
     pub path: String,
     pub sha: String,
@@ -56,22 +56,8 @@ pub struct RepositoryFileResource {
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepositoryFolderResource {
-    pub commit_sha: String,
-    pub path: String,
-    pub entries: Vec<RepositoryPathResource>,
-}
-
-#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RepositoryBlobsResource {
     pub blobs: Vec<RepositoryBlobResource>,
-}
-
-#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum RepositoryBlobResource {
-    File(RepositoryFileResource),
-    Folder(RepositoryFolderResource),
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -9,7 +9,6 @@ mod get_repository_blob_diffs;
 mod get_repository_blobs;
 mod get_repository_commit;
 mod get_repository_commit_blobs;
-mod get_repository_file;
 mod get_repository_paths;
 mod list_repository_commit_filters;
 mod list_repository_commits;
@@ -29,14 +28,11 @@ pub use delete_repository::DeleteRepositoryRequest;
 pub use delete_repository_commit_filter::DeleteRepositoryCommitFilterRequest;
 pub use get_repository::GetRepositoryRequest;
 pub use get_repository_activity::{GetRepositoryActivityRequest, RepositoryActivityEvent};
-pub use get_repository_blob::{
-    GetRepositoryBlobRequest, RepositoryBlobResponse, RepositoryFolderResponse,
-};
+pub use get_repository_blob::{GetRepositoryBlobRequest, RepositoryBlobResponse};
 pub use get_repository_blob_diffs::{GetRepositoryBlobDiffsRequest, RepositoryBlobDiffsResponse};
 pub use get_repository_blobs::{GetRepositoryBlobsRequest, RepositoryBlobsResponse};
 pub use get_repository_commit::GetRepositoryCommitRequest;
 pub use get_repository_commit_blobs::GetRepositoryCommitBlobsRequest;
-pub use get_repository_file::RepositoryFileResponse;
 pub use get_repository_paths::{
     GetRepositoryPathsRequest, PathType, RepositoryPath, RepositoryPathsResponse,
 };

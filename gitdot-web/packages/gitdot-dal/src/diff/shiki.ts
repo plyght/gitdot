@@ -78,8 +78,8 @@ export async function renderDiff(
 async function renderPair(
   pair: RepositoryBlobPairResource,
 ): Promise<DiffEntry> {
-  const left = pair.old?.type === "file" ? pair.old.content : null;
-  const right = pair.new?.type === "file" ? pair.new.content : null;
+  const left = pair.old?.content ?? null;
+  const right = pair.new?.content ?? null;
   const lang = inferLanguage(pair.path);
   const base = {
     path: pair.path,

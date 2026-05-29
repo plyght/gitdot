@@ -5,6 +5,9 @@ pub enum GitError {
     #[error("Not found: {0}")]
     NotFound(String),
 
+    #[error("Not a blob: {0}")]
+    NotABlob(String),
+
     #[error("Merge conflict: {0}")]
     MergeConflict(String),
 

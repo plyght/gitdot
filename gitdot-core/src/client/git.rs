@@ -8,7 +8,7 @@ use crate::{
     dto::{
         InitialCommitFile, PathType, RepositoryBlobResponse, RepositoryBlobsResponse,
         RepositoryCommitResponse, RepositoryDiffFileResponse, RepositoryDiffStatResponse,
-        RepositoryFileResponse, RepositoryFolderResponse, RepositoryPath, RepositoryPathsResponse,
+        RepositoryPath, RepositoryPathsResponse,
     },
     error::GitError,
     util::{
@@ -434,7 +434,7 @@ impl Git2Client {
         data.iter().take(8000).any(|&b| b == 0)
     }
 
-    fn blob_to_response(blob: &git2::Blob, path: &str, commit_sha: &str) -> RepositoryFileResponse {
+    fn blob_to_response(blob: &git2::Blob, path: &str, commit_sha: &str) -> RepositoryBlobResponse {
         let content_bytes = blob.content();
         let sha = blob.id().to_string();
 
@@ -448,7 +448,7 @@ impl Git2Client {
             )
         };
 
-        RepositoryFileResponse {
+        RepositoryBlobResponse {
             commit_sha: commit_sha.to_string(),
             path: path.to_string(),
             sha,
@@ -467,31 +467,6 @@ impl Git2Client {
         }
     }
 
-    fn tree_to_response(
-        tree: &git2::Tree,
-        path: &str,
-        commit_sha: &str,
-    ) -> RepositoryFolderResponse {
-        let entries = tree
-            .iter()
-            .map(|e| {
-                let name = e.name().unwrap_or("").to_string();
-                let entry_path = format!("{}/{}", path, name);
-                RepositoryPath {
-                    path: entry_path,
-                    name,
-                    path_type: PathType::from_git2(e.kind()),
-                    sha: e.id().to_string(),
-                }
-            })
-            .collect();
-
-        RepositoryFolderResponse {
-            commit_sha: commit_sha.to_string(),
-            path: path.to_string(),
-            entries,
-        }
-    }
 }
 
 #[crate::instrument_all(level = "debug")]
@@ -736,20 +711,9 @@ impl GitClient for Git2Client {
             match tree_entry.kind() {
                 Some(git2::ObjectType::Blob) => {
                     let blob = repository.find_blob(tree_entry.id())?;
-                    Ok(RepositoryBlobResponse::File(Self::blob_to_response(
-                        &blob,
-                        &path,
-                        &commit_sha,
-                    )))
+                    Ok(Self::blob_to_response(&blob, &path, &commit_sha))
                 }
-                Some(git2::ObjectType::Tree) => {
-                    let subtree = repository.find_tree(tree_entry.id())?;
-                    Ok(RepositoryBlobResponse::Folder(Self::tree_to_response(
-                        &subtree,
-                        &path,
-                        &commit_sha,
-                    )))
-                }
+                Some(git2::ObjectType::Tree) => Err(GitError::NotABlob(path.clone())),
                 _ => Err(git2::Error::from_str("Path is not a blob or tree").into()),
             }
         })
@@ -783,32 +747,7 @@ impl GitClient for Git2Client {
                 match tree_entry.kind() {
                     Some(git2::ObjectType::Blob) => {
                         let blob = repository.find_blob(tree_entry.id())?;
-                        blobs.push(RepositoryBlobResponse::File(Self::blob_to_response(
-                            &blob,
-                            path,
-                            &commit_sha,
-                        )));
-                    }
-                    Some(git2::ObjectType::Tree) => {
-                        let subtree = repository.find_tree(tree_entry.id())?;
-                        let entries = subtree
-                            .iter()
-                            .map(|e| {
-                                let name = e.name().unwrap_or("").to_string();
-                                let entry_path = format!("{}/{}", path, name);
-                                RepositoryPath {
-                                    path: entry_path,
-                                    name,
-                                    path_type: PathType::from_git2(e.kind()),
-                                    sha: e.id().to_string(),
-                                }
-                            })
-                            .collect();
-                        blobs.push(RepositoryBlobResponse::Folder(RepositoryFolderResponse {
-                            commit_sha: commit_sha.clone(),
-                            path: path.clone(),
-                            entries,
-                        }));
+                        blobs.push(Self::blob_to_response(&blob, path, &commit_sha));
                     }
                     _ => continue,
                 }
@@ -846,13 +785,9 @@ impl GitClient for Git2Client {
             let blobs = paths
                 .iter()
                 .map(|path| {
-                    Self::get_blob(&repository, &tree, path).ok().map(|blob| {
-                        RepositoryBlobResponse::File(Self::blob_to_response(
-                            &blob,
-                            path,
-                            &commit_sha,
-                        ))
-                    })
+                    Self::get_blob(&repository, &tree, path)
+                        .ok()
+                        .map(|blob| Self::blob_to_response(&blob, path, &commit_sha))
                 })
                 .collect();
 
@@ -893,20 +828,9 @@ impl GitClient for Git2Client {
                 match tree_entry.kind() {
                     Some(git2::ObjectType::Blob) => {
                         let blob = repository.find_blob(tree_entry.id())?;
-                        blobs.push(RepositoryBlobResponse::File(Self::blob_to_response(
-                            &blob,
-                            &path,
-                            &commit_sha,
-                        )));
+                        blobs.push(Self::blob_to_response(&blob, &path, &commit_sha));
                     }
-                    Some(git2::ObjectType::Tree) => {
-                        let subtree = repository.find_tree(tree_entry.id())?;
-                        blobs.push(RepositoryBlobResponse::Folder(Self::tree_to_response(
-                            &subtree,
-                            &path,
-                            &commit_sha,
-                        )));
-                    }
+                    Some(git2::ObjectType::Tree) => return Err(GitError::NotABlob(path.clone())),
                     _ => continue,
                 }
             }

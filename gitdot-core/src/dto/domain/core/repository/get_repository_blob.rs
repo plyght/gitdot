@@ -1,5 +1,5 @@
 use crate::{
-    dto::{OwnerName, RepositoryFileResponse, RepositoryName, RepositoryPath},
+    dto::{OwnerName, RepositoryName},
     error::{InputError, RepositoryError},
 };
 
@@ -30,14 +30,10 @@ impl GetRepositoryBlobRequest {
 }
 
 #[derive(Debug, Clone)]
-pub struct RepositoryFolderResponse {
+pub struct RepositoryBlobResponse {
     pub commit_sha: String,
     pub path: String,
-    pub entries: Vec<RepositoryPath>,
-}
-
-#[derive(Debug, Clone)]
-pub enum RepositoryBlobResponse {
-    File(RepositoryFileResponse),
-    Folder(RepositoryFolderResponse),
+    pub sha: String,
+    pub content: String,
+    pub encoding: String,
 }

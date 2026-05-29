@@ -15,8 +15,8 @@ use crate::{
         ListRepositoryCommitsRequest, MAX_PER_PAGE_LIMIT, Page, RepositoryActivityEvent,
         RepositoryBlobDiffsResponse, RepositoryBlobPairResponse, RepositoryBlobResponse,
         RepositoryBlobsResponse, RepositoryCommitFilterResponse, RepositoryDiffFileResponse,
-        RepositoryFileResponse, RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest,
-        UnstarRepositoryRequest, UpdateRepositoryCommitFilterRequest, UpdateRepositoryRequest,
+        RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest, UnstarRepositoryRequest,
+        UpdateRepositoryCommitFilterRequest, UpdateRepositoryRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, RepositoryError},
     model::{CommitDiff, RepositoryOwnerType},
@@ -647,15 +647,7 @@ where
             .await
             .map_err(RepositoryError::from)?;
 
-        let mut files = Vec::new();
-        for blob in blobs.blobs {
-            match blob {
-                RepositoryBlobResponse::File(f) => files.push(f),
-                RepositoryBlobResponse::Folder(_) => {
-                    return Err(RepositoryError::NotAFile(request.path.clone()));
-                }
-            }
-        }
+        let files = blobs.blobs;
 
         let mut diffs = HashMap::new();
         for (i, ref_name) in request.commit_shas.iter().enumerate() {
@@ -1003,8 +995,8 @@ where
 }
 
 fn diff_file_pair(
-    left: Option<&RepositoryFileResponse>,
-    right: Option<&RepositoryFileResponse>,
+    left: Option<&RepositoryBlobResponse>,
+    right: Option<&RepositoryBlobResponse>,
 ) -> RepositoryDiffFileResponse {
     let path = right
         .map(|r| r.path.clone())

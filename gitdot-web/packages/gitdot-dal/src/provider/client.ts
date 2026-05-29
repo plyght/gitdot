@@ -120,7 +120,7 @@ export class ClientProvider extends GitdotProvider {
     if (cached) return cached;
 
     const blob = await this.db.getBlob(owner, repo, path);
-    if (!blob || blob.type !== "file") return null;
+    if (!blob) return null;
 
     const id = crypto.randomUUID();
     const hast = await new Promise<Root>((resolve) => {

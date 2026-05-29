@@ -7,8 +7,7 @@ use uuid::Uuid;
 use crate::{
     client::{Git2Client, GitClient, S2Client, S2ClientImpl},
     dto::{
-        BuildResponse, CiConfig, CreateBuildRequest, ListBuildsRequest, Page,
-        RepositoryBlobResponse, TaskResponse,
+        BuildResponse, CiConfig, CreateBuildRequest, ListBuildsRequest, Page, TaskResponse,
     },
     error::{BuildError, GitError, NotFoundError, OptionNotFoundExt},
     model::{BuildStatus, TaskStatus},
@@ -169,15 +168,7 @@ where
                 other => BuildError::GitError(other),
             })?;
 
-        let file_content = match blob {
-            RepositoryBlobResponse::File(f) => f.content,
-            RepositoryBlobResponse::Folder(_) => {
-                return Err(BuildError::NotFound(NotFoundError::new(
-                    "config",
-                    request.commit_sha.clone(),
-                )));
-            }
-        };
+        let file_content = blob.content;
 
         let ci_config =
             CiConfig::new(&file_content).map_err(|e| BuildError::InvalidConfig(e.to_string()))?;

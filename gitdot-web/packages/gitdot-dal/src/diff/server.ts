@@ -22,7 +22,6 @@ function fileToPair(
   file: RepositoryDiffFileResource,
 ): RepositoryBlobPairResource {
   const blob = (content: string): RepositoryBlobResource => ({
-    type: "file",
     path: file.path,
     content,
     commit_sha: "",

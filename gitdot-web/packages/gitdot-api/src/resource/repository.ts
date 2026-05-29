@@ -5,14 +5,14 @@ import { QuestionResource } from "./question";
 import { ReviewResource } from "./review";
 import { UserResource } from "./user";
 
-export const RepositoryFileResource = z.object({
+export const RepositoryBlobResource = z.object({
   commit_sha: z.string(),
   path: z.string(),
   sha: z.string(),
   content: z.string(),
   encoding: z.string(),
 });
-export type RepositoryFileResource = z.infer<typeof RepositoryFileResource>;
+export type RepositoryBlobResource = z.infer<typeof RepositoryBlobResource>;
 
 export const CommitAuthorResource = z.object({
   id: z.uuid().optional(),
@@ -97,20 +97,6 @@ export const RepositoryPathsResource = z.object({
   entries: z.array(RepositoryPathResource),
 });
 export type RepositoryPathsResource = z.infer<typeof RepositoryPathsResource>;
-
-export const RepositoryFolderResource = z.object({
-  type: z.literal("folder"),
-  commit_sha: z.string(),
-  path: z.string(),
-  entries: z.array(RepositoryPathResource),
-});
-export type RepositoryFolderResource = z.infer<typeof RepositoryFolderResource>;
-
-export const RepositoryBlobResource = z.discriminatedUnion("type", [
-  RepositoryFileResource.extend({ type: z.literal("file") }),
-  RepositoryFolderResource,
-]);
-export type RepositoryBlobResource = z.infer<typeof RepositoryBlobResource>;
 
 export const RepositoryBlobsResource = z.object({
   blobs: z.array(RepositoryBlobResource),
