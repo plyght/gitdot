@@ -456,3 +456,293 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bytes::Bytes;
+    use uuid::Uuid;
+
+    use super::{UserService, UserServiceImpl};
+    use crate::{
+        dto::{
+            GetCurrentUserRequest, GetUserRequest, HasUserRequest, ListUserCommitsRequest,
+            UpdateCurrentUserImageRequest, UpdateCurrentUserRequest,
+        },
+        error::{DatabaseError, UserError},
+        service::{
+            test_client::{MockGitClient, MockImageClient, MockR2Client},
+            test_common::{create_commit, create_user},
+            test_repository::{
+                MockCommitRepository, MockOrganizationRepository, MockReviewRepository,
+                MockUserRepository,
+            },
+        },
+    };
+
+    type Service = UserServiceImpl<
+        MockUserRepository,
+        MockOrganizationRepository,
+        MockReviewRepository,
+        MockCommitRepository,
+        MockImageClient,
+        MockR2Client,
+        MockGitClient,
+    >;
+
+    fn create_service() -> Service {
+        UserServiceImpl {
+            user_repo: MockUserRepository::new(),
+            org_repo: MockOrganizationRepository::new(),
+            review_repo: MockReviewRepository::new(),
+            commit_repo: MockCommitRepository::new(),
+            image_client: MockImageClient::new(),
+            r2_client: MockR2Client::new(),
+            git_client: MockGitClient::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn has_user_reserved_name_is_ok() {
+        let service = create_service();
+        service
+            .has_user(HasUserRequest::new("admin").unwrap())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn has_user_existing_name_is_ok() {
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_is_name_taken()
+            .returning(|_| Ok(true));
+        service
+            .has_user(HasUserRequest::new("bob").unwrap())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn has_user_unknown_name_is_not_found() {
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_is_name_taken()
+            .returning(|_| Ok(false));
+        let err = service
+            .has_user(HasUserRequest::new("bob").unwrap())
+            .await
+            .unwrap_err();
+        assert!(matches!(err, UserError::NotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn get_user_returns_response() {
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_get()
+            .returning(|_| Ok(Some(create_user("alice"))));
+        let resp = service
+            .get_user(GetUserRequest::new("alice").unwrap())
+            .await
+            .unwrap();
+        assert_eq!(resp.name, "alice");
+    }
+
+    #[tokio::test]
+    async fn get_user_missing_is_not_found() {
+        let mut service = create_service();
+        service.user_repo.expect_get().returning(|_| Ok(None));
+        let err = service
+            .get_user(GetUserRequest::new("ghost").unwrap())
+            .await
+            .unwrap_err();
+        assert!(matches!(err, UserError::NotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn get_current_user_assembles_profile() {
+        let user = create_user("alice");
+        let uid = user.id;
+
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_get_by_id()
+            .returning(move |_| Ok(Some(user.clone())));
+        service
+            .user_repo
+            .expect_list_emails()
+            .returning(|_| Ok(vec![]));
+        service
+            .org_repo
+            .expect_list_memberships_by_user_id()
+            .returning(|_, _, _| Ok((vec![], None)));
+
+        let resp = service
+            .get_current_user(GetCurrentUserRequest::new(uid))
+            .await
+            .unwrap();
+        assert_eq!(resp.id, uid);
+        assert_eq!(resp.name, "alice");
+        assert!(resp.emails.is_empty());
+        assert!(resp.memberships.is_empty());
+    }
+
+    #[tokio::test]
+    async fn update_current_user_rejects_reserved_name() {
+        // No repo/git expectations: the reserved check returns before any call.
+        let service = create_service();
+        let req =
+            UpdateCurrentUserRequest::new(Uuid::new_v4(), Some("admin"), None, None, None, None)
+                .unwrap();
+        let err = service.update_current_user(req).await.unwrap_err();
+        assert!(matches!(err, UserError::Conflict(_)));
+    }
+
+    #[tokio::test]
+    async fn update_current_user_rejects_taken_name() {
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_is_name_taken()
+            .returning(|_| Ok(true));
+        let req =
+            UpdateCurrentUserRequest::new(Uuid::new_v4(), Some("bob"), None, None, None, None)
+                .unwrap();
+        let err = service.update_current_user(req).await.unwrap_err();
+        assert!(matches!(err, UserError::Conflict(_)));
+    }
+
+    #[tokio::test]
+    async fn update_current_user_renames_owner_dir_and_updates() {
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_is_name_taken()
+            .returning(|_| Ok(false));
+        service
+            .user_repo
+            .expect_get_by_id()
+            .returning(|_| Ok(Some(create_user("alice"))));
+        service
+            .user_repo
+            .expect_update()
+            .returning(|_, name, _, _, _, _| Ok(create_user(name.as_deref().unwrap_or("alice"))));
+
+        let req =
+            UpdateCurrentUserRequest::new(Uuid::new_v4(), Some("bob"), None, None, None, None)
+                .unwrap();
+        let resp = service.update_current_user(req).await.unwrap();
+        assert_eq!(resp.name, "bob");
+        // The on-disk owner directory is renamed alice -> bob before the DB write.
+        assert_eq!(
+            service.git_client.renames(),
+            vec![("alice".into(), "bob".into())]
+        );
+    }
+
+    #[tokio::test]
+    async fn update_current_user_skips_rename_when_name_unchanged() {
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_is_name_taken()
+            .returning(|_| Ok(false));
+        service
+            .user_repo
+            .expect_get_by_id()
+            .returning(|_| Ok(Some(create_user("alice"))));
+        service
+            .user_repo
+            .expect_update()
+            .returning(|_, _, _, _, _, _| Ok(create_user("alice")));
+
+        let req =
+            UpdateCurrentUserRequest::new(Uuid::new_v4(), Some("alice"), None, None, None, None)
+                .unwrap();
+        service.update_current_user(req).await.unwrap();
+        // Same name => no directory rename.
+        assert!(service.git_client.renames().is_empty());
+    }
+
+    #[tokio::test]
+    async fn update_current_user_reverts_rename_on_update_failure() {
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_is_name_taken()
+            .returning(|_| Ok(false));
+        service
+            .user_repo
+            .expect_get_by_id()
+            .returning(|_| Ok(Some(create_user("alice"))));
+        service
+            .user_repo
+            .expect_update()
+            .returning(|_, _, _, _, _, _| Err(DatabaseError::RowNotFound));
+
+        let req =
+            UpdateCurrentUserRequest::new(Uuid::new_v4(), Some("bob"), None, None, None, None)
+                .unwrap();
+        let err = service.update_current_user(req).await.unwrap_err();
+        assert!(matches!(err, UserError::DatabaseError(_)));
+        // Forward rename then a compensating revert once the DB write failed.
+        assert_eq!(
+            service.git_client.renames(),
+            vec![
+                ("alice".into(), "bob".into()),
+                ("bob".into(), "alice".into())
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn update_current_user_image_uploads_and_touches() {
+        let mut service = create_service();
+        service
+            .image_client
+            .expect_convert_to_webp()
+            .returning(|_| Ok(Bytes::from_static(b"webp")));
+        service
+            .r2_client
+            .expect_upload_object()
+            .returning(|_, _| Ok(()));
+        service.user_repo.expect_touch_image().returning(|_| Ok(()));
+
+        let req = UpdateCurrentUserImageRequest::new(Uuid::new_v4(), Bytes::from_static(b"png"));
+        service.update_current_user_image(req).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn list_commits_maps_visible_and_redacted() {
+        let mut service = create_service();
+        service
+            .user_repo
+            .expect_get()
+            .returning(|_| Ok(Some(create_user("alice"))));
+        service
+            .commit_repo
+            .expect_list_by_user()
+            .returning(|_, _, _, _, _, _| {
+                Ok((
+                    vec![(create_commit("a"), true), (create_commit("b"), false)],
+                    None,
+                ))
+            });
+
+        let req =
+            ListUserCommitsRequest::new("alice", Some(Uuid::new_v4()), None, None, None, None)
+                .unwrap();
+        let page = service.list_commits(req).await.unwrap();
+        assert_eq!(page.data.len(), 2);
+        // Accessible commit is fully populated...
+        assert!(!page.data[0].redacted);
+        assert_eq!(page.data[0].owner_name.as_deref(), Some("alice"));
+        // ...inaccessible commit is redacted to a stub.
+        assert!(page.data[1].redacted);
+        assert!(page.data[1].owner_name.is_none());
+    }
+}

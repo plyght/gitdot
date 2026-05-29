@@ -7,7 +7,11 @@ mod migration;
 mod webhook;
 
 #[cfg(test)]
+mod test_client;
+#[cfg(test)]
 mod test_common;
+#[cfg(test)]
+mod test_repository;
 
 pub use authentication::*;
 pub use authorization::{AuthorizationService, AuthorizationServiceImpl};

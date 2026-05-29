@@ -403,49 +403,34 @@ mod tests {
     use crate::{
         dto::{RepositoryAuthorizationRequest, RepositoryPermission},
         error::AuthorizationError,
-        model::{Repository, RepositoryOwnerType, RepositoryVisibility},
-        service::test_common::{
-            MockOrganizationRepo, MockQuestionRepo, MockRepositoryRepo, MockReviewRepo,
-            MockUserRepo,
+        model::{RepositoryOwnerType, RepositoryVisibility},
+        service::{
+            test_common::create_repository,
+            test_repository::{
+                MockOrganizationRepository, MockQuestionRepository, MockRepositoryRepository,
+                MockReviewRepository, MockUserRepository,
+            },
         },
     };
 
-    fn create_repository(
-        owner_id: Uuid,
-        owner_type: RepositoryOwnerType,
-        visibility: RepositoryVisibility,
-    ) -> Repository {
-        Repository {
-            id: Uuid::new_v4(),
-            name: "myrepo".to_string(),
-            owner_id,
-            owner_name: "owner".to_string(),
-            owner_type,
-            visibility,
-            description: None,
-            stars: 0,
-            user_star: false,
-            readonly: false,
-            created_at: chrono::Utc::now(),
-        }
-    }
+    type Service = AuthorizationServiceImpl<
+        MockOrganizationRepository,
+        MockRepositoryRepository,
+        MockQuestionRepository,
+        MockUserRepository,
+        MockReviewRepository,
+    >;
 
     fn create_service(
-        org_repo: MockOrganizationRepo,
-        repo_repo: MockRepositoryRepo,
-    ) -> AuthorizationServiceImpl<
-        MockOrganizationRepo,
-        MockRepositoryRepo,
-        MockQuestionRepo,
-        MockUserRepo,
-        MockReviewRepo,
-    > {
+        org_repo: MockOrganizationRepository,
+        repo_repo: MockRepositoryRepository,
+    ) -> Service {
         AuthorizationServiceImpl {
             org_repo,
             repo_repo,
-            question_repo: MockQuestionRepo::new(),
-            user_repo: MockUserRepo::new(),
-            review_repo: MockReviewRepo::new(),
+            question_repo: MockQuestionRepository::new(),
+            user_repo: MockUserRepository::new(),
+            review_repo: MockReviewRepository::new(),
         }
     }
 
@@ -458,10 +443,10 @@ mod tests {
 
     #[tokio::test]
     async fn repo_not_found() {
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(|_, _, _| Ok(None));
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Read);
         let err = service
             .verify_authorized_for_repository(request)
@@ -473,7 +458,7 @@ mod tests {
 
     #[tokio::test]
     async fn read_public_repo_allows_anonymous() {
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         let owner_id = Uuid::new_v4();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
@@ -483,7 +468,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Read);
         service
             .verify_authorized_for_repository(request)
@@ -493,7 +478,7 @@ mod tests {
 
     #[tokio::test]
     async fn read_public_repo_allows_authenticated() {
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         let owner_id = Uuid::new_v4();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
@@ -503,7 +488,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(Uuid::new_v4()), RepositoryPermission::Read);
         service
             .verify_authorized_for_repository(request)
@@ -514,7 +499,7 @@ mod tests {
     #[tokio::test]
     async fn read_private_user_repo_by_owner() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -523,7 +508,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(owner_id), RepositoryPermission::Read);
         service
             .verify_authorized_for_repository(request)
@@ -534,7 +519,7 @@ mod tests {
     #[tokio::test]
     async fn read_private_user_repo_by_other() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -543,7 +528,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(Uuid::new_v4()), RepositoryPermission::Read);
         let err = service
             .verify_authorized_for_repository(request)
@@ -556,7 +541,7 @@ mod tests {
     #[tokio::test]
     async fn read_private_user_repo_anonymous() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -565,7 +550,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Read);
         let err = service
             .verify_authorized_for_repository(request)
@@ -579,7 +564,7 @@ mod tests {
     async fn read_private_org_repo_by_member() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -588,7 +573,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo
             .expect_is_member()
             .withf(move |oid, uid| *oid == owner_id && *uid == user_id)
@@ -606,7 +591,7 @@ mod tests {
     async fn read_private_org_repo_by_non_member() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -615,7 +600,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo.expect_is_member().returning(|_, _| Ok(false));
 
         let service = create_service(org_repo, repo_repo);
@@ -631,7 +616,7 @@ mod tests {
     #[tokio::test]
     async fn read_private_org_repo_anonymous() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -640,7 +625,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Read);
         let err = service
             .verify_authorized_for_repository(request)
@@ -653,7 +638,7 @@ mod tests {
     #[tokio::test]
     async fn write_user_repo_by_owner() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -662,7 +647,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(owner_id), RepositoryPermission::Write);
         service
             .verify_authorized_for_repository(request)
@@ -673,7 +658,7 @@ mod tests {
     #[tokio::test]
     async fn write_user_repo_by_other() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -682,7 +667,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(Uuid::new_v4()), RepositoryPermission::Write);
         let err = service
             .verify_authorized_for_repository(request)
@@ -695,7 +680,7 @@ mod tests {
     #[tokio::test]
     async fn write_user_repo_anonymous() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -704,7 +689,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Write);
         let err = service
             .verify_authorized_for_repository(request)
@@ -718,7 +703,7 @@ mod tests {
     async fn write_org_repo_by_member() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -727,7 +712,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo
             .expect_is_member()
             .withf(move |oid, uid| *oid == owner_id && *uid == user_id)
@@ -745,7 +730,7 @@ mod tests {
     async fn write_org_repo_by_non_member() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -754,7 +739,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo.expect_is_member().returning(|_, _| Ok(false));
 
         let service = create_service(org_repo, repo_repo);
@@ -770,7 +755,7 @@ mod tests {
     #[tokio::test]
     async fn write_org_repo_anonymous() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -779,7 +764,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Write);
         let err = service
             .verify_authorized_for_repository(request)
@@ -792,7 +777,7 @@ mod tests {
     #[tokio::test]
     async fn admin_user_repo_by_owner() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -801,7 +786,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(owner_id), RepositoryPermission::Admin);
         service
             .verify_authorized_for_repository(request)
@@ -812,7 +797,7 @@ mod tests {
     #[tokio::test]
     async fn admin_user_repo_by_other() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -821,7 +806,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(Uuid::new_v4()), RepositoryPermission::Admin);
         let err = service
             .verify_authorized_for_repository(request)
@@ -834,7 +819,7 @@ mod tests {
     #[tokio::test]
     async fn admin_user_repo_anonymous() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -843,7 +828,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Admin);
         let err = service
             .verify_authorized_for_repository(request)
@@ -857,7 +842,7 @@ mod tests {
     async fn admin_org_repo_by_admin() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -866,7 +851,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo
             .expect_get_member_role()
             .withf(move |name, uid| name == "owner" && *uid == user_id)
@@ -884,7 +869,7 @@ mod tests {
     async fn admin_org_repo_by_member() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -893,7 +878,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo
             .expect_get_member_role()
             .returning(|_, _| Ok(Some(crate::model::OrganizationRole::Member)));
@@ -912,7 +897,7 @@ mod tests {
     async fn admin_org_repo_by_non_member() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -921,7 +906,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo.expect_get_member_role().returning(|_, _| Ok(None));
 
         let service = create_service(org_repo, repo_repo);
@@ -937,7 +922,7 @@ mod tests {
     #[tokio::test]
     async fn admin_org_repo_anonymous() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -946,7 +931,7 @@ mod tests {
             )))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Admin);
         let err = service
             .verify_authorized_for_repository(request)
@@ -958,12 +943,12 @@ mod tests {
 
     #[tokio::test]
     async fn repo_get_db_error() {
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo
             .expect_get()
             .returning(|_, _, _| Err(crate::error::DatabaseError::RowNotFound));
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Read);
         let err = service
             .verify_authorized_for_repository(request)
@@ -977,7 +962,7 @@ mod tests {
     async fn org_is_member_db_error() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -986,7 +971,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo
             .expect_is_member()
             .returning(|_, _| Err(crate::error::DatabaseError::RowNotFound));
@@ -1005,7 +990,7 @@ mod tests {
     async fn org_get_member_role_db_error() {
         let owner_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             Ok(Some(create_repository(
                 owner_id,
@@ -1014,7 +999,7 @@ mod tests {
             )))
         });
 
-        let mut org_repo = MockOrganizationRepo::new();
+        let mut org_repo = MockOrganizationRepository::new();
         org_repo
             .expect_get_member_role()
             .returning(|_, _| Err(crate::error::DatabaseError::RowNotFound));
@@ -1032,7 +1017,7 @@ mod tests {
     #[tokio::test]
     async fn write_readonly_repo_by_owner() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             let mut repo = create_repository(
                 owner_id,
@@ -1043,7 +1028,7 @@ mod tests {
             Ok(Some(repo))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(owner_id), RepositoryPermission::Write);
         let err = service
             .verify_authorized_for_repository(request)
@@ -1056,7 +1041,7 @@ mod tests {
     #[tokio::test]
     async fn admin_readonly_repo_by_owner() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             let mut repo = create_repository(
                 owner_id,
@@ -1067,7 +1052,7 @@ mod tests {
             Ok(Some(repo))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(Some(owner_id), RepositoryPermission::Admin);
 
         // Admin ops are intentionally permitted on readonly repos; only Write is blocked.
@@ -1079,7 +1064,7 @@ mod tests {
     #[tokio::test]
     async fn read_readonly_public_repo_anonymous() {
         let owner_id = Uuid::new_v4();
-        let mut repo_repo = MockRepositoryRepo::new();
+        let mut repo_repo = MockRepositoryRepository::new();
         repo_repo.expect_get().returning(move |_, _, _| {
             let mut repo = create_repository(
                 owner_id,
@@ -1090,7 +1075,7 @@ mod tests {
             Ok(Some(repo))
         });
 
-        let service = create_service(MockOrganizationRepo::new(), repo_repo);
+        let service = create_service(MockOrganizationRepository::new(), repo_repo);
         let request = create_repo_auth_request(None, RepositoryPermission::Read);
         service
             .verify_authorized_for_repository(request)
