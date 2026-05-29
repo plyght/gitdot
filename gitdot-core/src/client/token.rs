@@ -25,28 +25,83 @@ const BODY_HALF_LEN: usize = 22; // base62(u128::MAX) = 22 chars
 const BODY_LEN: usize = BODY_HALF_LEN * 2; // two u128 halves = 44 chars
 const CHECKSUM_LEN: usize = 6; // base62(u32::MAX) = 6 chars
 
+/// Generates and validates the various opaque codes, access tokens, OAuth
+/// state, and signed JWTs used across gitdot's auth flows, and exposes the
+/// canonical expiry/polling durations those flows depend on.
+///
+/// Secret material (auth codes, access tokens) is returned as a
+/// `(raw, hashed)` pair: the raw value is shown to the caller once and the
+/// SHA-hash is what gets persisted, so the plaintext is never stored.
 pub trait TokenClient: Send + Sync + Clone + 'static {
     // Code operations
+
+    /// Generates a high-entropy, single-use code (e.g. an authorization code),
+    /// returning `(raw_code, hashed_code)`. Persist the hash; return the raw to
+    /// the caller once.
     fn generate_high_entropic_code(&self) -> (String, String);
+
+    /// Generates a short, human-readable code (6 uppercase chars from an
+    /// unambiguous alphabet) for device-flow user codes.
     fn generate_readable_code(&self) -> String;
 
     // Expiry operations
+
+    /// Lifetime of an authorization code, in seconds.
     fn get_auth_code_expiry_in_seconds(&self) -> u64;
+
+    /// Lifetime of an access token, in seconds.
     fn get_access_token_expiry_in_seconds(&self) -> u64;
+
+    /// Lifetime of a refresh token, in seconds.
     fn get_refresh_token_expiry_in_seconds(&self) -> u64;
+
+    /// Lifetime of a device code, in seconds.
     fn get_device_code_expiry_in_seconds(&self) -> u64;
+
+    /// Interval, in seconds, that device-flow clients should wait between polls.
     fn get_polling_interval_in_seconds(&self) -> u64;
 
     // Token operations
+
+    /// Generates an access token of the given `token_type`, returning
+    /// `(raw_token, hashed_token)`. The raw token carries the type prefix and a
+    /// CRC32 checksum (verifiable via [`validate_token_format`]); persist the
+    /// hash.
+    ///
+    /// [`validate_token_format`]: TokenClient::validate_token_format
     fn generate_access_token(&self, token_type: &TokenType) -> (String, String);
+
+    /// Checks that `token` has a recognized type prefix, the expected length,
+    /// and a valid embedded CRC32 checksum. This is a cheap, offline format
+    /// check — it does not prove the token was ever issued.
     fn validate_token_format(&self, token: &str) -> bool;
 
     // OAuth state operations
+
+    /// Generates an HMAC-signed OAuth state value embedding a nonce and an
+    /// expiry, for CSRF protection across the OAuth redirect.
     fn generate_oauth_state(&self) -> String;
+
+    /// Verifies an OAuth `state` value's signature and expiry.
+    ///
+    /// # Errors
+    /// Returns `Err(message)` if the state is malformed, the signature does not
+    /// verify, or it has expired.
     fn verify_oauth_state(&self, state: &str) -> Result<(), String>;
 
     // JWT operations
+
+    /// Signs arbitrary `claims` into an EdDSA JWT using gitdot's private key.
+    ///
+    /// # Errors
+    /// - [`TokenError::SigningError`] — the key is invalid or signing failed.
     fn generate_jwt<T: Serialize + Send + Sync>(&self, claims: &T) -> Result<String, TokenError>;
+
+    /// Builds and signs a gitdot session JWT for `user_id`/`username` with the
+    /// standard issuer, audience, and access-token expiry.
+    ///
+    /// # Errors
+    /// - [`TokenError::SigningError`] — the key is invalid or signing failed.
     fn generate_gitdot_jwt(&self, user_id: Uuid, username: &str) -> Result<String, TokenError>;
 }
 

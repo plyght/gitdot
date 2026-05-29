@@ -22,10 +22,26 @@ const EVENTS_PATH: &str = "/gitdot/events";
 // Intentionally set tight time window to prevent replay attacks
 const MAX_REQUEST_AGE_IN_SECONDS: i64 = 10;
 
+/// Bridges gitdot and the Slack bot service. Inbound directions verify
+/// HMAC-signed state tokens and request signatures; outbound directions push
+/// login completions and webhook events to the bot, signing each request with
+/// the shared Slack secret.
 #[async_trait]
 pub trait SlackBotClient: Send + Sync + Clone + 'static {
+    /// Verifies the HMAC signature and expiry of a Slack OAuth `state` token,
+    /// recovering its payload.
+    ///
+    /// # Errors
+    /// Returns `Err(message)` if the state is malformed, the signature does not
+    /// verify, or the payload has expired.
     fn verify_slack_state(&self, state: &str) -> Result<SlackStatePayload, String>;
 
+    /// Verifies an inbound request's signature over `timestamp` + `body`,
+    /// rejecting requests outside a tight time window to prevent replay.
+    ///
+    /// # Errors
+    /// - [`SlackBotError::InvalidSignature`] — the timestamp is malformed or
+    ///   stale, the signature is malformed, or the HMAC does not match.
     fn verify_request_signature(
         &self,
         timestamp: &str,
@@ -33,12 +49,29 @@ pub trait SlackBotClient: Send + Sync + Clone + 'static {
         signature: &str,
     ) -> Result<(), SlackBotError>;
 
+    /// Notifies the Slack bot that a user's account link completed, so it can
+    /// finalize login in the originating `channel_id`.
+    ///
+    /// # Errors
+    /// - [`SlackBotError::SerializationError`] — the request body could not be
+    ///   serialized.
+    /// - [`SlackBotError::RequestError`] — the request failed to send.
+    /// - [`SlackBotError::NonSuccessStatus`] — the bot returned a non-2xx
+    ///   status.
     async fn notify_link_completed(
         &self,
         gitdot_user_id: Uuid,
         channel_id: &str,
     ) -> Result<(), SlackBotError>;
 
+    /// Forwards a webhook event of `event_type` (carried in a header) with the
+    /// serialized `body` to the Slack bot's events endpoint.
+    ///
+    /// # Errors
+    /// - [`SlackBotError::SerializationError`] — `body` could not be serialized.
+    /// - [`SlackBotError::RequestError`] — the request failed to send.
+    /// - [`SlackBotError::NonSuccessStatus`] — the bot returned a non-2xx
+    ///   status.
     async fn notify_event<T: Serialize + Send + Sync>(
         &self,
         event_type: WebhookEventType,

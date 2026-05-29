@@ -13,8 +13,18 @@ use crate::{
     util::auth::{GITDOT_SERVER_ID, S2_SERVER_ID},
 };
 
+/// Provisions S2 durable streams for CI task logs, authenticating to the
+/// s2-server with a short-lived internal JWT signed by gitdot's private key.
 #[async_trait]
 pub trait S2Client: Send + Sync + Clone + 'static {
+    /// Ensures a basin exists for `owner`/`repo` (created on demand, ignoring
+    /// "already exists") and creates a `task/<task_id>` stream within it.
+    /// Returns the stream's `s2://` URI.
+    ///
+    /// # Errors
+    /// Returns `Err(message)` if the internal JWT cannot be signed, the derived
+    /// basin or stream name is invalid, or the s2-server rejects basin/stream
+    /// creation.
     async fn create_stream(&self, owner: &str, repo: &str, task_id: Uuid)
     -> Result<String, String>;
 }

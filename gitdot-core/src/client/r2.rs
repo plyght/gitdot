@@ -5,8 +5,16 @@ use bytes::Bytes;
 
 use crate::error::R2Error;
 
+/// Uploads objects to a Cloudflare R2 bucket via the S3-compatible API.
+///
+/// Used for serving immutable static assets such as avatars.
 #[async_trait]
 pub trait R2Client: Send + Sync + Clone + 'static {
+    /// Puts `body` at `key` in the configured bucket with a long-lived,
+    /// immutable `Cache-Control` header (one year).
+    ///
+    /// # Errors
+    /// - [`R2Error::UploadError`] — the upload request failed.
     async fn upload_object(&self, key: &str, body: Bytes) -> Result<(), R2Error>;
 }
 

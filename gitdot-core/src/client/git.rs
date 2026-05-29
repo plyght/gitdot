@@ -17,20 +17,70 @@ use crate::{
     },
 };
 
+/// Wraps low-level git operations on the bare repositories stored under
+/// `GIT_PROJECT_ROOT/{owner}/{repo}.git`.
+///
+/// Operations are implemented either through the `git2` library or by shelling
+/// out to the `git` binary; blocking work runs on a dedicated thread pool. Refs
+/// are passed as full names or revisions resolvable by `git rev-parse`, and
+/// SHAs as 40-char hex object ids. Read methods that resolve a ref or object
+/// surface a missing target as [`GitError::NotFound`].
 #[async_trait]
 pub trait GitClient: Send + Sync + Clone + 'static {
+    /// Returns whether a bare repo directory exists on disk for `owner`/`repo`.
+    /// Never fails — any IO error is treated as "does not exist".
     async fn repo_exists(&self, owner: &str, repo: &str) -> bool;
 
+    /// Initializes a new empty bare repo for `owner`/`repo`, sets `HEAD` to the
+    /// default branch, applies gitdot's repo config (HTTP receive, proc-receive
+    /// magic ref, commit-graph), and marks it exportable over HTTP.
+    ///
+    /// # Errors
+    /// - [`GitError::IoError`] — creating the owner directory or export marker
+    ///   failed.
+    /// - [`GitError::Git2Error`] — repo initialization or config failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn create_repo(&self, owner: &str, repo: &str) -> Result<(), GitError>;
 
+    /// Removes the bare repo directory for `owner`/`repo` from disk.
+    ///
+    /// # Errors
+    /// - [`GitError::IoError`] — the directory could not be removed.
     async fn delete_repo(&self, owner: &str, repo: &str) -> Result<(), GitError>;
 
+    /// Renames an owner's directory, moving all of its repos at once. A no-op
+    /// returning `Ok(())` if the source directory does not exist yet (owners
+    /// are created lazily on first repo).
+    ///
+    /// # Errors
+    /// - [`GitError::IoError`] — the rename failed.
     async fn rename_owner(&self, old_owner: &str, new_owner: &str) -> Result<(), GitError>;
 
+    /// Mirror-clones an external `url` into a new bare repo for `owner`/`repo`,
+    /// then scrubs the tokenized `origin` remote that `git clone` wrote to
+    /// disk, applies gitdot's repo config, and materializes the commit-graph.
+    /// The remote scrub and graph write are best-effort (logged, non-fatal).
+    ///
+    /// # Errors
+    /// - [`GitError::IoError`] — directory or export-marker IO failed.
+    /// - [`GitError::Git2Error`] — the clone failed or applying config failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn mirror_repo(&self, owner: &str, repo: &str, url: &str) -> Result<(), GitError>;
 
+    /// Returns the symbolic `HEAD` of the repo (the full default ref name, e.g.
+    /// `refs/heads/main`).
+    ///
+    /// # Errors
+    /// - [`GitError::IoError`] — spawning `git` failed.
+    /// - [`GitError::Git2Error`] — `git symbolic-ref HEAD` exited non-zero.
     async fn get_default_ref(&self, owner: &str, repo: &str) -> Result<String, GitError>;
 
+    /// Fetches a single `sha` from `url` into local `ref_name`, used for
+    /// incremental mirror syncs. The refspec force-updates the target ref.
+    ///
+    /// # Errors
+    /// - [`GitError::IoError`] — spawning `git` failed.
+    /// - [`GitError::Git2Error`] — `git fetch` exited non-zero.
     async fn fetch_ref(
         &self,
         owner: &str,
@@ -40,6 +90,13 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         sha: &str,
     ) -> Result<(), GitError>;
 
+    /// Creates `ref_name` pointing at the commit `sha`, failing if the ref
+    /// already exists.
+    ///
+    /// # Errors
+    /// - [`GitError::Git2Error`] — `sha` is invalid, the commit is missing, or
+    ///   the ref already exists.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn create_ref(
         &self,
         owner: &str,
@@ -48,6 +105,12 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         sha: &str,
     ) -> Result<(), GitError>;
 
+    /// Force-updates `ref_name` to point at the commit `sha`, creating it if it
+    /// does not exist.
+    ///
+    /// # Errors
+    /// - [`GitError::Git2Error`] — `sha` is invalid or the commit is missing.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn update_ref(
         &self,
         owner: &str,
@@ -56,6 +119,15 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         sha: &str,
     ) -> Result<(), GitError>;
 
+    /// Reads the entry at `path` in the tree of `ref_name`, returning either a
+    /// file (with content; binary blobs are base64-encoded) or a folder listing
+    /// of its immediate children.
+    ///
+    /// # Errors
+    /// - [`GitError::NotFound`] — `ref_name` or `path` does not exist.
+    /// - [`GitError::Git2Error`] — the path is neither a blob nor a tree, or
+    ///   another git error occurred.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_repo_blob(
         &self,
         owner: &str,
@@ -64,6 +136,14 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         path: &str,
     ) -> Result<RepositoryBlobResponse, GitError>;
 
+    /// Reads multiple `paths` from the tree of `ref_name` in one repo open.
+    /// Paths that are missing or are neither a blob nor a tree are silently
+    /// skipped, so the result may be shorter than `paths`.
+    ///
+    /// # Errors
+    /// - [`GitError::NotFound`] — `ref_name` does not exist.
+    /// - [`GitError::Git2Error`] — a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_repo_blobs(
         &self,
         owner: &str,
@@ -72,6 +152,15 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         paths: &[String],
     ) -> Result<RepositoryBlobsResponse, GitError>;
 
+    /// Reads `paths` (files only) at a single ref, returning one entry per
+    /// input path in order — `None` where the path is absent. `ref_name` of
+    /// `None` reads against an empty tree (every path resolves to `None`), used
+    /// to represent the "before" side of an addition.
+    ///
+    /// # Errors
+    /// - [`GitError::NotFound`] — `ref_name` is `Some` but does not exist.
+    /// - [`GitError::Git2Error`] — a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_repo_blobs_at_ref(
         &self,
         owner: &str,
@@ -80,6 +169,14 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         paths: &[String],
     ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError>;
 
+    /// Reads a single `path` across several `refs`, returning one entry per ref
+    /// that contains it. Refs that do not resolve, or that lack the path, are
+    /// skipped, so the result may be shorter than `refs`.
+    ///
+    /// # Errors
+    /// - [`GitError::Git2Error`] — a git operation other than a missing ref
+    ///   failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_repo_blob_at_refs(
         &self,
         owner: &str,
@@ -88,6 +185,13 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         refs: &[String],
     ) -> Result<RepositoryBlobsResponse, GitError>;
 
+    /// Returns the full, recursive list of every path (files and folders) in
+    /// the tree of `ref_name`.
+    ///
+    /// # Errors
+    /// - [`GitError::NotFound`] — `ref_name` does not exist.
+    /// - [`GitError::Git2Error`] — a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_repo_paths(
         &self,
         owner: &str,
@@ -95,6 +199,12 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         ref_name: &str,
     ) -> Result<RepositoryPathsResponse, GitError>;
 
+    /// Resolves `ref_name` to its commit and returns the commit metadata.
+    ///
+    /// # Errors
+    /// - [`GitError::NotFound`] — `ref_name` does not exist.
+    /// - [`GitError::Git2Error`] — a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_repo_commit(
         &self,
         owner: &str,
@@ -102,6 +212,15 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         ref_name: &str,
     ) -> Result<RepositoryCommitResponse, GitError>;
 
+    /// Diffs the tree of `right_ref` against `left_ref`, returning per-file
+    /// before/after content (binary blobs base64-encoded) and line counts. A
+    /// `left_ref` of `None` diffs against the empty tree (treats everything as
+    /// added).
+    ///
+    /// # Errors
+    /// - [`GitError::NotFound`] — `left_ref` or `right_ref` does not exist.
+    /// - [`GitError::Git2Error`] — a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_repo_diff_files(
         &self,
         owner: &str,
@@ -110,6 +229,15 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         right_ref: &str,
     ) -> Result<Vec<RepositoryDiffFileResponse>, GitError>;
 
+    /// Like [`get_repo_diff_files`] but returns only per-file path and
+    /// added/removed line counts, without blob content.
+    ///
+    /// [`get_repo_diff_files`]: GitClient::get_repo_diff_files
+    ///
+    /// # Errors
+    /// - [`GitError::NotFound`] — `left_ref` or `right_ref` does not exist.
+    /// - [`GitError::Git2Error`] — a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_repo_diff_stats(
         &self,
         owner: &str,
@@ -118,6 +246,13 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         right_ref: &str,
     ) -> Result<Vec<RepositoryDiffStatResponse>, GitError>;
 
+    /// Lists commits reachable from `new_sha` but not from `old_sha`, in
+    /// reverse-time order — i.e. the commits introduced by a push. An all-zero
+    /// `old_sha` denotes an initial push and lists all ancestors of `new_sha`.
+    ///
+    /// # Errors
+    /// - [`GitError::Git2Error`] — a SHA is invalid or a commit is missing.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn rev_list(
         &self,
         owner: &str,
@@ -126,6 +261,12 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         new_sha: &str,
     ) -> Result<Vec<RepositoryCommitResponse>, GitError>;
 
+    /// Resolves `ref_name` to the hex SHA of the commit it points at.
+    ///
+    /// # Errors
+    /// - [`GitError::NotFound`] — `ref_name` does not exist.
+    /// - [`GitError::Git2Error`] — a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn resolve_ref_sha(
         &self,
         owner: &str,
@@ -133,6 +274,13 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         ref_name: &str,
     ) -> Result<String, GitError>;
 
+    /// Computes a content-based patch id for the commit `sha` — a hash of its
+    /// diff against its first parent that is stable across rebases/cherry-picks.
+    /// Used to detect when a commit has already been applied.
+    ///
+    /// # Errors
+    /// - [`GitError::Git2Error`] — `sha` is invalid or a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn get_commit_patch_id(
         &self,
         owner: &str,
@@ -140,6 +288,15 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         sha: &str,
     ) -> Result<String, GitError>;
 
+    /// Cherry-picks `commit_sha` onto `new_parent_sha`, preserving the original
+    /// author, committer, and message, and returns the new commit's SHA. The
+    /// new commit is written to the object database but not pointed at by any
+    /// ref.
+    ///
+    /// # Errors
+    /// - [`GitError::MergeConflict`] — the cherry-pick produced conflicts.
+    /// - [`GitError::Git2Error`] — a SHA is invalid or a git operation failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn cherry_pick_commit(
         &self,
         owner: &str,
@@ -148,6 +305,14 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         new_parent_sha: &str,
     ) -> Result<String, GitError>;
 
+    /// Writes `files` as the root tree of a single parentless "Initial commit"
+    /// on the default branch, authored/committed by the given identity at
+    /// `committed_at`, and returns its SHA. Used to seed a brand-new repo.
+    ///
+    /// # Errors
+    /// - [`GitError::Git2Error`] — opening the repo or building the commit
+    ///   failed.
+    /// - [`GitError::JoinError`] — the blocking task panicked.
     async fn create_initial_commit(
         &self,
         owner: &str,
@@ -158,6 +323,12 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         committed_at: DateTime<Utc>,
     ) -> Result<String, GitError>;
 
+    /// Writes `hook_script` as the named `hook_type` in the repo's `hooks/`
+    /// directory and makes it executable (on Unix).
+    ///
+    /// # Errors
+    /// - [`GitError::IoError`] — writing the hook or setting permissions
+    ///   failed.
     async fn install_hook(
         &self,
         owner: &str,
@@ -166,8 +337,16 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         hook_script: &str,
     ) -> Result<(), GitError>;
 
+    /// Removes every hook file from the repo's `hooks/` directory.
+    ///
+    /// # Errors
+    /// - [`GitError::IoError`] — reading the directory or removing a file
+    ///   failed.
     async fn empty_hooks(&self, owner: &str, repo: &str) -> Result<(), GitError>;
 
+    /// Returns `repo` with exactly one trailing `.git` suffix, matching the
+    /// on-disk bare repo directory layout. Idempotent whether or not the input
+    /// already ends in `.git`.
     fn normalize_repo_name(&self, repo: &str) -> String {
         format!(
             "{}{}",

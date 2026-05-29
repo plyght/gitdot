@@ -13,8 +13,22 @@ use crate::{
     util::git::REPO_SUFFIX,
 };
 
+/// Implements the smart HTTP git protocol by shelling out to the
+/// `git http-backend` CGI against bare repos under `GIT_PROJECT_ROOT`.
+///
+/// CGI stdout is parsed into an HTTP status, headers, and body; the body may be
+/// buffered or streamed depending on the call.
 #[async_trait]
 pub trait GitHttpClient: Send + Sync + Clone + 'static {
+    /// Handles the `GET /info/refs?service=...` advertisement phase of clone
+    /// and fetch. The full CGI output is buffered into the response body.
+    ///
+    /// # Errors
+    /// - [`GitHttpError::SpawnError`] — `git http-backend` could not be spawned.
+    /// - [`GitHttpError::ReadError`] — reading the process output failed.
+    /// - [`GitHttpError::ProcessFailed`] — `git http-backend` exited non-zero.
+    /// - [`GitHttpError::InvalidCgiResponse`] — the CGI output had no
+    ///   header/body separator.
     async fn info_refs(
         &self,
         owner: &str,
@@ -22,6 +36,18 @@ pub trait GitHttpClient: Send + Sync + Clone + 'static {
         service: &str,
     ) -> Result<GitHttpResponse, GitHttpError>;
 
+    /// Handles the `POST /git-<service>` data phase (`git-upload-pack` /
+    /// `git-receive-pack`). The request `body` is streamed to the process's
+    /// stdin while its stdout is streamed back as the response body, so large
+    /// packfiles never need to be fully buffered. `env_vars` are injected into
+    /// the CGI environment (e.g. to carry the authenticated user through to the
+    /// hooks).
+    ///
+    /// # Errors
+    /// - [`GitHttpError::SpawnError`] — `git http-backend` could not be spawned.
+    /// - [`GitHttpError::ReadError`] — reading the response header bytes failed.
+    /// - [`GitHttpError::InvalidCgiResponse`] — EOF before the CGI header
+    ///   separator, or the separator was missing.
     async fn service_rpc(
         &self,
         owner: &str,
@@ -32,6 +58,9 @@ pub trait GitHttpClient: Send + Sync + Clone + 'static {
         env_vars: Vec<(String, String)>,
     ) -> Result<GitHttpResponse, GitHttpError>;
 
+    /// Returns `repo_name` with exactly one trailing `.git` suffix, matching the
+    /// on-disk bare repo directory layout. Idempotent whether or not the input
+    /// already ends in `.git`.
     fn normalize_repo_name(&self, repo_name: &str) -> String {
         format!(
             "{}{}",

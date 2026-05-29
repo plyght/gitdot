@@ -15,13 +15,49 @@ use crate::{
 
 const INSTALL_STATE_TTL_SECONDS: i64 = 600;
 
+/// Talks to GitHub on behalf of gitdot across three concerns: user OAuth
+/// (sign-in via `user:email`), GitHub App installation management, and webhook
+/// signature verification.
+///
+/// OAuth calls take a user `access_token` per request, App calls authenticate
+/// as the gitdot GitHub App, and install-state / webhook helpers are HMAC-signed
+/// with the shared gitdot↔GitHub secret.
 #[async_trait]
 pub trait GitHubClient: Send + Sync + Clone + 'static {
     // OAuth operations
+
+    /// Builds the GitHub OAuth authorize URL for the `user:email` scope,
+    /// embedding `state` for CSRF protection. Pure string construction.
     fn get_authorization_url(&self, state: &str) -> String;
+
+    /// Exchanges an OAuth `code` for a user access token.
+    ///
+    /// # Errors
+    /// - [`GitHubError::OctocrabError`] — the token exchange request failed or
+    ///   returned an unexpected body.
     async fn exchange_code(&self, code: &str) -> Result<String, GitHubError>;
+
+    /// Fetches the authenticated user's profile (`GET /user`).
+    ///
+    /// # Errors
+    /// - [`GitHubError::OctocrabError`] — the request failed or the token is
+    ///   invalid.
     async fn get_user(&self, access_token: &str) -> Result<GitHubUser, GitHubError>;
+
+    /// Fetches the authenticated user's email addresses (`GET /user/emails`),
+    /// including verification and primary flags.
+    ///
+    /// # Errors
+    /// - [`GitHubError::OctocrabError`] — the request failed or the token is
+    ///   invalid.
     async fn get_user_emails(&self, access_token: &str) -> Result<Vec<GitHubEmail>, GitHubError>;
+
+    /// Fetches `user_name`'s membership in `org_name`, used to confirm org
+    /// membership during sign-in.
+    ///
+    /// # Errors
+    /// - [`GitHubError::OctocrabError`] — the request failed, the token is
+    ///   invalid, or the user is not a member (404).
     async fn get_user_membership(
         &self,
         org_name: &str,
@@ -30,23 +66,64 @@ pub trait GitHubClient: Send + Sync + Clone + 'static {
     ) -> Result<GitHubMembership, GitHubError>;
 
     // GitHub App operations
+
+    /// Builds the App installation URL, embedding an HMAC-signed,
+    /// 10-minute-expiry state token that binds the install flow to `user_id`
+    /// and `action` so the callback can be verified.
+    ///
+    /// # Errors
+    /// - [`GitHubError::InvalidState`] — the state payload could not be
+    ///   serialized or signed.
     fn get_github_app_install_url(
         &self,
         user_id: Uuid,
         action: GitHubAppInstallAction,
     ) -> Result<String, GitHubError>;
+
+    /// Verifies the HMAC signature and expiry of an install-state `token`
+    /// returned on the installation callback, recovering its payload.
+    ///
+    /// # Errors
+    /// - [`GitHubError::InvalidState`] — the token is malformed, the signature
+    ///   does not verify, or the payload has expired.
     fn verify_install_state(&self, token: &str) -> Result<InstallStatePayload, GitHubError>;
+
+    /// Fetches installation metadata as the App.
+    ///
+    /// # Errors
+    /// - [`GitHubError::OctocrabError`] — the request failed or the
+    ///   installation does not exist.
     async fn get_installation(&self, installation_id: u64) -> Result<Installation, GitHubError>;
+
+    /// Mints a short-lived (≈1 hour) installation access token for acting on
+    /// the installation's repositories.
+    ///
+    /// # Errors
+    /// - [`GitHubError::OctocrabError`] — the token could not be minted.
     async fn get_installation_access_token(
         &self,
         installation_id: u64,
     ) -> Result<String, GitHubError>;
+
+    /// Lists the repositories an installation grants access to (currently the
+    /// first page of up to 100).
+    ///
+    /// # Errors
+    /// - [`GitHubError::OctocrabError`] — the request failed.
     async fn list_installation_repositories(
         &self,
         installation_id: u64,
     ) -> Result<InstallationRepositories, GitHubError>;
 
     // Webhook operations
+
+    /// Verifies the `X-Hub-Signature-256` header (`sha256=<hex>`) of an inbound
+    /// webhook against the raw `body` using the shared secret. Returns `Ok(())`
+    /// when the signature matches.
+    ///
+    /// # Errors
+    /// - [`GitHubError::InvalidSignature`] — the header is malformed or the
+    ///   HMAC does not match.
     fn verify_webhook_signature(
         &self,
         body: &[u8],

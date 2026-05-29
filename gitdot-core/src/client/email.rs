@@ -12,8 +12,17 @@ use crate::{dto::SmtpTlsMode, error::EmailError};
 
 const SMTP_TIMEOUT: Duration = Duration::from_secs(15);
 
+/// Sends transactional emails over SMTP (OTP codes, notifications, etc.).
 #[async_trait]
 pub trait EmailClient: Send + Sync + Clone + 'static {
+    /// Sends a single HTML email. `from` and `to` are parsed as RFC 5322
+    /// mailboxes and `html` is sent with a `text/html` content type.
+    ///
+    /// # Errors
+    /// - [`EmailError::Address`] — `from` or `to` is not a valid mailbox.
+    /// - [`EmailError::Build`] — the message could not be assembled.
+    /// - [`EmailError::Transport`] — the SMTP server rejected the message or
+    ///   the connection failed.
     async fn send_email(
         &self,
         from: &str,

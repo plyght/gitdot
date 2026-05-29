@@ -3,8 +3,17 @@ use google_cloud_secretmanager_v1::client::SecretManagerService;
 
 use crate::error::SecretError;
 
+/// Reads secrets from Google Cloud Secret Manager.
 #[async_trait]
 pub trait SecretClient: Send + Sync + Clone + 'static {
+    /// Fetches the `latest` version of `secret_name` within the configured GCP
+    /// project and returns its payload as a UTF-8 string.
+    ///
+    /// # Errors
+    /// - [`SecretError::SecretManagerError`] — the access request failed (e.g.
+    ///   missing secret or permissions).
+    /// - [`SecretError::MissingPayload`] — the version has no payload.
+    /// - [`SecretError::InvalidUtf8`] — the payload is not valid UTF-8.
     async fn get_secret(&self, secret_name: &str) -> Result<String, SecretError>;
 }
 

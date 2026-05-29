@@ -11,10 +11,26 @@ use crate::error::RedisError;
 /// not retry the failed call itself; this wrapper covers that gap.
 const MAX_RETRIES: u32 = 2;
 
+/// JSON-over-Redis key/value cache. Values are serialized to JSON on write and
+/// deserialized on read; transient IO errors are retried transparently a small
+/// number of times (see `MAX_RETRIES`).
 #[async_trait]
 pub trait RedisClient: Send + Sync + Clone + 'static {
+    /// Fetches and JSON-deserializes the value at `key`, or `None` if the key
+    /// is absent.
+    ///
+    /// # Errors
+    /// - [`RedisError::Connection`] — the command failed after retries.
+    /// - [`RedisError::Serialization`] — the stored value is not valid JSON for
+    ///   `T`.
     async fn get<T: DeserializeOwned + Send>(&self, key: &str) -> Result<Option<T>, RedisError>;
 
+    /// JSON-serializes `value` and stores it at `key` with the given `ttl`,
+    /// overwriting any existing value.
+    ///
+    /// # Errors
+    /// - [`RedisError::Serialization`] — `value` could not be serialized.
+    /// - [`RedisError::Connection`] — the command failed after retries.
     async fn set_with_ttl<T: Serialize + Send + Sync>(
         &self,
         key: &str,
@@ -22,8 +38,13 @@ pub trait RedisClient: Send + Sync + Clone + 'static {
         ttl: Duration,
     ) -> Result<(), RedisError>;
 
-    /// Atomic claim + cache. Returns `true` if the key was set, `false` if it
-    /// already existed.
+    /// Atomic claim + cache (`SET key value NX EX ttl`). Returns `true` if the
+    /// key was set, `false` if it already existed. Used to claim a one-time
+    /// resource without a race.
+    ///
+    /// # Errors
+    /// - [`RedisError::Serialization`] — `value` could not be serialized.
+    /// - [`RedisError::Connection`] — the command failed after retries.
     async fn set_nx_with_ttl<T: Serialize + Send + Sync>(
         &self,
         key: &str,
@@ -31,8 +52,16 @@ pub trait RedisClient: Send + Sync + Clone + 'static {
         ttl: Duration,
     ) -> Result<bool, RedisError>;
 
+    /// Deletes `key`. Deleting a missing key is not an error.
+    ///
+    /// # Errors
+    /// - [`RedisError::Connection`] — the command failed after retries.
     async fn delete(&self, key: &str) -> Result<(), RedisError>;
 
+    /// Verifies connectivity by issuing `PING`.
+    ///
+    /// # Errors
+    /// - [`RedisError::Connection`] — the server is unreachable.
     async fn ping(&self) -> Result<(), RedisError>;
 }
 

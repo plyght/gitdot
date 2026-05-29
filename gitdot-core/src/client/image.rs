@@ -9,10 +9,39 @@ use crate::{
     util::image::{beam_svg, building_svg},
 };
 
+/// Produces avatar images: it transcodes uploaded images to WebP and generates
+/// deterministic default avatars for users and organizations.
+///
+/// All operations decode/encode on a blocking thread pool and emit 64×64 WebP
+/// output.
 #[async_trait]
 pub trait ImageClient: Send + Sync + Clone + 'static {
+    /// Decodes an arbitrary uploaded image, resizes it to a 64×64 fill, and
+    /// re-encodes it as WebP.
+    ///
+    /// # Errors
+    /// - [`ImageError::DecodeError`] — the input format could not be guessed or
+    ///   decoded.
+    /// - [`ImageError::EncodeError`] — WebP encoding failed.
+    /// - [`ImageError::SpawnError`] — the blocking work could not be scheduled.
     async fn convert_to_webp(&self, bytes: Bytes) -> Result<Bytes, ImageError>;
+
+    /// Renders a deterministic "beam" avatar seeded by `email` to a 64×64 WebP.
+    /// The same email always yields the same avatar.
+    ///
+    /// # Errors
+    /// - [`ImageError::GenerateError`] — SVG rendering or rasterization failed.
+    /// - [`ImageError::EncodeError`] — WebP encoding failed.
+    /// - [`ImageError::SpawnError`] — the blocking work could not be scheduled.
     async fn generate_user_image(&self, email: &str) -> Result<Bytes, ImageError>;
+
+    /// Renders a deterministic "building" avatar seeded by `name` to a 64×64
+    /// WebP. The same name always yields the same avatar.
+    ///
+    /// # Errors
+    /// - [`ImageError::GenerateError`] — SVG rendering or rasterization failed.
+    /// - [`ImageError::EncodeError`] — WebP encoding failed.
+    /// - [`ImageError::SpawnError`] — the blocking work could not be scheduled.
     async fn generate_org_image(&self, name: &str) -> Result<Bytes, ImageError>;
 }
 

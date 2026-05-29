@@ -48,8 +48,20 @@ impl KafkaAuthMode {
     }
 }
 
+/// Produces gitdot domain events to Kafka for async downstream processing.
+///
+/// The concrete client supports both a local plaintext broker and GCP Managed
+/// Kafka via OAUTHBEARER, and produces idempotently with `acks=all`.
 #[async_trait]
 pub trait KafkaClient: Send + Sync + Clone + 'static {
+    /// Publishes a repository push event to the `gitdot.repo.pushed` topic,
+    /// keyed by `owner/repo` so all pushes for a repo land on the same
+    /// partition (preserving per-repo ordering). Awaits broker acknowledgement.
+    ///
+    /// # Errors
+    /// - [`KafkaError::SerializationError`] — the event could not be serialized.
+    /// - [`KafkaError::KafkaError`] — the broker rejected the message or the
+    ///   send timed out.
     async fn publish_repo_push(&self, event: RepoPushEvent) -> Result<(), KafkaError>;
 }
 

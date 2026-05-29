@@ -3,12 +3,28 @@ use clickhouse::Client;
 
 use crate::error::ClickHouseError;
 
+/// Wraps a ClickHouse connection for batch row inserts and health checks.
+///
+/// The underlying client is configured for fire-and-forget async inserts
+/// (`async_insert=1`, `wait_for_async_insert=0`), so a successful insert means
+/// the rows were accepted for buffering, not yet durably committed.
 #[async_trait]
 pub trait ClickHouseClient: Send + Sync + Clone + 'static {
+    /// Inserts `rows` into `table`. A call with no rows is a no-op that returns
+    /// `Ok(())` without touching the server.
+    ///
+    /// # Errors
+    /// - [`ClickHouseError::Client`] — the server rejected the insert or the
+    ///   connection failed.
     async fn insert<T>(&self, table: &str, rows: &[T]) -> Result<(), ClickHouseError>
     where
         T: clickhouse::RowOwned + clickhouse::RowWrite + Send + Sync;
 
+    /// Verifies connectivity by running `SELECT 1`.
+    ///
+    /// # Errors
+    /// - [`ClickHouseError::Client`] — the server is unreachable or returned an
+    ///   error.
     async fn ping(&self) -> Result<(), ClickHouseError>;
 }
 
