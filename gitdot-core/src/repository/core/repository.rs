@@ -140,10 +140,12 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
 
     /// Overwrites `name`, `authors`, `tags`, `paths` (set unconditionally, so
     /// `None` clears the column) and bumps `updated_at` on the
-    /// `core.commit_filters` row with `filter_id`, returning the updated row.
-    /// `Ok(None)` when no row matches.
+    /// `core.commit_filters` row matching both `filter_id` and `repository_id`,
+    /// returning the updated row. `Ok(None)` when no row matches — including
+    /// when the filter exists but belongs to a different repository.
     async fn update_commit_filter(
         &self,
+        repository_id: Uuid,
         filter_id: Uuid,
         name: &str,
         authors: Option<Vec<String>>,
@@ -151,9 +153,14 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         paths: Option<Vec<String>>,
     ) -> Result<Option<CommitFilter>, DatabaseError>;
 
-    /// Hard-deletes the `core.commit_filters` row with `filter_id`. Returns
-    /// `true` if a row was removed, `false` if none matched.
-    async fn delete_commit_filter(&self, filter_id: Uuid) -> Result<bool, DatabaseError>;
+    /// Hard-deletes the `core.commit_filters` row matching both `filter_id` and
+    /// `repository_id`. Returns `true` if a row was removed, `false` if none
+    /// matched (including when the filter belongs to a different repository).
+    async fn delete_commit_filter(
+        &self,
+        repository_id: Uuid,
+        filter_id: Uuid,
+    ) -> Result<bool, DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -636,6 +643,7 @@ impl RepositoryRepository for PgRepositoryRepository {
 
     async fn update_commit_filter(
         &self,
+        repository_id: Uuid,
         filter_id: Uuid,
         name: &str,
         authors: Option<Vec<String>>,
@@ -645,16 +653,17 @@ impl RepositoryRepository for PgRepositoryRepository {
         let filter = sqlx::query_as::<_, CommitFilter>(
             r#"
             UPDATE core.commit_filters
-            SET name = $2,
-                authors = $3,
-                tags = $4,
-                paths = $5,
+            SET name = $3,
+                authors = $4,
+                tags = $5,
+                paths = $6,
                 updated_at = NOW()
-            WHERE id = $1
+            WHERE id = $1 AND repository_id = $2
             RETURNING id, repository_id, name, authors, tags, paths, created_at, updated_at
             "#,
         )
         .bind(filter_id)
+        .bind(repository_id)
         .bind(name)
         .bind(authors)
         .bind(tags)
@@ -665,11 +674,17 @@ impl RepositoryRepository for PgRepositoryRepository {
         Ok(filter)
     }
 
-    async fn delete_commit_filter(&self, filter_id: Uuid) -> Result<bool, DatabaseError> {
-        let result = sqlx::query("DELETE FROM core.commit_filters WHERE id = $1")
-            .bind(filter_id)
-            .execute(&self.pool)
-            .await?;
+    async fn delete_commit_filter(
+        &self,
+        repository_id: Uuid,
+        filter_id: Uuid,
+    ) -> Result<bool, DatabaseError> {
+        let result =
+            sqlx::query("DELETE FROM core.commit_filters WHERE id = $1 AND repository_id = $2")
+                .bind(filter_id)
+                .bind(repository_id)
+                .execute(&self.pool)
+                .await?;
         Ok(result.rows_affected() > 0)
     }
 }
@@ -1191,7 +1206,14 @@ mod tests {
         assert_eq!(filter.paths, Some(vec!["src/".to_string()]));
 
         let updated = repo
-            .update_commit_filter(filter.id, "fix", None, Some(vec!["v1".to_string()]), None)
+            .update_commit_filter(
+                created.id,
+                filter.id,
+                "fix",
+                None,
+                Some(vec!["v1".to_string()]),
+                None,
+            )
             .await
             .unwrap()
             .expect("updated");
@@ -1200,7 +1222,16 @@ mod tests {
         assert_eq!(updated.tags, Some(vec!["v1".to_string()]));
 
         assert!(
-            repo.update_commit_filter(Uuid::new_v4(), "x", None, None, None)
+            repo.update_commit_filter(created.id, Uuid::new_v4(), "x", None, None, None)
+                .await
+                .unwrap()
+                .is_none()
+        );
+
+        // A real filter id scoped to a different repository must not match.
+        let other = make_repo(&repo, "other", alice, RepositoryVisibility::Public, None).await;
+        assert!(
+            repo.update_commit_filter(other.id, filter.id, "x", None, None, None)
                 .await
                 .unwrap()
                 .is_none()
@@ -1218,7 +1249,25 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(repo.delete_commit_filter(filter.id).await.unwrap());
-        assert!(!repo.delete_commit_filter(filter.id).await.unwrap());
+        // Deleting via a different repository's id must not match.
+        let other = make_repo(&repo, "other", alice, RepositoryVisibility::Public, None).await;
+        assert!(
+            !repo
+                .delete_commit_filter(other.id, filter.id)
+                .await
+                .unwrap()
+        );
+
+        assert!(
+            repo.delete_commit_filter(created.id, filter.id)
+                .await
+                .unwrap()
+        );
+        assert!(
+            !repo
+                .delete_commit_filter(created.id, filter.id)
+                .await
+                .unwrap()
+        );
     }
 }

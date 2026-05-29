@@ -34,6 +34,8 @@ pub async fn update_repository_commit_filter(
         .await?;
 
     let core_request = UpdateRepositoryCommitFilterRequest::new(
+        &owner,
+        &repo,
         filter_id,
         &request.name,
         request.authors,

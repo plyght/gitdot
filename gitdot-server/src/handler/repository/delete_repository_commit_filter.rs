@@ -28,7 +28,7 @@ pub async fn delete_repository_commit_filter(
         .verify_authorized_for_repository(auth_request)
         .await?;
 
-    let core_request = DeleteRepositoryCommitFilterRequest::new(filter_id);
+    let core_request = DeleteRepositoryCommitFilterRequest::new(&owner, &repo, filter_id)?;
     state
         .repo_service
         .delete_repository_commit_filter(core_request)

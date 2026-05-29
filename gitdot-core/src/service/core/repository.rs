@@ -952,9 +952,19 @@ where
         &self,
         request: UpdateRepositoryCommitFilterRequest,
     ) -> Result<RepositoryCommitFilterResponse, RepositoryError> {
+        let owner = request.owner.as_ref();
+        let repo = request.repo.as_ref();
+
+        let repository = self
+            .repo_repo
+            .get(owner, repo, None)
+            .await?
+            .or_not_found("repository", format!("{}/{}", owner, repo))?;
+
         let filter = self
             .repo_repo
             .update_commit_filter(
+                repository.id,
                 request.filter_id,
                 request.name.as_ref(),
                 request.authors,
@@ -971,13 +981,23 @@ where
         &self,
         request: DeleteRepositoryCommitFilterRequest,
     ) -> Result<(), RepositoryError> {
+        let owner = request.owner.as_ref();
+        let repo = request.repo.as_ref();
+
+        let repository = self
+            .repo_repo
+            .get(owner, repo, None)
+            .await?
+            .or_not_found("repository", format!("{}/{}", owner, repo))?;
+
         let deleted = self
             .repo_repo
-            .delete_commit_filter(request.filter_id)
+            .delete_commit_filter(repository.id, request.filter_id)
             .await?;
         if !deleted {
             return Err(NotFoundError::new("commit filter", request.filter_id).into());
         }
+
         Ok(())
     }
 }
@@ -1571,12 +1591,23 @@ mod tests {
         let mut service = create_service();
         service
             .repo_repo
+            .expect_get()
+            .returning(|_, _, _| Ok(Some(public_repo())));
+        service
+            .repo_repo
             .expect_update_commit_filter()
-            .returning(|_, _, _, _, _| Ok(None));
+            .returning(|_, _, _, _, _, _| Ok(None));
 
-        let req =
-            UpdateRepositoryCommitFilterRequest::new(Uuid::new_v4(), "recent", None, None, None)
-                .unwrap();
+        let req = UpdateRepositoryCommitFilterRequest::new(
+            "alice",
+            "myrepo",
+            Uuid::new_v4(),
+            "recent",
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         let err = service
             .update_repository_commit_filter(req)
             .await
@@ -1589,10 +1620,15 @@ mod tests {
         let mut service = create_service();
         service
             .repo_repo
+            .expect_get()
+            .returning(|_, _, _| Ok(Some(public_repo())));
+        service
+            .repo_repo
             .expect_delete_commit_filter()
-            .returning(|_| Ok(false));
+            .returning(|_, _| Ok(false));
 
-        let req = DeleteRepositoryCommitFilterRequest::new(Uuid::new_v4());
+        let req =
+            DeleteRepositoryCommitFilterRequest::new("alice", "myrepo", Uuid::new_v4()).unwrap();
         let err = service
             .delete_repository_commit_filter(req)
             .await
