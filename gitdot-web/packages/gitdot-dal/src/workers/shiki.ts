@@ -1,27 +1,18 @@
 /// <reference lib="webworker" />
 declare const self: SharedWorkerGlobalScope;
 
+import type { RepositoryDiffFileResource } from "gitdot-api";
 import type { Root } from "hast";
-import { createHighlighter, inferLanguage } from "./util";
+import { inferLanguage, renderDiff, renderHast } from "../diff/shiki";
+import type { DiffEntry } from "../diff/types";
 
-export interface ShikiRequest {
-  id: string;
-  path: string;
-  content: string;
-}
+export type ShikiRequest =
+  | { id: string; kind: "blob"; path: string; content: string }
+  | { id: string; kind: "diff"; files: RepositoryDiffFileResource[] };
 
-export interface ShikiResponse {
-  id: string;
-  hast: Root;
-}
-
-interface Message {
-  body: ShikiRequest;
-  port: MessagePort;
-}
-
-const queue: Message[] = [];
-let ready = false;
+export type ShikiResponse =
+  | { id: string; kind: "blob"; hast: Root }
+  | { id: string; kind: "diff"; entries: DiffEntry[] };
 
 console.log("[gitdot-shiki] worker loaded");
 
@@ -29,33 +20,38 @@ self.onconnect = (event: MessageEvent) => {
   console.log("[gitdot-shiki] worker connected");
   const port = event.ports[0];
   port.onmessage = (e: MessageEvent<ShikiRequest>) => {
-    if (ready) {
-      process(e.data, port);
-    } else {
-      queue.push({ body: e.data, port });
-    }
+    process(e.data, port);
   };
   port.start();
 };
 
-function process({ id, path, content }: ShikiRequest, port: MessagePort) {
-  const lang = inferLanguage(path) ?? "plaintext";
+async function process(req: ShikiRequest, port: MessagePort) {
   const t = performance.now();
-  const hast = highlighter.codeToHast(content, {
-    lang,
-    themes: { light: "vitesse-light", dark: "vitesse-dark" },
-    defaultColor: "light",
-  });
-  console.log(
-    `[gitdot-shiki] codeToHast ${path} (${lang}, ${content.length}b) ${(performance.now() - t).toFixed(2)}ms`,
-  );
-  port.postMessage({ id, hast } satisfies ShikiResponse);
+  if (req.kind === "blob") {
+    const lang = inferLanguage(req.path);
+    const hast = await renderHast(req.content, lang, "vitesse");
+    console.log(
+      `[gitdot-shiki] blob ${req.path} (${lang ?? "plaintext"}, ${req.content.length}b) ${(performance.now() - t).toFixed(2)}ms`,
+    );
+    port.postMessage({
+      id: req.id,
+      kind: "blob",
+      hast,
+    } satisfies ShikiResponse);
+  } else {
+    const entries = await Promise.all(
+      req.files.map(async (file) => ({
+        resource: file,
+        spans: await renderDiff(file),
+      })),
+    );
+    console.log(
+      `[gitdot-shiki] diff ${req.files.length} files ${(performance.now() - t).toFixed(2)}ms`,
+    );
+    port.postMessage({
+      id: req.id,
+      kind: "diff",
+      entries,
+    } satisfies ShikiResponse);
+  }
 }
-
-const t = performance.now();
-const highlighter = await createHighlighter();
-console.log(`[gitdot-shiki] createHighlighter took ${performance.now() - t}ms`);
-
-ready = true;
-for (const { body, port } of queue) process(body, port);
-queue.length = 0;

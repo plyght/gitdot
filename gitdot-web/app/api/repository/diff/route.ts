@@ -1,4 +1,4 @@
-import { renderCommitDiff } from "gitdot-dal/server";
+import { getRepositoryCommitDiff } from "gitdot-client";
 import type { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -6,5 +6,6 @@ export async function GET(request: NextRequest) {
   const owner = searchParams.get("owner") ?? "";
   const repo = searchParams.get("repo") ?? "";
   const sha = searchParams.get("sha") ?? "";
-  return Response.json(await renderCommitDiff(owner, repo, sha));
+  const result = await getRepositoryCommitDiff(owner, repo, sha);
+  return Response.json(result?.files ?? []);
 }

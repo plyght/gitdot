@@ -6,6 +6,8 @@ import type {
 } from "gitdot-api";
 import type { Root } from "hast";
 import { openIdb } from "../db";
+import { fetchCommitDiffFiles } from "../diff/client";
+import type { DiffEntry } from "../diff/types";
 import { createShikiWorker, createSyncWorker } from "../workers";
 import type { ShikiRequest, ShikiResponse } from "../workers/shiki";
 import type { SyncResponse } from "../workers/sync";
@@ -24,11 +26,13 @@ export class ClientProvider extends GitdotProvider {
   private paths = new Map<string, RepositoryPathsResource>();
   private commits = new Map<string, RepositoryCommitResource[]>();
   private hasts = new Map<string, Root>();
+  private diffs = new Map<string, DiffEntry[]>();
 
   private syncWorker: SharedWorker | null = null;
   private shikiWorker: SharedWorker | null = null;
   private syncRequests = new Map<string, () => void>();
-  private shikiRequests = new Map<string, (hast: Root) => void>();
+  private shikiBlobRequests = new Map<string, (hast: Root) => void>();
+  private shikiDiffRequests = new Map<string, (entries: DiffEntry[]) => void>();
 
   private constructor() {
     super();
@@ -46,10 +50,18 @@ export class ClientProvider extends GitdotProvider {
     this.shikiWorker = createShikiWorker();
     this.shikiWorker.port.start();
     this.shikiWorker.port.onmessage = (e: MessageEvent<ShikiResponse>) => {
-      const resolve = this.shikiRequests.get(e.data.id);
-      if (!resolve) return;
-      this.shikiRequests.delete(e.data.id);
-      resolve(e.data.hast);
+      const res = e.data;
+      if (res.kind === "blob") {
+        const resolve = this.shikiBlobRequests.get(res.id);
+        if (!resolve) return;
+        this.shikiBlobRequests.delete(res.id);
+        resolve(res.hast);
+      } else {
+        const resolve = this.shikiDiffRequests.get(res.id);
+        if (!resolve) return;
+        this.shikiDiffRequests.delete(res.id);
+        resolve(res.entries);
+      }
     };
   }
 
@@ -112,9 +124,10 @@ export class ClientProvider extends GitdotProvider {
 
     const id = crypto.randomUUID();
     const hast = await new Promise<Root>((resolve) => {
-      this.shikiRequests.set(id, resolve);
+      this.shikiBlobRequests.set(id, resolve);
       this.shikiWorker?.port.postMessage({
         id,
+        kind: "blob",
         path,
         content: blob.content,
       } satisfies ShikiRequest);
@@ -128,5 +141,28 @@ export class ClientProvider extends GitdotProvider {
     const hit = cached?.find((c) => c.sha === sha || c.sha.startsWith(sha));
     if (hit) return hit;
     return this.db.getCommit(owner, repo, sha);
+  }
+
+  async getCommitDiff(
+    owner: string,
+    repo: string,
+    sha: string,
+  ): Promise<DiffEntry[]> {
+    const key = `${owner}/${repo}/${sha}`;
+    const cached = this.diffs.get(key);
+    if (cached) return cached;
+
+    const files = await fetchCommitDiffFiles(owner, repo, sha);
+    const entries = await new Promise<DiffEntry[]>((resolve) => {
+      const id = crypto.randomUUID();
+      this.shikiDiffRequests.set(id, resolve);
+      this.shikiWorker?.port.postMessage({
+        id,
+        kind: "diff",
+        files,
+      } satisfies ShikiRequest);
+    });
+    this.diffs.set(key, entries);
+    return entries;
   }
 }

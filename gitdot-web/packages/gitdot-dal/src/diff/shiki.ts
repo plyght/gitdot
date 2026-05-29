@@ -1,3 +1,4 @@
+import type { RepositoryDiffFileResource } from "gitdot-api";
 import type { Element, ElementContent, Root } from "hast";
 import {
   type BundledLanguage,
@@ -5,6 +6,8 @@ import {
   type Highlighter,
   type ShikiTransformer,
 } from "shiki";
+import { diffFiles } from "./algo";
+import type { DiffSpans } from "./types";
 
 async function getHighlighter(
   lang: BundledLanguage | undefined,
@@ -63,11 +66,58 @@ export async function renderHast(
 }
 
 /**
- * turns a plaintext blob (content) into a list of rendered spans
+ * renders a diff file (pair of two files)
  *
- * this is meant to be used in diffing views and requires what the set of changed lines and what side the diff is on (e.g., show red or green)
+ * into DiffSpans -> hunk metadata + two vector arrays of hast nodes
  */
-export async function renderSpans(
+export async function renderDiff(
+  file: RepositoryDiffFileResource,
+): Promise<DiffSpans> {
+  const left = file.left_content ?? null;
+  const right = file.right_content ?? null;
+  const lang = inferLanguage(file.path);
+
+  if (left != null && right != null) {
+    const hunks = diffFiles(left, right);
+    if (hunks.length === 0) return { kind: "no-change" };
+
+    const allRemovedLines = new Set(hunks.flatMap((h) => [...h.removedLines]));
+    const allAddedLines = new Set(hunks.flatMap((h) => [...h.addedLines]));
+    const isAllAdditions = allRemovedLines.size === 0;
+    const isAllRemovals = allAddedLines.size === 0;
+
+    if (isAllAdditions || isAllRemovals) {
+      const side = isAllAdditions ? "right" : "left";
+      const content = isAllAdditions ? right : left;
+      const changedLines = isAllAdditions ? allAddedLines : allRemovedLines;
+      const spans = await renderSpans(
+        content,
+        lang,
+        "vitesse",
+        side,
+        changedLines,
+      );
+      return { kind: "unilateral", spans, hunks, side };
+    }
+
+    const [leftSpans, rightSpans] = await Promise.all([
+      renderSpans(left, lang, "vitesse", "left", allRemovedLines),
+      renderSpans(right, lang, "vitesse", "right", allAddedLines),
+    ]);
+    return { kind: "split", leftSpans, rightSpans, hunks };
+  } else if (right === null) {
+    return { kind: "deleted" };
+  } else if (left === null) {
+    const lineCount = right.split("\n").length;
+    const allLines = new Set(Array.from({ length: lineCount }, (_, i) => i));
+    const spans = await renderSpans(right, lang, "vitesse", "right", allLines);
+    return { kind: "created", spans };
+  } else {
+    return { kind: "no-change" };
+  }
+}
+
+async function renderSpans(
   content: string,
   lang: BundledLanguage | undefined,
   theme: "vitesse" | "gitdot",

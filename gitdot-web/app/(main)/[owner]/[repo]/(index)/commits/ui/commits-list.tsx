@@ -2,12 +2,12 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { RepositoryCommitResource } from "gitdot-api";
+import { ClientProvider } from "gitdot-dal/client";
 import { useParams } from "next/navigation";
 import { memo, useRef } from "react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { UserSlug } from "@/(main)/[owner]/ui/user/user-slug";
 import { useTimezone } from "@/(main)/context/timezone";
-import { prefetchCommitDiff } from "@/(main)/ui/commit-dialog";
 import { formatDateIso } from "@/util/date";
 
 export function CommitsList({
@@ -60,7 +60,9 @@ const CommitRow = memo(function CommitRow({
       data-page-item
       tabIndex={-1}
       onPointerEnter={() =>
-        prefetchCommitDiff(commit.owner_name, commit.repo_name, commit.sha)
+        ClientProvider.instance
+          .getCommitDiff(commit.owner_name, commit.repo_name, commit.sha)
+          .catch(() => {})
       }
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey) {

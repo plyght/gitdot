@@ -1,27 +1,53 @@
 "use client";
 
-import type { RepositoryCommitResource } from "gitdot-api";
-import type { DiffEntry } from "gitdot-dal/client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ResourcePromisesType,
+  type ResourceResultType,
+  useResources,
+} from "gitdot-dal/client";
+import { notFound } from "next/navigation";
+import { Suspense, use, useCallback, useEffect, useRef, useState } from "react";
+import { Loading } from "@/ui/loading";
 import { OverlayScroll } from "@/ui/scroll";
+import type { Resources } from "./page";
 import { CommitBody } from "./ui/commit-body";
 import { CommitHeader } from "./ui/commit-header";
 import { CommitShortcuts } from "./ui/commit-shortcuts";
 import { CommitSidebar } from "./ui/commit-sidebar";
 
+type ResourcePromises = ResourcePromisesType<Resources>;
 type ScrollDirection = "up" | "down";
 
 export function PageClient({
   owner,
   repo,
-  commit,
-  diffEntries,
+  resources,
 }: {
   owner: string;
   repo: string;
-  commit: RepositoryCommitResource;
-  diffEntries: DiffEntry[];
+  resources: ResourceResultType<Resources>;
 }) {
+  const promises = useResources(resources);
+  return (
+    <Suspense fallback={<Loading />}>
+      <PageContent owner={owner} repo={repo} promises={promises} />
+    </Suspense>
+  );
+}
+
+function PageContent({
+  owner,
+  repo,
+  promises,
+}: {
+  owner: string;
+  repo: string;
+  promises: ResourcePromises;
+}) {
+  const commit = use(promises.commit);
+  const diffEntries = use(promises.diff);
+  if (!commit) notFound();
+
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // we keep track of what direction the user is "scrolling in" to determine how to compute which sidebar element is active

@@ -1,15 +1,16 @@
+import type { RepositoryDiffFileResource } from "gitdot-api";
 import type { DiffEntry } from "./types";
 
-export function fetchCommitDiff(
+export async function fetchCommitDiffFiles(
   owner: string,
   repo: string,
   sha: string,
-): Promise<DiffEntry[]> {
+): Promise<RepositoryDiffFileResource[]> {
   const params = new URLSearchParams({ owner, repo, sha });
   return fetch(`/api/repository/diff?${params}`).then((res) => res.json());
 }
 
-export function fetchBlobDiffs(
+export async function fetchBlobDiffs(
   owner: string,
   repo: string,
   commitShas: string[],

@@ -4,6 +4,7 @@ import type {
   RepositoryPathsResource,
 } from "gitdot-api";
 import type { Root } from "hast";
+import type { DiffEntry } from "../diff/types";
 
 export type ResourceDefinition = Record<
   string,
@@ -54,4 +55,9 @@ export abstract class GitdotProvider {
     repo: string,
     sha: string,
   ): Promise<RepositoryCommitResource | null>;
+  abstract getCommitDiff(
+    owner: string,
+    repo: string,
+    sha: string,
+  ): Promise<DiffEntry[]>;
 }
