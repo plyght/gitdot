@@ -318,3 +318,271 @@ impl MigrationRepository for MigrationRepositoryImpl {
         Ok(rows)
     }
 }
+
+#[cfg(all(test, feature = "db-tests"))]
+mod tests {
+    use chrono::{Duration, Utc};
+    use sqlx::PgPool;
+    use uuid::Uuid;
+
+    use super::{
+        MigrationOriginService, MigrationRepository, MigrationRepositoryImpl,
+        MigrationRepositoryStatus, MigrationStatus, RepositoryOwnerType, RepositoryVisibility,
+    };
+    use crate::repository::test_common::{insert_migration_at, insert_user, insert_user_repo};
+
+    #[sqlx::test]
+    async fn create_assigns_sequential_numbers_per_author(pool: PgPool) {
+        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        let bob = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+        insert_user(&pool, bob, "bob").await;
+
+        let first = repo
+            .create(
+                alice,
+                MigrationOriginService::GitHub,
+                "octo/repo",
+                &RepositoryOwnerType::User,
+                "alice/repo",
+                &RepositoryOwnerType::User,
+            )
+            .await
+            .unwrap();
+        assert_eq!(first.number, 1);
+        assert_eq!(first.author_id, alice);
+        assert_eq!(first.origin_service, MigrationOriginService::GitHub);
+        assert_eq!(first.origin, "octo/repo");
+        assert_eq!(first.origin_type, RepositoryOwnerType::User);
+        assert_eq!(first.destination, "alice/repo");
+        assert_eq!(first.status, MigrationStatus::Pending);
+        assert!(first.repositories.is_none());
+
+        // Numbers increment per author.
+        let second = repo
+            .create(
+                alice,
+                MigrationOriginService::GitHub,
+                "octo/two",
+                &RepositoryOwnerType::User,
+                "alice/two",
+                &RepositoryOwnerType::User,
+            )
+            .await
+            .unwrap();
+        assert_eq!(second.number, 2);
+
+        // A different author starts numbering again at 1.
+        let bob_first = repo
+            .create(
+                bob,
+                MigrationOriginService::GitHub,
+                "octo/b",
+                &RepositoryOwnerType::Organization,
+                "bob/b",
+                &RepositoryOwnerType::Organization,
+            )
+            .await
+            .unwrap();
+        assert_eq!(bob_first.number, 1);
+        assert_eq!(bob_first.origin_type, RepositoryOwnerType::Organization);
+    }
+
+    #[sqlx::test]
+    async fn get_returns_migration_with_repositories(pool: PgPool) {
+        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+        let migration = repo
+            .create(
+                alice,
+                MigrationOriginService::GitHub,
+                "octo/repo",
+                &RepositoryOwnerType::User,
+                "alice/repo",
+                &RepositoryOwnerType::User,
+            )
+            .await
+            .unwrap();
+        repo.create_migration_repository(
+            migration.id,
+            "octo/repo",
+            42,
+            None,
+            "alice/repo",
+            &RepositoryVisibility::Public,
+        )
+        .await
+        .unwrap();
+
+        let fetched = repo
+            .get(alice, migration.number)
+            .await
+            .unwrap()
+            .expect("found");
+        let repos = fetched.repositories.expect("repositories projected");
+        assert_eq!(repos.len(), 1);
+        assert_eq!(repos[0].origin_full_name, "octo/repo");
+        assert_eq!(repos[0].origin_repository_id, 42);
+        assert_eq!(repos[0].visibility, RepositoryVisibility::Public);
+        assert_eq!(repos[0].status, MigrationRepositoryStatus::Pending);
+
+        assert!(repo.get(alice, 999).await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn list_paginates_newest_first(pool: PgPool) {
+        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+        let now = Utc::now();
+        insert_migration_at(&pool, alice, 1, now - Duration::days(3)).await;
+        insert_migration_at(&pool, alice, 2, now - Duration::days(2)).await;
+        insert_migration_at(&pool, alice, 3, now - Duration::days(1)).await;
+
+        let (page, cursor) = repo.list(alice, None, 2).await.unwrap();
+        assert_eq!(page.len(), 2);
+        assert_eq!(page[0].number, 3);
+        assert_eq!(page[1].number, 2);
+        let cursor = cursor.expect("more rows remain");
+
+        let (page, cursor) = repo.list(alice, Some(cursor), 2).await.unwrap();
+        assert_eq!(page.len(), 1);
+        assert_eq!(page[0].number, 1);
+        assert!(cursor.is_none());
+    }
+
+    #[sqlx::test]
+    async fn update_status_changes_status(pool: PgPool) {
+        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+        let migration = repo
+            .create(
+                alice,
+                MigrationOriginService::GitHub,
+                "o",
+                &RepositoryOwnerType::User,
+                "d",
+                &RepositoryOwnerType::User,
+            )
+            .await
+            .unwrap();
+        assert_eq!(migration.status, MigrationStatus::Pending);
+
+        let updated = repo
+            .update_status(migration.id, MigrationStatus::Completed)
+            .await
+            .unwrap();
+        assert_eq!(updated.status, MigrationStatus::Completed);
+    }
+
+    #[sqlx::test]
+    async fn migration_repository_create_and_update_status(pool: PgPool) {
+        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+        let migration = repo
+            .create(
+                alice,
+                MigrationOriginService::GitHub,
+                "o",
+                &RepositoryOwnerType::User,
+                "d",
+                &RepositoryOwnerType::User,
+            )
+            .await
+            .unwrap();
+
+        let created = repo
+            .create_migration_repository(
+                migration.id,
+                "octo/repo",
+                99,
+                None,
+                "alice/repo",
+                &RepositoryVisibility::Private,
+            )
+            .await
+            .unwrap();
+        assert_eq!(created.migration_id, migration.id);
+        assert_eq!(created.origin_repository_id, 99);
+        assert_eq!(created.visibility, RepositoryVisibility::Private);
+        assert_eq!(created.status, MigrationRepositoryStatus::Pending);
+        assert!(created.error.is_none());
+        assert!(created.destination_repository_id.is_none());
+
+        let failed = repo
+            .update_migration_repository_status(
+                created.id,
+                MigrationRepositoryStatus::Failed,
+                Some("boom"),
+            )
+            .await
+            .unwrap();
+        assert_eq!(failed.status, MigrationRepositoryStatus::Failed);
+        assert_eq!(failed.error.as_deref(), Some("boom"));
+    }
+
+    #[sqlx::test]
+    async fn set_destination_and_list_by_origin_repository_id(pool: PgPool) {
+        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+        let migration = repo
+            .create(
+                alice,
+                MigrationOriginService::GitHub,
+                "o",
+                &RepositoryOwnerType::User,
+                "d",
+                &RepositoryOwnerType::User,
+            )
+            .await
+            .unwrap();
+
+        // Two migration repos share an origin id; only one gets a destination.
+        let linked = repo
+            .create_migration_repository(
+                migration.id,
+                "octo/repo",
+                555,
+                None,
+                "alice/repo",
+                &RepositoryVisibility::Public,
+            )
+            .await
+            .unwrap();
+        repo.create_migration_repository(
+            migration.id,
+            "octo/repo",
+            555,
+            None,
+            "alice/repo2",
+            &RepositoryVisibility::Public,
+        )
+        .await
+        .unwrap();
+
+        let dest_repo = Uuid::new_v4();
+        insert_user_repo(&pool, dest_repo, "repo", alice, "public").await;
+        repo.set_destination_repository_id(linked.id, dest_repo)
+            .await
+            .unwrap();
+
+        // Only the row whose destination is set is returned.
+        let rows = repo.list_by_origin_repository_id(555).await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].id, linked.id);
+        assert_eq!(rows[0].destination_repository_id, Some(dest_repo));
+
+        // An unknown origin id matches nothing.
+        assert!(
+            repo.list_by_origin_repository_id(123)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+    }
+}

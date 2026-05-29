@@ -163,3 +163,44 @@ pub async fn insert_filter_at(pool: &PgPool, repo_id: Uuid, name: &str, created_
     .await
     .unwrap();
 }
+
+pub async fn insert_migration_at(
+    pool: &PgPool,
+    author_id: Uuid,
+    number: i32,
+    created_at: DateTime<Utc>,
+) -> Uuid {
+    sqlx::query_scalar::<_, Uuid>(
+        "INSERT INTO migration.migrations
+            (number, author_id, origin_service, origin, origin_type, destination, destination_type, created_at)
+         VALUES ($1, $2, 'github', 'o', 'user', 'd', 'user', $3)
+         RETURNING id",
+    )
+    .bind(number)
+    .bind(author_id)
+    .bind(created_at)
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+pub async fn insert_installation_at(
+    pool: &PgPool,
+    installation_id: i64,
+    owner_id: Uuid,
+    login: &str,
+    created_at: DateTime<Utc>,
+) {
+    sqlx::query(
+        "INSERT INTO migration.github_installations
+            (installation_id, owner_id, type, github_login, created_at)
+         VALUES ($1, $2, 'user', $3, $4)",
+    )
+    .bind(installation_id)
+    .bind(owner_id)
+    .bind(login)
+    .bind(created_at)
+    .execute(pool)
+    .await
+    .unwrap();
+}

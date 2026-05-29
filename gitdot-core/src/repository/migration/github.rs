@@ -139,3 +139,77 @@ impl GitHubRepository for GitHubRepositoryImpl {
         Ok((installations, next_cursor))
     }
 }
+
+#[cfg(all(test, feature = "db-tests"))]
+mod tests {
+    use chrono::{Duration, Utc};
+    use sqlx::PgPool;
+    use uuid::Uuid;
+
+    use super::{GitHubInstallationType, GitHubRepository, GitHubRepositoryImpl};
+    use crate::repository::test_common::{insert_installation_at, insert_user};
+
+    #[sqlx::test]
+    async fn create_and_get_installation(pool: PgPool) {
+        let repo = GitHubRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        let other = Uuid::new_v4();
+        insert_user(&pool, owner, "alice").await;
+        insert_user(&pool, other, "bob").await;
+
+        let created = repo
+            .create(1001, owner, GitHubInstallationType::User, "octocat")
+            .await
+            .unwrap();
+        assert_eq!(created.installation_id, 1001);
+        assert_eq!(created.owner_id, owner);
+        assert_eq!(created.r#type, GitHubInstallationType::User);
+        assert_eq!(created.github_login, "octocat");
+
+        let found = repo.get(owner, 1001).await.unwrap().expect("found");
+        assert_eq!(found.id, created.id);
+
+        // Lookup is scoped to both owner and installation id.
+        assert!(repo.get(owner, 9999).await.unwrap().is_none());
+        assert!(repo.get(other, 1001).await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn delete_by_installation_id_removes(pool: PgPool) {
+        let repo = GitHubRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        insert_user(&pool, owner, "alice").await;
+        repo.create(1001, owner, GitHubInstallationType::Organization, "acme")
+            .await
+            .unwrap();
+
+        repo.delete_by_installation_id(1001).await.unwrap();
+        assert!(repo.get(owner, 1001).await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn list_by_owner_paginates_newest_first(pool: PgPool) {
+        let repo = GitHubRepositoryImpl::new(pool.clone());
+        let owner = Uuid::new_v4();
+        let other = Uuid::new_v4();
+        insert_user(&pool, owner, "alice").await;
+        insert_user(&pool, other, "bob").await;
+        let now = Utc::now();
+        insert_installation_at(&pool, 1, owner, "first", now - Duration::days(3)).await;
+        insert_installation_at(&pool, 2, owner, "second", now - Duration::days(2)).await;
+        insert_installation_at(&pool, 3, owner, "third", now - Duration::days(1)).await;
+        // Another owner's installation must not appear.
+        insert_installation_at(&pool, 4, other, "other", now).await;
+
+        let (page, cursor) = repo.list_by_owner(owner, None, 2).await.unwrap();
+        assert_eq!(page.len(), 2);
+        assert_eq!(page[0].installation_id, 3);
+        assert_eq!(page[1].installation_id, 2);
+        let cursor = cursor.expect("more rows remain");
+
+        let (page, cursor) = repo.list_by_owner(owner, Some(cursor), 2).await.unwrap();
+        assert_eq!(page.len(), 1);
+        assert_eq!(page[0].installation_id, 1);
+        assert!(cursor.is_none());
+    }
+}
