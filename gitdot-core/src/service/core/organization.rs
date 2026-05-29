@@ -13,7 +13,7 @@ use crate::{
         OrganizationRepository, PgOrganizationRepository, PgRepositoryRepository, PgUserRepository,
         RepositoryRepository, UserRepository,
     },
-    util::cursor,
+    util::{auth::is_reserved_name, cursor},
 };
 
 /// Organizations and their membership: creating and reading orgs, editing org
@@ -24,14 +24,15 @@ pub trait OrganizationService: Send + Sync + 'static {
     /// Creates an organization named `request.org_name` owned by
     /// `request.owner_id`.
     ///
-    /// The name must be free across *both* organizations and users (owner names
-    /// share one namespace). On success a default avatar is generated and
-    /// uploaded to `orgs/{org_id}.webp` on a best-effort basis — avatar
-    /// generation or upload failures are swallowed and do not fail creation.
+    /// The name must not be reserved and must be free across *both*
+    /// organizations and users (owner names share one namespace). On success a
+    /// default avatar is generated and uploaded to `orgs/{org_id}.webp` on a
+    /// best-effort basis — avatar generation or upload failures are swallowed
+    /// and do not fail creation.
     ///
     /// # Errors
-    /// - [`OrganizationError::Conflict`] when the name is already taken by an
-    ///   organization or a user.
+    /// - [`OrganizationError::Conflict`] when the name is reserved or already
+    ///   taken by an organization or a user.
     async fn create_organization(
         &self,
         request: CreateOrganizationRequest,
@@ -171,6 +172,11 @@ where
         request: CreateOrganizationRequest,
     ) -> Result<OrganizationResponse, OrganizationError> {
         let org_name = request.org_name.to_string();
+        if is_reserved_name(&org_name) {
+            return Err(
+                ConflictError::new("organization", format!("{org_name} is reserved")).into(),
+            );
+        }
         if self.org_repo.get(&org_name).await?.is_some() {
             return Err(ConflictError::new("organization", &org_name).into());
         }
@@ -426,6 +432,17 @@ mod tests {
             .returning(|_| Ok(Some(create_user("acme"))));
 
         let req = CreateOrganizationRequest::new("acme", Uuid::new_v4(), None).unwrap();
+        let err = service.create_organization(req).await.unwrap_err();
+        assert!(matches!(err, OrganizationError::Conflict(_)));
+    }
+
+    #[tokio::test]
+    async fn create_organization_conflicts_when_name_is_reserved() {
+        // No repo expectations: the reserved-name check must short-circuit
+        // before any org/user lookup.
+        let service = create_service();
+
+        let req = CreateOrganizationRequest::new("admin", Uuid::new_v4(), None).unwrap();
         let err = service.create_organization(req).await.unwrap_err();
         assert!(matches!(err, OrganizationError::Conflict(_)));
     }
