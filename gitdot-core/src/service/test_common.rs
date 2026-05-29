@@ -2,8 +2,8 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::model::{
-    AuthProvider, Commit, CommitRepository, Repository, RepositoryOwnerType, RepositoryVisibility,
-    User,
+    AuthProvider, Commit, CommitRepository, Organization, OrganizationMember, OrganizationRole,
+    Repository, RepositoryOwnerType, RepositoryVisibility, User,
 };
 
 pub fn create_user(name: &str) -> User {
@@ -38,6 +38,32 @@ pub fn create_repository(
         user_star: false,
         readonly: false,
         created_at: Utc::now(),
+    }
+}
+
+pub fn create_organization(name: &str) -> Organization {
+    Organization {
+        id: Uuid::new_v4(),
+        name: name.to_string(),
+        display_name: None,
+        location: None,
+        readme: None,
+        links: vec![],
+        created_at: Utc::now(),
+        image_updated_at: Utc::now(),
+        members: None,
+    }
+}
+
+pub fn create_member(user_name: &str, role: OrganizationRole) -> OrganizationMember {
+    OrganizationMember {
+        id: Uuid::new_v4(),
+        user_id: Uuid::new_v4(),
+        user_name: user_name.to_string(),
+        role,
+        role_description: None,
+        created_at: Utc::now(),
+        image_updated_at: Utc::now(),
     }
 }
 
