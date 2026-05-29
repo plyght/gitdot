@@ -54,6 +54,13 @@ tracing = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true }
 
+[features]
+# Gates DB-backed repository tests (require a running Postgres).
+# Excluded from a plain `cargo test`.
+# Run with `DATABASE_URL=local-url cargo test -p gitdot-core --features db-tests`.
+db-tests = []
+
 [dev-dependencies]
 mockall = { workspace = true }
 tempfile = { workspace = true }
+sqlx = { workspace = true, features = ["macros", "migrate"] }

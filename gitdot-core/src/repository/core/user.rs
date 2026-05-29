@@ -529,3 +529,438 @@ impl UserRepository for UserRepositoryImpl {
         ))
     }
 }
+
+#[cfg(all(test, feature = "db-tests"))]
+mod tests {
+    use chrono::{Duration, Months, Utc};
+    use sqlx::PgPool;
+    use uuid::Uuid;
+
+    use super::{AuthProvider, UserRepository, UserRepositoryImpl};
+
+    async fn insert_user(pool: &PgPool, id: Uuid, name: &str) {
+        sqlx::query("INSERT INTO core.users (id, name) VALUES ($1, $2)")
+            .bind(id)
+            .bind(name)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    async fn insert_repo(pool: &PgPool, id: Uuid, name: &str, owner_id: Uuid, visibility: &str) {
+        sqlx::query(
+            "INSERT INTO core.repositories (id, name, owner_id, owner_type, visibility)
+             VALUES ($1, $2, $3, 'user', $4::core.repository_visibility)",
+        )
+        .bind(id)
+        .bind(name)
+        .bind(owner_id)
+        .bind(visibility)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn star(pool: &PgPool, user_id: Uuid, repo_id: Uuid) {
+        sqlx::query("INSERT INTO core.stars (user_id, repository_id) VALUES ($1, $2)")
+            .bind(user_id)
+            .bind(repo_id)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    async fn insert_org(pool: &PgPool, name: &str) {
+        sqlx::query("INSERT INTO core.organizations (name) VALUES ($1)")
+            .bind(name)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    async fn insert_commit(
+        pool: &PgPool,
+        repo_id: Uuid,
+        author_id: Uuid,
+        sha: &str,
+        created_at: chrono::DateTime<Utc>,
+    ) {
+        sqlx::query(
+            "INSERT INTO core.commits (repo_id, author_id, sha, ref_name, message, created_at)
+             VALUES ($1, $2, $3, 'refs/heads/main', 'msg', $4)",
+        )
+        .bind(repo_id)
+        .bind(author_id)
+        .bind(sha)
+        .bind(created_at)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[sqlx::test]
+    async fn create_persists_user_with_primary_email(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+
+        let user = repo
+            .create("alice@example.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+        assert!(user.name.starts_with("user_"));
+        assert_eq!(user.provider, AuthProvider::Email);
+
+        // `create` inserts the email in a data-modifying CTE whose rows aren't
+        // visible to the same statement's projection, so its return value has an
+        // empty `emails`; re-fetch to inspect the persisted primary email.
+        let fetched = repo.get_by_id(user.id).await.unwrap().unwrap();
+        let primary = fetched.primary_email().expect("primary email");
+        assert_eq!(primary.email, "alice@example.com");
+        assert!(primary.is_primary);
+        assert!(primary.is_verified);
+
+        // An unverified GitHub signup keeps the email unverified.
+        let github = repo
+            .create("bob@example.com", false, AuthProvider::GitHub)
+            .await
+            .unwrap();
+        assert_eq!(github.provider, AuthProvider::GitHub);
+        let github = repo.get_by_id(github.id).await.unwrap().unwrap();
+        assert!(!github.primary_email().unwrap().is_verified);
+    }
+
+    #[sqlx::test]
+    async fn get_and_get_by_id_round_trip(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let user = repo
+            .create("a@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+
+        let by_name = repo.get(&user.name).await.unwrap().expect("found by name");
+        assert_eq!(by_name.id, user.id);
+        let by_id = repo.get_by_id(user.id).await.unwrap().expect("found by id");
+        assert_eq!(by_id.name, user.name);
+
+        assert!(repo.get("no_such_user").await.unwrap().is_none());
+        assert!(repo.get_by_id(Uuid::new_v4()).await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn update_changes_only_provided_fields(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let user = repo
+            .create("u@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+
+        let updated = repo
+            .update(
+                user.id,
+                Some("renamed".to_string()),
+                Some("Earth".to_string()),
+                Some("hello".to_string()),
+                Some(vec!["https://example.com".to_string()]),
+                Some("Display".to_string()),
+            )
+            .await
+            .unwrap();
+        assert_eq!(updated.name, "renamed");
+        assert_eq!(updated.location.as_deref(), Some("Earth"));
+        assert_eq!(updated.readme.as_deref(), Some("hello"));
+        assert_eq!(updated.links, vec!["https://example.com".to_string()]);
+        assert_eq!(updated.display_name.as_deref(), Some("Display"));
+
+        // A partial update touches only the provided field.
+        let again = repo
+            .update(user.id, None, Some("Mars".to_string()), None, None, None)
+            .await
+            .unwrap();
+        assert_eq!(again.name, "renamed");
+        assert_eq!(again.location.as_deref(), Some("Mars"));
+        assert_eq!(again.readme.as_deref(), Some("hello"));
+    }
+
+    #[sqlx::test]
+    async fn touch_image_advances_timestamp(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let id = Uuid::new_v4();
+        // Seed with an old image timestamp so the touch is observable.
+        sqlx::query(
+            "INSERT INTO core.users (id, name, image_updated_at)
+             VALUES ($1, $2, NOW() - INTERVAL '1 day')",
+        )
+        .bind(id)
+        .bind("imguser")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let before = repo.get_by_id(id).await.unwrap().unwrap().image_updated_at;
+        repo.touch_image(id).await.unwrap();
+        let after = repo.get_by_id(id).await.unwrap().unwrap().image_updated_at;
+        assert!(after > before, "expected {after} > {before}");
+    }
+
+    #[sqlx::test]
+    async fn get_by_email_matches_primary_only(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let user = repo
+            .create("primary@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+        repo.create_email(user.id, "secondary@x.com").await.unwrap();
+
+        let found = repo
+            .get_by_email("primary@x.com")
+            .await
+            .unwrap()
+            .expect("found by primary email");
+        assert_eq!(found.id, user.id);
+
+        // A non-primary email must not resolve a user here.
+        assert!(
+            repo.get_by_email("secondary@x.com")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(repo.get_by_email("missing@x.com").await.unwrap().is_none());
+    }
+
+    #[sqlx::test]
+    async fn get_by_emails_returns_verified_only(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let verified = repo
+            .create("verified@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+        repo.create("unverified@x.com", false, AuthProvider::Email)
+            .await
+            .unwrap();
+
+        let rows = repo
+            .get_by_emails(&[
+                "verified@x.com".to_string(),
+                "unverified@x.com".to_string(),
+                "missing@x.com".to_string(),
+            ])
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "verified@x.com");
+        assert_eq!(rows[0].1, verified.id);
+
+        assert!(repo.get_by_emails(&[]).await.unwrap().is_empty());
+    }
+
+    #[sqlx::test]
+    async fn verify_email_marks_primary_verified(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let user = repo
+            .create("v@x.com", false, AuthProvider::Email)
+            .await
+            .unwrap();
+        let initial = repo.get_by_id(user.id).await.unwrap().unwrap();
+        assert!(!initial.primary_email().unwrap().is_verified);
+
+        repo.verify_email(user.id).await.unwrap();
+
+        let refreshed = repo.get_by_id(user.id).await.unwrap().unwrap();
+        assert!(refreshed.primary_email().unwrap().is_verified);
+    }
+
+    #[sqlx::test]
+    async fn is_name_taken_checks_users_and_orgs(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let user = repo
+            .create("n@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+        insert_org(&pool, "acme").await;
+
+        assert!(repo.is_name_taken(&user.name).await.unwrap());
+        assert!(repo.is_name_taken("acme").await.unwrap());
+        assert!(!repo.is_name_taken("totally_unused_name").await.unwrap());
+    }
+
+    #[sqlx::test]
+    async fn list_emails_orders_primary_first(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let user = repo
+            .create("primary@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+        repo.create_email(user.id, "second@x.com").await.unwrap();
+
+        let emails = repo.list_emails(user.id).await.unwrap();
+        assert_eq!(emails.len(), 2);
+        assert!(emails[0].is_primary);
+        assert_eq!(emails[0].email, "primary@x.com");
+        assert!(!emails[1].is_primary);
+        assert_eq!(emails[1].email, "second@x.com");
+    }
+
+    #[sqlx::test]
+    async fn create_and_get_email_for_user(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let user = repo
+            .create("p@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+        let other = repo
+            .create("o@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+
+        let created = repo.create_email(user.id, "second@x.com").await.unwrap();
+        assert_eq!(created.email, "second@x.com");
+        assert_eq!(created.user_id, user.id);
+        assert!(!created.is_primary);
+        assert!(!created.is_verified);
+
+        assert!(
+            repo.get_email_for_user(user.id, "second@x.com")
+                .await
+                .unwrap()
+                .is_some()
+        );
+        // Lookup is scoped to the owning user.
+        assert!(
+            repo.get_email_for_user(other.id, "second@x.com")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            repo.get_email_for_user(user.id, "nope@x.com")
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn upsert_verified_emails_inserts_and_skips_conflicts(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let a = repo
+            .create("a@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+        let b = repo
+            .create("b@x.com", true, AuthProvider::Email)
+            .await
+            .unwrap();
+
+        repo.upsert_verified_emails(a.id, &["x@a.com".to_string(), "y@a.com".to_string()])
+            .await
+            .unwrap();
+        let emails = repo.list_emails(a.id).await.unwrap();
+        assert_eq!(emails.len(), 3); // primary + two new
+        assert!(
+            emails
+                .iter()
+                .filter(|e| !e.is_primary)
+                .all(|e| e.is_verified)
+        );
+
+        // A duplicate for A is skipped, and a verified email already owned by A
+        // can't be claimed by B — only the genuinely new address lands.
+        repo.upsert_verified_emails(b.id, &["x@a.com".to_string(), "z@b.com".to_string()])
+            .await
+            .unwrap();
+        let b_emails = repo.list_emails(b.id).await.unwrap();
+        assert_eq!(b_emails.len(), 2); // primary + z@b.com only
+        assert!(b_emails.iter().any(|e| e.email == "z@b.com"));
+        assert!(!b_emails.iter().any(|e| e.email == "x@a.com"));
+
+        // Empty input is a no-op.
+        repo.upsert_verified_emails(a.id, &[]).await.unwrap();
+        assert_eq!(repo.list_emails(a.id).await.unwrap().len(), 3);
+    }
+
+    #[sqlx::test]
+    async fn starred_repos_respect_viewer_visibility(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        let bob = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+        insert_user(&pool, bob, "bob").await;
+
+        let public_repo = Uuid::new_v4();
+        let private_repo = Uuid::new_v4();
+        insert_repo(&pool, public_repo, "pub", alice, "public").await;
+        insert_repo(&pool, private_repo, "priv", alice, "private").await;
+        star(&pool, alice, public_repo).await;
+        star(&pool, alice, private_repo).await;
+
+        // Owner sees both their public and private starred repos.
+        let (repos, _) = repo
+            .list_starred_repositories(alice, Some(alice), None, 20)
+            .await
+            .unwrap();
+        assert_eq!(repos.len(), 2);
+
+        // A different viewer only sees the public one.
+        let (repos, _) = repo
+            .list_starred_repositories(alice, Some(bob), None, 20)
+            .await
+            .unwrap();
+        assert_eq!(repos.len(), 1);
+        assert_eq!(repos[0].name, "pub");
+
+        // Anonymous viewer only sees the public one.
+        let (repos, _) = repo
+            .list_starred_repositories(alice, None, None, 20)
+            .await
+            .unwrap();
+        assert_eq!(repos.len(), 1);
+        assert_eq!(repos[0].name, "pub");
+    }
+
+    #[sqlx::test]
+    async fn contributed_repos_respect_from_window(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+
+        let recent_repo = Uuid::new_v4();
+        let old_repo = Uuid::new_v4();
+        insert_repo(&pool, recent_repo, "recent", alice, "public").await;
+        insert_repo(&pool, old_repo, "old", alice, "public").await;
+
+        let now = Utc::now();
+        insert_commit(
+            &pool,
+            recent_repo,
+            alice,
+            &"a".repeat(40),
+            now - Duration::days(1),
+        )
+        .await;
+        insert_commit(
+            &pool,
+            old_repo,
+            alice,
+            &"b".repeat(40),
+            now - Duration::days(800),
+        )
+        .await;
+
+        // 12-month window excludes the ~2-year-old contribution.
+        let (rows, _) = repo
+            .list_contributed_repositories(alice, Some(alice), now - Months::new(12), None, 20)
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        let (r, count, _last) = &rows[0];
+        assert_eq!(r.name, "recent");
+        assert_eq!(*count, 1);
+
+        // A wider window includes both.
+        let (rows, _) = repo
+            .list_contributed_repositories(alice, Some(alice), now - Months::new(60), None, 20)
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 2);
+    }
+}
