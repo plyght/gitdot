@@ -402,6 +402,9 @@ impl UserRepository for UserRepositoryImpl {
 
         let mut rows = sqlx::query_as::<_, StarredRepoRow>(
             r#"
+            WITH viewer_orgs AS (
+                SELECT organization_id FROM core.organization_members WHERE user_id = $5
+            )
             SELECT r.id, r.name, r.owner_id, COALESCE(ru.name, ro.name) AS owner_name,
                    r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
                    EXISTS(SELECT 1 FROM core.stars vs WHERE vs.repository_id = r.id AND vs.user_id = $5) AS user_star,
@@ -413,6 +416,12 @@ impl UserRepository for UserRepositoryImpl {
             LEFT JOIN core.organizations ro
               ON r.owner_id = ro.id AND r.owner_type = 'organization'
             WHERE s.user_id = $1
+              AND (
+                  r.visibility = 'public'
+                  OR (r.owner_type = 'user' AND r.owner_id = $5)
+                  OR (r.owner_type = 'organization'
+                      AND r.owner_id IN (SELECT organization_id FROM viewer_orgs))
+              )
               AND ($2::timestamptz IS NULL OR (s.created_at, s.id) < ($2, $3))
             ORDER BY s.created_at DESC, s.id DESC
             LIMIT $4

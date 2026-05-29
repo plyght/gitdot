@@ -320,6 +320,7 @@ where
             .await?
             .or_not_found("user", &user_name)?;
 
+        // visibility is filtered in SQL based on viewer_id
         let (repositories, next_cursor) = self
             .user_repo
             .list_starred_repositories(
@@ -329,13 +330,6 @@ where
                 request.limit as i64,
             )
             .await?;
-
-        let is_owner = request.viewer_id.map(|id| id == user.id).unwrap_or(false);
-        let repositories = if is_owner {
-            repositories
-        } else {
-            repositories.into_iter().filter(|r| r.is_public()).collect()
-        };
 
         Ok(Page {
             data: repositories.into_iter().map(|r| r.into()).collect(),
@@ -354,6 +348,7 @@ where
             .await?
             .or_not_found("user", &user_name)?;
 
+        // visibility is filtered in SQL based on viewer_id
         let (rows, next_cursor) = self
             .user_repo
             .list_contributed_repositories(
