@@ -22,12 +22,12 @@ async function getHighlighter(
   }
   if (!loaded.includes("vitesse-dark")) {
     await highlighter.loadTheme(
-      (await import("../themes/vitesse-dark")).default,
+      (await import("./themes/vitesse-dark")).default,
     );
   }
   if (!loaded.includes("gitdot-light")) {
     await highlighter.loadTheme(
-      (await import("../themes/gitdot-light")).default,
+      (await import("./themes/gitdot-light")).default,
     );
   }
 
