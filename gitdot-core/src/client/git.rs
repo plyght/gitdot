@@ -5,7 +5,7 @@ use tokio::{fs, task};
 use crate::{
     dto::{
         CommitDiffResponse, InitialCommitFile, PathType, RepositoryBlobResponse,
-        RepositoryBlobsResponse, RepositoryCommitResponse, RepositoryPath, RepositoryPathsResponse,
+        RepositoryCommitResponse, RepositoryPath, RepositoryPathsResponse,
     },
     error::GitError,
     util::{
@@ -145,42 +145,9 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         &self,
         owner: &str,
         repo: &str,
-        ref_name: &str,
         paths: &[String],
-    ) -> Result<RepositoryBlobsResponse, GitError>;
-
-    /// Reads `paths` (files only) at a single ref, returning one entry per
-    /// input path in order — `None` where the path is absent. `ref_name` of
-    /// `None` reads against an empty tree (every path resolves to `None`), used
-    /// to represent the "before" side of an addition.
-    ///
-    /// # Errors
-    /// - [`GitError::NotFound`] — `ref_name` is `Some` but does not exist.
-    /// - [`GitError::Git2Error`] — a git operation failed.
-    /// - [`GitError::JoinError`] — the blocking task panicked.
-    async fn get_repo_blobs_at_ref(
-        &self,
-        owner: &str,
-        repo: &str,
-        ref_name: Option<&str>,
-        paths: &[String],
-    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError>;
-
-    /// Reads a single `path` across several `refs`, returning one entry per ref
-    /// that contains it. Refs that do not resolve, or that lack the path, are
-    /// skipped, so the result may be shorter than `refs`.
-    ///
-    /// # Errors
-    /// - [`GitError::Git2Error`] — a git operation other than a missing ref
-    ///   failed.
-    /// - [`GitError::JoinError`] — the blocking task panicked.
-    async fn get_repo_blob_at_refs(
-        &self,
-        owner: &str,
-        repo: &str,
-        path: &str,
         refs: &[String],
-    ) -> Result<RepositoryBlobsResponse, GitError>;
+    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError>;
 
     /// Returns the full, recursive list of every path (files and folders) in
     /// the tree of `ref_name`.
@@ -693,118 +660,33 @@ impl GitClient for Git2Client {
         &self,
         owner: &str,
         repo: &str,
-        ref_name: &str,
         paths: &[String],
-    ) -> Result<RepositoryBlobsResponse, GitError> {
-        let ref_name = ref_name.to_string();
-        let paths = paths.to_vec();
-        let repository = self.open_repository(owner, repo)?;
-
-        task::spawn_blocking(move || {
-            let commit = Self::resolve_ref(&repository, &ref_name)?;
-            let commit_sha = commit.id().to_string();
-            let tree = commit.tree()?;
-
-            let mut blobs = Vec::new();
-
-            for path in &paths {
-                let tree_entry = match tree.get_path(std::path::Path::new(path)) {
-                    Ok(e) => e,
-                    Err(_) => continue,
-                };
-
-                match tree_entry.kind() {
-                    Some(git2::ObjectType::Blob) => {
-                        let blob = repository.find_blob(tree_entry.id())?;
-                        blobs.push(Self::blob_to_response(&blob, path, &commit_sha));
-                    }
-                    _ => continue,
-                }
-            }
-
-            Ok(RepositoryBlobsResponse { blobs })
-        })
-        .await?
-    }
-
-    async fn get_repo_blobs_at_ref(
-        &self,
-        owner: &str,
-        repo: &str,
-        ref_name: Option<&str>,
-        paths: &[String],
-    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError> {
-        let ref_name = ref_name.map(str::to_string);
-        let paths = paths.to_vec();
-        let repository = self.open_repository(owner, repo)?;
-
-        task::spawn_blocking(move || {
-            let (tree, commit_sha) = match ref_name {
-                None => {
-                    let empty_oid = repository.treebuilder(None)?.write()?;
-                    (repository.find_tree(empty_oid)?, String::new())
-                }
-                Some(ref r) => {
-                    let commit = Self::resolve_ref(&repository, r)?;
-                    let commit_sha = commit.id().to_string();
-                    (commit.tree()?, commit_sha)
-                }
-            };
-
-            let blobs = paths
-                .iter()
-                .map(|path| {
-                    Self::get_blob(&repository, &tree, path)
-                        .ok()
-                        .map(|blob| Self::blob_to_response(&blob, path, &commit_sha))
-                })
-                .collect();
-
-            Ok(blobs)
-        })
-        .await?
-    }
-
-    async fn get_repo_blob_at_refs(
-        &self,
-        owner: &str,
-        repo: &str,
-        path: &str,
         refs: &[String],
-    ) -> Result<RepositoryBlobsResponse, GitError> {
-        let path = path.to_string();
+    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError> {
+        let paths = paths.to_vec();
         let refs = refs.to_vec();
         let repository = self.open_repository(owner, repo)?;
 
         task::spawn_blocking(move || {
-            let mut blobs = Vec::new();
-
+            let mut blobs = Vec::with_capacity(refs.len() * paths.len());
             for ref_name in &refs {
-                let commit = match Self::resolve_ref(&repository, ref_name).map_err(GitError::from)
-                {
-                    Ok(c) => c,
-                    Err(GitError::NotFound(_)) => continue,
-                    Err(e) => return Err(e),
-                };
-                let commit_sha = commit.id().to_string();
-                let tree = commit.tree()?;
-
-                let tree_entry = match tree.get_path(std::path::Path::new(&path)) {
-                    Ok(e) => e,
-                    Err(_) => continue,
-                };
-
-                match tree_entry.kind() {
-                    Some(git2::ObjectType::Blob) => {
-                        let blob = repository.find_blob(tree_entry.id())?;
-                        blobs.push(Self::blob_to_response(&blob, &path, &commit_sha));
+                let resolved = match Self::resolve_ref(&repository, ref_name) {
+                    Ok(commit) => {
+                        let commit_sha = commit.id().to_string();
+                        commit.tree().ok().map(|tree| (tree, commit_sha))
                     }
-                    Some(git2::ObjectType::Tree) => return Err(GitError::NotABlob(path.clone())),
-                    _ => continue,
+                    Err(_) => None,
+                };
+                for path in &paths {
+                    let blob = resolved.as_ref().and_then(|(tree, commit_sha)| {
+                        Self::get_blob(&repository, tree, path)
+                            .ok()
+                            .map(|blob| Self::blob_to_response(&blob, path, commit_sha))
+                    });
+                    blobs.push(blob);
                 }
             }
-
-            Ok(RepositoryBlobsResponse { blobs })
+            Ok(blobs)
         })
         .await?
     }

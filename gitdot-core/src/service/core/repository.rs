@@ -536,27 +536,18 @@ where
         &self,
         request: GetRepositoryBlobsRequest,
     ) -> Result<RepositoryBlobsResponse, RepositoryError> {
-        if request.refs.len() > 1 {
-            self.git_client
-                .get_repo_blob_at_refs(
-                    &request.owner_name,
-                    &request.name,
-                    &request.paths[0],
-                    &request.refs,
-                )
-                .await
-                .map_err(Into::into)
-        } else {
-            self.git_client
-                .get_repo_blobs(
-                    &request.owner_name,
-                    &request.name,
-                    &request.refs[0],
-                    &request.paths,
-                )
-                .await
-                .map_err(Into::into)
-        }
+        let blobs = self
+            .git_client
+            .get_repo_blobs(
+                &request.owner_name,
+                &request.name,
+                &request.paths,
+                &request.refs,
+            )
+            .await?;
+        Ok(RepositoryBlobsResponse {
+            blobs: blobs.into_iter().flatten().collect(),
+        })
     }
 
     async fn get_repository_paths(
@@ -636,22 +627,23 @@ where
         &self,
         request: GetRepositoryBlobDiffsRequest,
     ) -> Result<RepositoryBlobDiffsResponse, RepositoryError> {
-        let blobs = self
+        let files = self
             .git_client
-            .get_repo_blob_at_refs(
+            .get_repo_blobs(
                 &request.owner_name,
                 &request.name,
-                &request.path,
+                std::slice::from_ref(&request.path),
                 &request.commit_shas,
             )
             .await
             .map_err(RepositoryError::from)?;
 
-        let files = blobs.blobs;
-
         let mut diffs = HashMap::new();
         for (i, ref_name) in request.commit_shas.iter().enumerate() {
-            let diff = diff_file_pair(files.get(i + 1), files.get(i));
+            let diff = diff_file_pair(
+                files.get(i + 1).and_then(|o| o.as_ref()),
+                files.get(i).and_then(|o| o.as_ref()),
+            );
             diffs.insert(ref_name.clone(), diff);
         }
 
@@ -703,18 +695,18 @@ where
         let sha = commit.sha.clone();
         let parent_sha = commit.parent_sha.clone();
         let is_initial = parent_sha == "0000000000000000000000000000000000000000";
-        let left_ref = if is_initial {
-            None
-        } else {
-            Some(parent_sha.as_str())
-        };
 
         let paths: Vec<String> = commit.diffs.iter().map(|d| d.path.clone()).collect();
+        let parent_refs: &[String] = if is_initial {
+            &[]
+        } else {
+            std::slice::from_ref(&parent_sha)
+        };
         let (left, right) = tokio::try_join!(
             self.git_client
-                .get_repo_blobs_at_ref(&owner, &repo_name, left_ref, &paths),
+                .get_repo_blobs(&owner, &repo_name, &paths, parent_refs),
             self.git_client
-                .get_repo_blobs_at_ref(&owner, &repo_name, Some(&sha), &paths),
+                .get_repo_blobs(&owner, &repo_name, &paths, std::slice::from_ref(&sha)),
         )?;
 
         let pairs = paths
@@ -722,8 +714,8 @@ where
             .enumerate()
             .map(|(i, path)| RepositoryBlobPairResponse {
                 path,
-                old: left[i].clone(),
-                new: right[i].clone(),
+                old: left.get(i).cloned().flatten(),
+                new: right.get(i).cloned().flatten(),
             })
             .collect();
 

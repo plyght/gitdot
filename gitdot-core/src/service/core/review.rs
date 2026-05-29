@@ -777,11 +777,14 @@ where
             .map(|stat| stat.path)
             .collect();
 
+        // Empty refs => empty result => every path reads as `None` (the empty-tree parent).
+        let left_refs: Vec<String> = left_ref.map(|r| vec![r.to_string()]).unwrap_or_default();
+        let right_refs = [right_sha.to_string()];
         let (left, right) = tokio::try_join!(
             self.git_client
-                .get_repo_blobs_at_ref(owner, repo, left_ref, &paths),
+                .get_repo_blobs(owner, repo, &paths, &left_refs),
             self.git_client
-                .get_repo_blobs_at_ref(owner, repo, Some(right_sha), &paths),
+                .get_repo_blobs(owner, repo, &paths, &right_refs),
         )?;
 
         let pairs = paths
@@ -789,8 +792,8 @@ where
             .enumerate()
             .map(|(i, path)| RepositoryBlobPairResponse {
                 path,
-                old: left[i].clone(),
-                new: right[i].clone(),
+                old: left.get(i).cloned().flatten(),
+                new: right.get(i).cloned().flatten(),
             })
             .collect();
 

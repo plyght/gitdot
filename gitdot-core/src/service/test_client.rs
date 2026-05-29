@@ -144,28 +144,10 @@ impl GitClient for MockGitClient {
         &self,
         _owner: &str,
         _repo: &str,
-        _ref_name: &str,
         _paths: &[String],
-    ) -> Result<RepositoryBlobsResponse, GitError> {
-        unimplemented!("MockGitClient::get_repo_blobs is not stubbed")
-    }
-    async fn get_repo_blobs_at_ref(
-        &self,
-        _owner: &str,
-        _repo: &str,
-        _ref_name: Option<&str>,
-        _paths: &[String],
-    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError> {
-        unimplemented!("MockGitClient::get_repo_blob_responses_at_ref is not stubbed")
-    }
-    async fn get_repo_blob_at_refs(
-        &self,
-        _owner: &str,
-        _repo: &str,
-        _path: &str,
         _refs: &[String],
-    ) -> Result<RepositoryBlobsResponse, GitError> {
-        unimplemented!("MockGitClient::get_repo_blob_at_refs is not stubbed")
+    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError> {
+        unimplemented!("MockGitClient::get_repo_blobs is not stubbed")
     }
     async fn get_repo_paths(
         &self,
