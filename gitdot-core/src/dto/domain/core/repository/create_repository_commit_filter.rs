@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    dto::{FilterName, OwnerName, RepositoryName},
+    dto::{FilterName, OwnerName, RepositoryName, normalize_string_list},
     error::{InputError, RepositoryError},
 };
 
@@ -32,18 +32,9 @@ impl CreateRepositoryCommitFilterRequest {
             repo: RepositoryName::try_new(repo)
                 .map_err(|e| InputError::new("repository name", e))?,
             name: FilterName::try_new(name).map_err(|e| InputError::new("filter name", e))?,
-            authors: normalize(authors),
-            tags: normalize(tags),
-            paths: normalize(paths),
+            authors: normalize_string_list(authors),
+            tags: normalize_string_list(tags),
+            paths: normalize_string_list(paths),
         })
     }
-}
-
-fn normalize(values: Option<Vec<String>>) -> Option<Vec<String>> {
-    values.map(|v| {
-        v.into_iter()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect()
-    })
 }

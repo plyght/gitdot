@@ -38,48 +38,60 @@ pub struct Page<T> {
     validate(predicate = is_valid_slug),
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
-pub struct OwnerName(String);
+pub(crate) struct OwnerName(String);
 
 #[nutype(
     sanitize(trim, lowercase),
     validate(predicate = is_valid_slug),
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
-pub struct RunnerName(String);
+pub(crate) struct RunnerName(String);
 
 #[nutype(
     sanitize(trim, lowercase, with = strip_git_suffix),
     validate(predicate = is_valid_slug),
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
-pub struct RepositoryName(String);
+pub(crate) struct RepositoryName(String);
 
 #[nutype(
     sanitize(trim),
     validate(predicate = is_valid_url),
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
-pub struct WebhookUrl(String);
+pub(crate) struct WebhookUrl(String);
 
 #[nutype(
     sanitize(trim, lowercase),
     validate(predicate = is_valid_email),
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
-pub struct Email(String);
+pub(crate) struct Email(String);
 
 #[nutype(
     sanitize(trim),
     validate(predicate = is_valid_filter_name),
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
-pub struct FilterName(String);
+pub(crate) struct FilterName(String);
 
 #[nutype(
     validate(predicate = is_valid_user_code),
     derive(Debug, Clone, PartialEq, Eq, AsRef, Deref)
 )]
-pub struct UserCode(String);
+pub(crate) struct UserCode(String);
+
+/// Trims each entry of an optional string list and drops the now-empty ones,
+/// preserving `None`. Used by request DTOs to clean up user-supplied lists
+/// (e.g. commit-filter authors/tags/paths) before persistence.
+pub(crate) fn normalize_string_list(values: Option<Vec<String>>) -> Option<Vec<String>> {
+    values.map(|v| {
+        v.into_iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    })
+}
 
 fn is_valid_slug(s: &str) -> bool {
     !s.is_empty()
@@ -520,6 +532,48 @@ mod tests {
         #[test]
         fn rejects_missing_scheme() {
             assert!(WebhookUrl::try_new("example.com/webhook").is_err());
+        }
+    }
+
+    mod normalize_string_list {
+        use super::*;
+
+        #[test]
+        fn none_stays_none() {
+            assert_eq!(normalize_string_list(None), None);
+        }
+
+        #[test]
+        fn empty_vec_stays_empty() {
+            assert_eq!(normalize_string_list(Some(vec![])), Some(vec![]));
+        }
+
+        #[test]
+        fn trims_each_entry() {
+            assert_eq!(
+                normalize_string_list(Some(vec!["  alice ".to_string(), "bob".to_string()])),
+                Some(vec!["alice".to_string(), "bob".to_string()])
+            );
+        }
+
+        #[test]
+        fn drops_blank_and_whitespace_only_entries() {
+            assert_eq!(
+                normalize_string_list(Some(vec![
+                    "".to_string(),
+                    "   ".to_string(),
+                    "src/".to_string(),
+                ])),
+                Some(vec!["src/".to_string()])
+            );
+        }
+
+        #[test]
+        fn all_blank_yields_empty_some() {
+            assert_eq!(
+                normalize_string_list(Some(vec!["".to_string(), "  ".to_string()])),
+                Some(vec![])
+            );
         }
     }
 }
