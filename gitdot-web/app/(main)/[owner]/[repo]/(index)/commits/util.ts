@@ -1,7 +1,7 @@
 import type {
+  CommitDiffResource,
   RepositoryCommitFilterResource,
   RepositoryCommitResource,
-  RepositoryDiffStatResource,
   RepositoryPathResource,
 } from "gitdot-api";
 import { addDays, formatDateIso, subtractDays } from "@/util/date";
@@ -251,7 +251,7 @@ function truncateFromRoot(path: string, maxLen: number): string {
 type PathGroup = {
   key: string;
   depth: number;
-  diffs: RepositoryDiffStatResource[];
+  diffs: CommitDiffResource[];
 };
 
 /**
@@ -265,7 +265,7 @@ type PathGroup = {
  * `parent/filename` when it fits; multi-file entries show the directory key.
  */
 export function computePrimaryPaths(
-  diffs: RepositoryDiffStatResource[],
+  diffs: CommitDiffResource[],
   n = 3,
 ): Array<{ path: string; added: number; removed: number }> {
   if (diffs.length === 0) return [];

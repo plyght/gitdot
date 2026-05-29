@@ -6,9 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     client::{Git2Client, GitClient, S2Client, S2ClientImpl},
-    dto::{
-        BuildResponse, CiConfig, CreateBuildRequest, ListBuildsRequest, Page, TaskResponse,
-    },
+    dto::{BuildResponse, CiConfig, CreateBuildRequest, ListBuildsRequest, Page, TaskResponse},
     error::{BuildError, GitError, NotFoundError, OptionNotFoundExt},
     model::{BuildStatus, TaskStatus},
     repository::{

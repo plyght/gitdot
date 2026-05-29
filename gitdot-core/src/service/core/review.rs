@@ -3,12 +3,12 @@ use async_trait::async_trait;
 use crate::{
     client::{Git2Client, GitClient},
     dto::{
-        AddReviewReviewerReqeuest, GetReviewDiffRequest, GetReviewRequest, ListReviewsRequest,
+        AddReviewReviewerReqeuest, GetReviewDiffBlobsRequest, GetReviewRequest, ListReviewsRequest,
         MergeReviewDiffRequest, Page, ProcessReviewRequest, PublishReviewDiffRequest,
         PublishReviewRequest, RemoveReviewReviewerRequest, ReplyToReviewCommentRequest,
-        ResolveReviewCommentRequest, ReviewAction, ReviewCommentResponse, ReviewDiffResponse,
-        ReviewResponse, ReviewReviewDiffRequest, ReviewerResponse, UpdateReviewCommentRequest,
-        UpdateReviewDiffRequest, UpdateReviewRequest,
+        RepositoryBlobPairResponse, ResolveReviewCommentRequest, ReviewAction,
+        ReviewCommentResponse, ReviewResponse, ReviewReviewDiffRequest, ReviewerResponse,
+        UpdateReviewCommentRequest, UpdateReviewDiffRequest, UpdateReviewRequest,
     },
     error::{ConflictError, InputError, NotFoundError, OptionNotFoundExt, ReviewError},
     model::{DiffStatus, Review, ReviewStatus, Verdict},
@@ -125,10 +125,10 @@ pub trait ReviewService: Send + Sync + 'static {
     /// # Errors
     /// - [`NotFoundError`] (via [`ReviewError::NotFound`]) if the review, the
     ///   diff at the position, or a referenced revision does not exist.
-    async fn get_review_diff(
+    async fn get_review_diff_blobs(
         &self,
-        request: GetReviewDiffRequest,
-    ) -> Result<ReviewDiffResponse, ReviewError>;
+        request: GetReviewDiffBlobsRequest,
+    ) -> Result<Vec<RepositoryBlobPairResponse>, ReviewError>;
 
     /// Updates the message/description of a single diff within a review.
     ///
@@ -702,10 +702,10 @@ where
         Ok(updated.into())
     }
 
-    async fn get_review_diff(
+    async fn get_review_diff_blobs(
         &self,
-        request: GetReviewDiffRequest,
-    ) -> Result<ReviewDiffResponse, ReviewError> {
+        request: GetReviewDiffBlobsRequest,
+    ) -> Result<Vec<RepositoryBlobPairResponse>, ReviewError> {
         let owner = request.owner.as_ref();
         let repo = request.repo.as_ref();
 
@@ -763,12 +763,38 @@ where
             revision.parent_hash.clone()
         };
 
-        let files = self
-            .git_client
-            .get_repo_diff_files(owner, repo, Some(&left_sha), right_sha)
-            .await?;
+        let left_ref = if left_sha == "0000000000000000000000000000000000000000" {
+            None
+        } else {
+            Some(left_sha.as_str())
+        };
 
-        Ok(ReviewDiffResponse { files })
+        let paths: Vec<String> = self
+            .git_client
+            .get_repo_commit_diff(owner, repo, left_ref, right_sha)
+            .await?
+            .into_iter()
+            .map(|stat| stat.path)
+            .collect();
+
+        let (left, right) = tokio::try_join!(
+            self.git_client
+                .get_repo_blobs_at_ref(owner, repo, left_ref, &paths),
+            self.git_client
+                .get_repo_blobs_at_ref(owner, repo, Some(right_sha), &paths),
+        )?;
+
+        let pairs = paths
+            .into_iter()
+            .enumerate()
+            .map(|(i, path)| RepositoryBlobPairResponse {
+                path,
+                old: left[i].clone(),
+                new: right[i].clone(),
+            })
+            .collect();
+
+        Ok(pairs)
     }
 
     async fn merge_review_diff(

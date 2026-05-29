@@ -9,7 +9,7 @@ import type {
   UpdateReviewRequest,
 } from "gitdot-api";
 import {
-  GetReviewDiffResponse,
+  GetReviewDiffBlobsResponse,
   ListReviewsResponse,
   ReviewCommentResource,
   ReviewerResource,
@@ -49,23 +49,23 @@ export async function getReview(
   return await handleResponse(response, ReviewResource);
 }
 
-export async function getReviewDiff(
+export async function getReviewDiffBlobs(
   owner: string,
   repo: string,
   number: number | string,
   position: number,
   revision?: number,
   compareTo?: number,
-): Promise<GetReviewDiffResponse | null> {
+): Promise<GetReviewDiffBlobsResponse | null> {
   const params: Record<string, number> = {};
   if (revision !== undefined) params.revision = revision;
   if (compareTo !== undefined) params.compare_to = compareTo;
   const query = toQueryString(params);
   const response = await authFetch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/review/${number}/diff/${position}${query ? `?${query}` : ""}`,
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/review/${number}/diff/${position}/blobs${query ? `?${query}` : ""}`,
   );
 
-  return await handleResponse(response, GetReviewDiffResponse);
+  return await handleResponse(response, GetReviewDiffBlobsResponse);
 }
 
 export async function addReviewer(

@@ -23,14 +23,12 @@ export const CommitAuthorResource = z.object({
 });
 export type CommitAuthorResource = z.infer<typeof CommitAuthorResource>;
 
-export const RepositoryDiffStatResource = z.object({
+export const CommitDiffResource = z.object({
   path: z.string(),
   lines_added: z.number().int(),
   lines_removed: z.number().int(),
 });
-export type RepositoryDiffStatResource = z.infer<
-  typeof RepositoryDiffStatResource
->;
+export type CommitDiffResource = z.infer<typeof CommitDiffResource>;
 
 export const RepositoryDiffFileResource = z.object({
   path: z.string(),
@@ -53,7 +51,7 @@ export const RepositoryCommitResource = z.object({
   author: CommitAuthorResource,
   review_number: z.number().int().optional(),
   diff_position: z.number().int().optional(),
-  diffs: z.array(RepositoryDiffStatResource),
+  diffs: z.array(CommitDiffResource),
 });
 export type RepositoryCommitResource = z.infer<typeof RepositoryCommitResource>;
 
@@ -76,7 +74,7 @@ export const UserCommitResource = z.object({
   author: CommitAuthorResource.optional(),
   review_number: z.number().int().optional(),
   diff_position: z.number().int().optional(),
-  diffs: z.array(RepositoryDiffStatResource).default([]),
+  diffs: z.array(CommitDiffResource).default([]),
 });
 export type UserCommitResource = z.infer<typeof UserCommitResource>;
 

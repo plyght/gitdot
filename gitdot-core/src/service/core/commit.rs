@@ -128,7 +128,7 @@ where
         for commit in &git_commits {
             let stats = self
                 .git_client
-                .get_repo_diff_stats(
+                .get_repo_commit_diff(
                     &owner,
                     &repo_name,
                     commit.parent_sha.as_deref(),

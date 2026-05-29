@@ -1,6 +1,6 @@
 mod add_review_reviewer;
 mod get_review;
-mod get_review_diff;
+mod get_review_diff_blobs;
 mod list_reviews;
 mod merge_review_diff;
 mod publish_review;
@@ -21,7 +21,7 @@ use axum::{
 
 use add_review_reviewer::add_review_reviewer;
 use get_review::get_review;
-use get_review_diff::get_review_diff;
+use get_review_diff_blobs::get_review_diff_blobs;
 use list_reviews::list_reviews;
 use merge_review_diff::merge_review_diff;
 use publish_review::publish_review;
@@ -55,7 +55,11 @@ pub fn create_review_router() -> Router<AppState> {
         )
         .route(
             "/repository/{owner}/{repo}/review/{number}/diff/{position}",
-            get(get_review_diff).patch(update_review_diff),
+            patch(update_review_diff),
+        )
+        .route(
+            "/repository/{owner}/{repo}/review/{number}/diff/{position}/blobs",
+            get(get_review_diff_blobs),
         )
         .route(
             "/repository/{owner}/{repo}/review/{number}/diff/{position}/merge",

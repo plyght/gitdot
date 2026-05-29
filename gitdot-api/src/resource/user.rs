@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::resource::repository::{CommitAuthorResource, RepositoryDiffStatResource};
+use crate::resource::repository::{CommitAuthorResource, CommitDiffResource};
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UserResource {
@@ -99,5 +99,5 @@ pub struct UserCommitResource {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub diff_position: Option<i32>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub diffs: Vec<RepositoryDiffStatResource>,
+    pub diffs: Vec<CommitDiffResource>,
 }

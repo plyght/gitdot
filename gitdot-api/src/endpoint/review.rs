@@ -1,6 +1,6 @@
 pub mod add_review_reviewer;
 pub mod get_review;
-pub mod get_review_diff;
+pub mod get_review_diff_blobs;
 pub mod list_reviews;
 pub mod merge_review_diff;
 pub mod publish_review;

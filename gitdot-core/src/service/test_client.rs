@@ -8,9 +8,8 @@ use mockall::mock;
 use crate::{
     client::GitClient,
     dto::{
-        InitialCommitFile, RepositoryBlobResponse, RepositoryBlobsResponse,
-        RepositoryCommitResponse, RepositoryDiffFileResponse, RepositoryDiffStatResponse,
-        RepositoryPathsResponse,
+        CommitDiffResponse, InitialCommitFile, RepositoryBlobResponse, RepositoryBlobsResponse,
+        RepositoryCommitResponse, RepositoryPathsResponse,
     },
     error::GitError,
     util::git::GitHookType,
@@ -184,23 +183,14 @@ impl GitClient for MockGitClient {
     ) -> Result<RepositoryCommitResponse, GitError> {
         unimplemented!("MockGitClient::get_repo_commit is not stubbed")
     }
-    async fn get_repo_diff_files(
+    async fn get_repo_commit_diff(
         &self,
         _owner: &str,
         _repo: &str,
         _left_ref: Option<&str>,
         _right_ref: &str,
-    ) -> Result<Vec<RepositoryDiffFileResponse>, GitError> {
-        unimplemented!("MockGitClient::get_repo_diff_files is not stubbed")
-    }
-    async fn get_repo_diff_stats(
-        &self,
-        _owner: &str,
-        _repo: &str,
-        _left_ref: Option<&str>,
-        _right_ref: &str,
-    ) -> Result<Vec<RepositoryDiffStatResponse>, GitError> {
-        unimplemented!("MockGitClient::get_repo_diff_stats is not stubbed")
+    ) -> Result<Vec<CommitDiffResponse>, GitError> {
+        unimplemented!("MockGitClient::get_repo_commit_diff is not stubbed")
     }
     async fn rev_list(
         &self,

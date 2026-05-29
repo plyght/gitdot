@@ -153,9 +153,9 @@ impl IntoApi for PathType {
 }
 
 impl IntoApi for CommitDiff {
-    type ApiType = api::RepositoryDiffStatResource;
+    type ApiType = api::CommitDiffResource;
     fn into_api(self) -> Self::ApiType {
-        api::RepositoryDiffStatResource {
+        api::CommitDiffResource {
             path: self.path,
             lines_added: self.lines_added as u32,
             lines_removed: self.lines_removed as u32,

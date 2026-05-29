@@ -4,7 +4,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct GetReviewDiffRequest {
+pub struct GetReviewDiffBlobsRequest {
     pub owner: OwnerName,
     pub repo: RepositoryName,
     pub number: i32,
@@ -13,7 +13,7 @@ pub struct GetReviewDiffRequest {
     pub compare_to: Option<i32>,
 }
 
-impl GetReviewDiffRequest {
+impl GetReviewDiffBlobsRequest {
     pub fn new(
         owner: &str,
         repo: &str,

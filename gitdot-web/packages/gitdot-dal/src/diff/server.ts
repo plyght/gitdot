@@ -8,7 +8,7 @@ import type {
 import {
   getRepositoryBlobDiffs,
   getRepositoryCommitBlobs,
-  getReviewDiff,
+  getReviewDiffBlobs,
 } from "gitdot-client";
 import { renderDiff } from "./shiki";
 import type { DiffData, DiffEntry } from "./types";
@@ -71,7 +71,7 @@ export async function renderReviewDiff(
   revision?: number,
   compareTo?: number,
 ): Promise<DiffData> {
-  const result = await getReviewDiff(
+  const result = await getReviewDiffBlobs(
     owner,
     repo,
     number,
@@ -80,5 +80,5 @@ export async function renderReviewDiff(
     compareTo,
   );
   if (!result) return [];
-  return renderDiff(result.files.map(fileToPair));
+  return renderDiff(result);
 }

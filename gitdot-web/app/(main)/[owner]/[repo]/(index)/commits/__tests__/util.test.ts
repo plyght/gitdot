@@ -1,15 +1,15 @@
 import type {
+  CommitDiffResource,
   RepositoryCommitResource,
-  RepositoryDiffStatResource,
   RepositoryPathResource,
 } from "gitdot-api";
 import { computePathOptions, computePrimaryPaths } from "../util";
 
-function d(path: string, added = 10, removed = 0): RepositoryDiffStatResource {
+function d(path: string, added = 10, removed = 0): CommitDiffResource {
   return { path, lines_added: added, lines_removed: removed };
 }
 
-function paths(diffs: RepositoryDiffStatResource[], n?: number) {
+function paths(diffs: CommitDiffResource[], n?: number) {
   return computePrimaryPaths(diffs, n).map((r) => r.path);
 }
 

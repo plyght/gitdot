@@ -1,6 +1,6 @@
 export * from "./add-review-reviewer";
 export * from "./get-review";
-export * from "./get-review-diff";
+export * from "./get-review-diff-blobs";
 export * from "./list-reviews";
 export * from "./merge-review-diff";
 export * from "./publish-review";

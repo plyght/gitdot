@@ -1,14 +1,11 @@
-use std::time::Instant;
-
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use tokio::{fs, task};
 
 use crate::{
     dto::{
-        InitialCommitFile, PathType, RepositoryBlobResponse, RepositoryBlobsResponse,
-        RepositoryCommitResponse, RepositoryDiffFileResponse, RepositoryDiffStatResponse,
-        RepositoryPath, RepositoryPathsResponse,
+        CommitDiffResponse, InitialCommitFile, PathType, RepositoryBlobResponse,
+        RepositoryBlobsResponse, RepositoryCommitResponse, RepositoryPath, RepositoryPathsResponse,
     },
     error::GitError,
     util::{
@@ -221,30 +218,13 @@ pub trait GitClient: Send + Sync + Clone + 'static {
     /// - [`GitError::NotFound`] — `left_ref` or `right_ref` does not exist.
     /// - [`GitError::Git2Error`] — a git operation failed.
     /// - [`GitError::JoinError`] — the blocking task panicked.
-    async fn get_repo_diff_files(
+    async fn get_repo_commit_diff(
         &self,
         owner: &str,
         repo: &str,
         left_ref: Option<&str>,
         right_ref: &str,
-    ) -> Result<Vec<RepositoryDiffFileResponse>, GitError>;
-
-    /// Like [`get_repo_diff_files`] but returns only per-file path and
-    /// added/removed line counts, without blob content.
-    ///
-    /// [`get_repo_diff_files`]: GitClient::get_repo_diff_files
-    ///
-    /// # Errors
-    /// - [`GitError::NotFound`] — `left_ref` or `right_ref` does not exist.
-    /// - [`GitError::Git2Error`] — a git operation failed.
-    /// - [`GitError::JoinError`] — the blocking task panicked.
-    async fn get_repo_diff_stats(
-        &self,
-        owner: &str,
-        repo: &str,
-        left_ref: Option<&str>,
-        right_ref: &str,
-    ) -> Result<Vec<RepositoryDiffStatResponse>, GitError>;
+    ) -> Result<Vec<CommitDiffResponse>, GitError>;
 
     /// Lists commits reachable from `new_sha` but not from `old_sha`, in
     /// reverse-time order — i.e. the commits introduced by a push. An all-zero
@@ -456,17 +436,6 @@ impl Git2Client {
             encoding,
         }
     }
-
-    fn blob_content_string(blob: &git2::Blob) -> String {
-        let bytes = blob.content();
-        if Self::is_binary(bytes) {
-            use base64::prelude::*;
-            BASE64_STANDARD.encode(bytes)
-        } else {
-            String::from_utf8_lossy(bytes).to_string()
-        }
-    }
-
 }
 
 #[crate::instrument_all(level = "debug")]
@@ -895,141 +864,13 @@ impl GitClient for Git2Client {
         .await?
     }
 
-    // TODO: only used by review diff files now
-    async fn get_repo_diff_files(
+    async fn get_repo_commit_diff(
         &self,
         owner: &str,
         repo: &str,
         left_ref: Option<&str>,
         right_ref: &str,
-    ) -> Result<Vec<RepositoryDiffFileResponse>, GitError> {
-        let owner = owner.to_string();
-        let repo = repo.to_string();
-        let left_ref = left_ref.map(str::to_string);
-        let right_ref = right_ref.to_string();
-
-        let open_start = Instant::now();
-        let repository = self.open_repository(&owner, &repo)?;
-        let open_ms = open_start.elapsed().as_millis() as u64;
-
-        let owner_log = owner.clone();
-        let repo_log = repo.clone();
-        let right_ref_log = right_ref.clone();
-
-        task::spawn_blocking(move || {
-            let trees_start = Instant::now();
-            let left_tree = match left_ref {
-                None => {
-                    let empty_oid = repository.treebuilder(None)?.write()?;
-                    repository.find_tree(empty_oid)?
-                }
-                Some(ref r) => Self::resolve_ref(&repository, r)?.tree()?,
-            };
-            let right_tree = Self::resolve_ref(&repository, &right_ref)?.tree()?;
-            let trees_ms = trees_start.elapsed().as_millis() as u64;
-
-            let diff_start = Instant::now();
-            let diff = Self::diff_trees(&repository, &left_tree, &right_tree)?;
-            let num_deltas = diff.deltas().count();
-            let diff_ms = diff_start.elapsed().as_millis() as u64;
-
-            let loop_start = Instant::now();
-            let mut blob_ms: u64 = 0;
-            let mut patch_ms: u64 = 0;
-            let mut total_left_bytes: u64 = 0;
-            let mut total_right_bytes: u64 = 0;
-            let mut results = Vec::with_capacity(num_deltas);
-
-            for i in 0..num_deltas {
-                let delta = diff
-                    .get_delta(i)
-                    .ok_or_else(|| git2::Error::from_str("delta index out of range"))?;
-                let status = delta.status();
-
-                let blob_start = Instant::now();
-                let left_content = if status != git2::Delta::Added {
-                    delta
-                        .old_file()
-                        .path()
-                        .and_then(|p| p.to_str())
-                        .and_then(|path| {
-                            let blob = Self::get_blob(&repository, &left_tree, path).ok()?;
-                            let content = Self::blob_content_string(&blob);
-                            total_left_bytes += content.len() as u64;
-                            Some(content)
-                        })
-                } else {
-                    None
-                };
-
-                let right_content = if status != git2::Delta::Deleted {
-                    delta
-                        .new_file()
-                        .path()
-                        .and_then(|p| p.to_str())
-                        .and_then(|path| {
-                            let blob = Self::get_blob(&repository, &right_tree, path).ok()?;
-                            let content = Self::blob_content_string(&blob);
-                            total_right_bytes += content.len() as u64;
-                            Some(content)
-                        })
-                } else {
-                    None
-                };
-                blob_ms += blob_start.elapsed().as_millis() as u64;
-
-                let path = delta
-                    .new_file()
-                    .path()
-                    .or_else(|| delta.old_file().path())
-                    .and_then(|p| p.to_str())
-                    .unwrap_or("")
-                    .to_string();
-
-                let patch_start = Instant::now();
-                let patch = git2::Patch::from_diff(&diff, i)?;
-                let (_, insertions, deletions) =
-                    patch.map(|p| p.line_stats()).unwrap_or(Ok((0, 0, 0)))?;
-                patch_ms += patch_start.elapsed().as_millis() as u64;
-
-                results.push(RepositoryDiffFileResponse {
-                    path,
-                    left_content,
-                    right_content,
-                    lines_added: insertions as u32,
-                    lines_removed: deletions as u32,
-                });
-            }
-            let loop_ms = loop_start.elapsed().as_millis() as u64;
-
-            tracing::error!(
-                owner = %owner_log,
-                repo = %repo_log,
-                right_ref = %right_ref_log,
-                num_deltas,
-                open_ms,
-                trees_ms,
-                diff_ms,
-                loop_ms,
-                blob_ms,
-                patch_ms,
-                total_left_bytes,
-                total_right_bytes,
-                "get_repo_diff_files stage timings"
-            );
-
-            Ok(results)
-        })
-        .await?
-    }
-
-    async fn get_repo_diff_stats(
-        &self,
-        owner: &str,
-        repo: &str,
-        left_ref: Option<&str>,
-        right_ref: &str,
-    ) -> Result<Vec<RepositoryDiffStatResponse>, GitError> {
+    ) -> Result<Vec<CommitDiffResponse>, GitError> {
         let owner = owner.to_string();
         let repo = repo.to_string();
         let left_ref = left_ref.map(str::to_string);
@@ -1063,7 +904,7 @@ impl GitClient for Git2Client {
                 let patch = git2::Patch::from_diff(&diff, i)?;
                 let (_, insertions, deletions) =
                     patch.map(|p| p.line_stats()).unwrap_or(Ok((0, 0, 0)))?;
-                results.push(RepositoryDiffStatResponse {
+                results.push(CommitDiffResponse {
                     path,
                     lines_added: insertions as u32,
                     lines_removed: deletions as u32,

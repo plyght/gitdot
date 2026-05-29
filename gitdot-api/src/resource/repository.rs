@@ -78,7 +78,7 @@ pub struct RepositoryCommitResource {
     pub review_number: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff_position: Option<i32>,
-    pub diffs: Vec<RepositoryDiffStatResource>,
+    pub diffs: Vec<CommitDiffResource>,
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,7 +94,7 @@ pub struct CommitAuthorResource {
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepositoryDiffStatResource {
+pub struct CommitDiffResource {
     pub path: String,
     pub lines_added: u32,
     pub lines_removed: u32,

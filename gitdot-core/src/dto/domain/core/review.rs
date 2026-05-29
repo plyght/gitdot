@@ -1,6 +1,6 @@
 mod add_review_reviewer;
 mod get_review;
-mod get_review_diff;
+mod get_review_diff_blobs;
 mod list_reviews;
 mod merge_review_diff;
 mod process_review;
@@ -22,11 +22,9 @@ use crate::model::{
     User, Verdict,
 };
 
-use super::RepositoryDiffFileResponse;
-
 pub use add_review_reviewer::AddReviewReviewerReqeuest;
 pub use get_review::GetReviewRequest;
-pub use get_review_diff::GetReviewDiffRequest;
+pub use get_review_diff_blobs::GetReviewDiffBlobsRequest;
 pub use list_reviews::ListReviewsRequest;
 pub use merge_review_diff::MergeReviewDiffRequest;
 pub use process_review::ProcessReviewRequest;
@@ -290,9 +288,4 @@ fn verdict_to_string(verdict: Verdict) -> String {
         Verdict::Approved => "approved".to_string(),
         Verdict::Rejected => "rejected".to_string(),
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct ReviewDiffResponse {
-    pub files: Vec<RepositoryDiffFileResponse>,
 }

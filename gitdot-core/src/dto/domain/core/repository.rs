@@ -111,7 +111,7 @@ impl From<&git2::Commit<'_>> for RepositoryCommitResponse {
 }
 
 #[derive(Debug, Clone)]
-pub struct RepositoryDiffStatResponse {
+pub struct CommitDiffResponse {
     pub path: String,
     pub lines_added: u32,
     pub lines_removed: u32,
