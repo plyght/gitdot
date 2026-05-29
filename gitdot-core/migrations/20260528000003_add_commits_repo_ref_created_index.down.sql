@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS core.idx_commits_repo_id_ref_name_created_at_id;
