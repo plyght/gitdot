@@ -1,18 +1,18 @@
 /// <reference lib="webworker" />
 declare const self: SharedWorkerGlobalScope;
 
-import type { RepositoryDiffFileResource } from "gitdot-api";
+import type { RepositoryBlobPairResource } from "gitdot-api";
 import type { Root } from "hast";
 import { inferLanguage, renderDiff, renderHast } from "../diff/shiki";
-import type { DiffEntry } from "../diff/types";
+import type { DiffData } from "../diff/types";
 
 export type ShikiRequest =
   | { id: string; kind: "blob"; path: string; content: string }
-  | { id: string; kind: "diff"; files: RepositoryDiffFileResource[] };
+  | { id: string; kind: "diff"; pairs: RepositoryBlobPairResource[] };
 
 export type ShikiResponse =
   | { id: string; kind: "blob"; hast: Root }
-  | { id: string; kind: "diff"; entries: DiffEntry[] };
+  | { id: string; kind: "diff"; data: DiffData };
 
 console.log("[gitdot-shiki] worker loaded");
 
@@ -39,19 +39,14 @@ async function process(req: ShikiRequest, port: MessagePort) {
       hast,
     } satisfies ShikiResponse);
   } else {
-    const entries = await Promise.all(
-      req.files.map(async (file) => ({
-        resource: file,
-        spans: await renderDiff(file),
-      })),
-    );
+    const data = await renderDiff(req.pairs);
     console.log(
-      `[gitdot-shiki] diff ${req.files.length} files ${(performance.now() - t).toFixed(2)}ms`,
+      `[gitdot-shiki] diff ${req.pairs.length} files ${(performance.now() - t).toFixed(2)}ms`,
     );
     port.postMessage({
       id: req.id,
       kind: "diff",
-      entries,
+      data,
     } satisfies ShikiResponse);
   }
 }

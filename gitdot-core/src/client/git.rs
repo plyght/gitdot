@@ -72,14 +72,13 @@ pub trait GitClient: Send + Sync + Clone + 'static {
         paths: &[String],
     ) -> Result<RepositoryBlobsResponse, GitError>;
 
-    // TODO: delete get repo blob at refs once we simplify file blobs
     async fn get_repo_blobs_at_ref(
         &self,
         owner: &str,
         repo: &str,
         ref_name: Option<&str>,
         paths: &[String],
-    ) -> Result<Vec<Option<String>>, GitError>;
+    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError>;
 
     async fn get_repo_blob_at_refs(
         &self,
@@ -647,30 +646,38 @@ impl GitClient for Git2Client {
         repo: &str,
         ref_name: Option<&str>,
         paths: &[String],
-    ) -> Result<Vec<Option<String>>, GitError> {
+    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError> {
         let ref_name = ref_name.map(str::to_string);
         let paths = paths.to_vec();
         let repository = self.open_repository(owner, repo)?;
 
         task::spawn_blocking(move || {
-            let tree = match ref_name {
+            let (tree, commit_sha) = match ref_name {
                 None => {
                     let empty_oid = repository.treebuilder(None)?.write()?;
-                    repository.find_tree(empty_oid)?
+                    (repository.find_tree(empty_oid)?, String::new())
                 }
-                Some(ref r) => Self::resolve_ref(&repository, r)?.tree()?,
+                Some(ref r) => {
+                    let commit = Self::resolve_ref(&repository, r)?;
+                    let commit_sha = commit.id().to_string();
+                    (commit.tree()?, commit_sha)
+                }
             };
 
-            let contents = paths
+            let blobs = paths
                 .iter()
                 .map(|path| {
-                    Self::get_blob(&repository, &tree, path)
-                        .ok()
-                        .map(|blob| Self::blob_content_string(&blob))
+                    Self::get_blob(&repository, &tree, path).ok().map(|blob| {
+                        RepositoryBlobResponse::File(Self::blob_to_response(
+                            &blob,
+                            path,
+                            &commit_sha,
+                        ))
+                    })
                 })
                 .collect();
 
-            Ok(contents)
+            Ok(blobs)
         })
         .await?
     }

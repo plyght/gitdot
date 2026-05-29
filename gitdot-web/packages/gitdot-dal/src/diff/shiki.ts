@@ -1,4 +1,4 @@
-import type { RepositoryDiffFileResource } from "gitdot-api";
+import type { RepositoryBlobPairResource } from "gitdot-api";
 import type { Element, ElementContent, Root } from "hast";
 import {
   type BundledLanguage,
@@ -7,7 +7,7 @@ import {
   type ShikiTransformer,
 } from "shiki";
 import { diffFiles } from "./algo";
-import type { DiffSpans } from "./types";
+import type { DiffData, DiffEntry } from "./types";
 
 async function getHighlighter(
   lang: BundledLanguage | undefined,
@@ -66,23 +66,41 @@ export async function renderHast(
 }
 
 /**
- * renders a diff file (pair of two files)
- *
- * into DiffSpans -> hunk metadata + two vector arrays of hast nodes
+ * renders a list of blob pairs into DiffData: one DiffEntry per pair
+ * (hunk metadata + hast spans, plus derived +/- line counts).
  */
 export async function renderDiff(
-  file: RepositoryDiffFileResource,
-): Promise<DiffSpans> {
-  const left = file.left_content ?? null;
-  const right = file.right_content ?? null;
-  const lang = inferLanguage(file.path);
+  pairs: RepositoryBlobPairResource[],
+): Promise<DiffData> {
+  return Promise.all(pairs.map(renderPair));
+}
+
+async function renderPair(
+  pair: RepositoryBlobPairResource,
+): Promise<DiffEntry> {
+  const left = pair.old?.type === "file" ? pair.old.content : null;
+  const right = pair.new?.type === "file" ? pair.new.content : null;
+  const lang = inferLanguage(pair.path);
+  const base = {
+    path: pair.path,
+    old: pair.old ?? null,
+    new: pair.new ?? null,
+  };
 
   if (left != null && right != null) {
     const hunks = diffFiles(left, right);
-    if (hunks.length === 0) return { kind: "no-change" };
+    if (hunks.length === 0)
+      return {
+        ...base,
+        spans: { kind: "no-change" },
+        linesAdded: 0,
+        linesRemoved: 0,
+      };
 
     const allRemovedLines = new Set(hunks.flatMap((h) => [...h.removedLines]));
     const allAddedLines = new Set(hunks.flatMap((h) => [...h.addedLines]));
+    const linesAdded = allAddedLines.size;
+    const linesRemoved = allRemovedLines.size;
     const isAllAdditions = allRemovedLines.size === 0;
     const isAllRemovals = allAddedLines.size === 0;
 
@@ -97,23 +115,44 @@ export async function renderDiff(
         side,
         changedLines,
       );
-      return { kind: "unilateral", spans, hunks, side };
+      return {
+        ...base,
+        spans: { kind: "unilateral", spans, hunks, side },
+        linesAdded,
+        linesRemoved,
+      };
     }
 
     const [leftSpans, rightSpans] = await Promise.all([
       renderSpans(left, lang, "vitesse", "left", allRemovedLines),
       renderSpans(right, lang, "vitesse", "right", allAddedLines),
     ]);
-    return { kind: "split", leftSpans, rightSpans, hunks };
+    return {
+      ...base,
+      spans: { kind: "split", leftSpans, rightSpans, hunks },
+      linesAdded,
+      linesRemoved,
+    };
   } else if (right === null) {
-    return { kind: "deleted" };
+    const linesRemoved = left ? left.split("\n").length : 0;
+    return { ...base, spans: { kind: "deleted" }, linesAdded: 0, linesRemoved };
   } else if (left === null) {
     const lineCount = right.split("\n").length;
     const allLines = new Set(Array.from({ length: lineCount }, (_, i) => i));
     const spans = await renderSpans(right, lang, "vitesse", "right", allLines);
-    return { kind: "created", spans };
+    return {
+      ...base,
+      spans: { kind: "created", spans },
+      linesAdded: lineCount,
+      linesRemoved: 0,
+    };
   } else {
-    return { kind: "no-change" };
+    return {
+      ...base,
+      spans: { kind: "no-change" },
+      linesAdded: 0,
+      linesRemoved: 0,
+    };
   }
 }
 

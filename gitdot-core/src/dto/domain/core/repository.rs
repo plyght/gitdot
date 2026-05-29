@@ -9,7 +9,7 @@ mod get_repository_blob;
 mod get_repository_blob_diffs;
 mod get_repository_blobs;
 mod get_repository_commit;
-mod get_repository_commit_diff;
+mod get_repository_commit_blobs;
 mod get_repository_file;
 mod get_repository_paths;
 mod list_repository_commit_filters;
@@ -37,7 +37,7 @@ pub use get_repository_blob::{
 pub use get_repository_blob_diffs::{GetRepositoryBlobDiffsRequest, RepositoryBlobDiffsResponse};
 pub use get_repository_blobs::{GetRepositoryBlobsRequest, RepositoryBlobsResponse};
 pub use get_repository_commit::GetRepositoryCommitRequest;
-pub use get_repository_commit_diff::GetRepositoryCommitDiffRequest;
+pub use get_repository_commit_blobs::GetRepositoryCommitBlobsRequest;
 pub use get_repository_file::RepositoryFileResponse;
 pub use get_repository_paths::{
     GetRepositoryPathsRequest, PathType, RepositoryPath, RepositoryPathsResponse,

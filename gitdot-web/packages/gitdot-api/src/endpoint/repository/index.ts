@@ -9,7 +9,7 @@ export * from "./get-repository-blob";
 export * from "./get-repository-blob-diffs";
 export * from "./get-repository-blobs";
 export * from "./get-repository-commit";
-export * from "./get-repository-commit-diff";
+export * from "./get-repository-commit-blobs";
 export * from "./get-repository-paths";
 export * from "./get-repository-resources";
 export * from "./list-latest-repositories";

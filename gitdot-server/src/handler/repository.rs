@@ -9,7 +9,7 @@ mod get_repository_blob;
 mod get_repository_blob_diffs;
 mod get_repository_blobs;
 mod get_repository_commit;
-mod get_repository_commit_diff;
+mod get_repository_commit_blobs;
 mod get_repository_paths;
 mod get_repository_resources;
 mod list_latest_repositories;
@@ -39,7 +39,7 @@ use get_repository_blob::get_repository_blob;
 use get_repository_blob_diffs::get_repository_blob_diffs;
 use get_repository_blobs::get_repository_blobs;
 use get_repository_commit::get_repository_commit;
-use get_repository_commit_diff::get_repository_commit_diff;
+use get_repository_commit_blobs::get_repository_commit_blobs;
 use get_repository_paths::get_repository_paths;
 use get_repository_resources::get_repository_resources;
 use list_latest_repositories::list_latest_repositories;
@@ -84,8 +84,8 @@ pub fn create_repository_router() -> Router<AppState> {
             get(get_repository_commit),
         )
         .route(
-            "/repository/{owner}/{repo}/commits/{sha}/diff",
-            get(get_repository_commit_diff),
+            "/repository/{owner}/{repo}/commits/{sha}/blobs",
+            get(get_repository_commit_blobs),
         )
         .route(
             "/repository/{owner}/{repo}/resources",

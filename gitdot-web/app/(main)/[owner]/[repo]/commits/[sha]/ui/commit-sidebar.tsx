@@ -1,6 +1,6 @@
 "use client";
 
-import type { DiffEntry } from "gitdot-dal/client";
+import type { DiffData } from "gitdot-dal/client";
 import { cn } from "@/util";
 
 export function CommitSidebar({
@@ -8,7 +8,7 @@ export function CommitSidebar({
   selectedIndex,
   onSelect,
 }: {
-  entries: DiffEntry[];
+  entries: DiffData;
   selectedIndex: number;
   onSelect: (index: number) => void;
 }) {
@@ -19,7 +19,7 @@ export function CommitSidebar({
       <div className="text-xs font-mono text-foreground mb-1">Files</div>
       <nav className="flex flex-col gap-1 font-mono text-xs">
         {entries.map((entry, i) => {
-          const path = entry.resource.path;
+          const path = entry.path;
           const name = path.split("/").slice(-2).join("/");
           const isCurrent = selectedIndex === i;
           return (

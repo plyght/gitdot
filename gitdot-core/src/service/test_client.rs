@@ -131,8 +131,8 @@ impl GitClient for MockGitClient {
         _repo: &str,
         _ref_name: Option<&str>,
         _paths: &[String],
-    ) -> Result<Vec<Option<String>>, GitError> {
-        unimplemented!("MockGitClient::get_repo_blobs_at_ref is not stubbed")
+    ) -> Result<Vec<Option<RepositoryBlobResponse>>, GitError> {
+        unimplemented!("MockGitClient::get_repo_blob_responses_at_ref is not stubbed")
     }
     async fn get_repo_blob_at_refs(
         &self,

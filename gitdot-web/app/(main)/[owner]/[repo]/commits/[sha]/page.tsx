@@ -1,11 +1,11 @@
 import type { RepositoryCommitResource } from "gitdot-api";
-import type { DiffEntry } from "gitdot-dal/client";
+import type { DiffData } from "gitdot-dal/client";
 import { fetchResources } from "gitdot-dal/server";
 import { PageClient } from "./page.client";
 
 export type Resources = {
   commit: RepositoryCommitResource | null;
-  diff: DiffEntry[];
+  diff: DiffData;
 };
 
 export default async function Page({

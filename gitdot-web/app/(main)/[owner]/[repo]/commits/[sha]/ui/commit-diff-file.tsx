@@ -9,9 +9,9 @@ export function CommitDiffFile({ entry }: { entry: DiffEntry }) {
       className="rounded-sm border border-border overflow-hidden scroll-mt-4"
     >
       <CommitDiffHeader
-        path={entry.resource.path}
-        linesAdded={entry.resource.lines_added}
-        linesRemoved={entry.resource.lines_removed}
+        path={entry.path}
+        linesAdded={entry.linesAdded}
+        linesRemoved={entry.linesRemoved}
       />
       <DiffBody spans={entry.spans} />
     </div>

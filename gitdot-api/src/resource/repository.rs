@@ -131,10 +131,12 @@ pub struct RepositoryBlobDiffsResource {
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepositoryCommitDiffResource {
-    pub sha: String,
-    pub parent_sha: String,
-    pub files: Vec<RepositoryDiffFileResource>,
+pub struct RepositoryBlobPairResource {
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub old: Option<RepositoryBlobResource>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub new: Option<RepositoryBlobResource>,
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

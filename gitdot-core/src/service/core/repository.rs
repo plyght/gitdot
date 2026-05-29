@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Instant};
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use chrono::Utc;
@@ -7,17 +7,17 @@ use uuid::Uuid;
 use crate::{
     client::{Git2Client, GitClient},
     dto::{
-        CommitDiffResponse, CommitResponse, ConvertReadonlyRepositoryRequest,
-        CreateRepositoryCommitFilterRequest, CreateRepositoryRequest,
-        DeleteRepositoryCommitFilterRequest, DeleteRepositoryRequest, GetRepositoryActivityRequest,
-        GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest, GetRepositoryBlobsRequest,
-        GetRepositoryCommitDiffRequest, GetRepositoryCommitRequest, GetRepositoryPathsRequest,
-        GetRepositoryRequest, InitialCommitFile, ListRepositoryCommitFiltersRequest,
-        ListRepositoryCommitsRequest, MAX_PER_PAGE_LIMIT, Page, RepositoryActivityEvent,
-        RepositoryBlobDiffsResponse, RepositoryBlobResponse, RepositoryBlobsResponse,
-        RepositoryCommitFilterResponse, RepositoryDiffFileResponse, RepositoryFileResponse,
-        RepositoryPathsResponse, RepositoryResponse, StarRepositoryRequest,
-        UnstarRepositoryRequest, UpdateRepositoryCommitFilterRequest, UpdateRepositoryRequest,
+        CommitResponse, ConvertReadonlyRepositoryRequest, CreateRepositoryCommitFilterRequest,
+        CreateRepositoryRequest, DeleteRepositoryCommitFilterRequest, DeleteRepositoryRequest,
+        GetRepositoryActivityRequest, GetRepositoryBlobDiffsRequest, GetRepositoryBlobRequest,
+        GetRepositoryBlobsRequest, GetRepositoryCommitBlobsRequest, GetRepositoryCommitRequest,
+        GetRepositoryPathsRequest, GetRepositoryRequest, InitialCommitFile,
+        ListRepositoryCommitFiltersRequest, ListRepositoryCommitsRequest, MAX_PER_PAGE_LIMIT, Page,
+        RepositoryActivityEvent, RepositoryBlobDiffsResponse, RepositoryBlobPairResponse,
+        RepositoryBlobResponse, RepositoryBlobsResponse, RepositoryCommitFilterResponse,
+        RepositoryDiffFileResponse, RepositoryFileResponse, RepositoryPathsResponse,
+        RepositoryResponse, StarRepositoryRequest, UnstarRepositoryRequest,
+        UpdateRepositoryCommitFilterRequest, UpdateRepositoryRequest,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, RepositoryError},
     model::{CommitDiff, RepositoryOwnerType},
@@ -96,10 +96,10 @@ pub trait RepositoryService: Send + Sync + 'static {
         request: GetRepositoryCommitRequest,
     ) -> Result<CommitResponse, RepositoryError>;
 
-    async fn get_repository_commit_diff(
+    async fn get_repository_commit_blobs(
         &self,
-        request: GetRepositoryCommitDiffRequest,
-    ) -> Result<CommitDiffResponse, RepositoryError>;
+        request: GetRepositoryCommitBlobsRequest,
+    ) -> Result<Vec<RepositoryBlobPairResponse>, RepositoryError>;
 
     async fn list_repository_commits(
         &self,
@@ -593,28 +593,24 @@ where
         Ok(commit)
     }
 
-    async fn get_repository_commit_diff(
+    async fn get_repository_commit_blobs(
         &self,
-        request: GetRepositoryCommitDiffRequest,
-    ) -> Result<CommitDiffResponse, RepositoryError> {
+        request: GetRepositoryCommitBlobsRequest,
+    ) -> Result<Vec<RepositoryBlobPairResponse>, RepositoryError> {
         let owner = request.owner.to_string();
         let repo_name = request.repo.to_string();
 
-        let repo_start = Instant::now();
         let repository = self
             .repo_repo
             .get(&owner, &repo_name, None)
             .await?
             .or_not_found("repository", format!("{}/{}", owner, repo_name))?;
-        let repo_lookup_ms = repo_start.elapsed().as_millis() as u64;
 
-        let commit_start = Instant::now();
         let commit = self
             .commit_repo
             .get_commit(repository.id, &request.sha)
             .await?
             .or_not_found("commit", &request.sha)?;
-        let commit_lookup_ms = commit_start.elapsed().as_millis() as u64;
 
         let sha = commit.sha.clone();
         let parent_sha = commit.parent_sha.clone();
@@ -625,7 +621,6 @@ where
             Some(parent_sha.as_str())
         };
 
-        let diff_start = Instant::now();
         let paths: Vec<String> = commit.diffs.iter().map(|d| d.path.clone()).collect();
         let (left, right) = tokio::try_join!(
             self.git_client
@@ -633,37 +628,18 @@ where
             self.git_client
                 .get_repo_blobs_at_ref(&owner, &repo_name, Some(&sha), &paths),
         )?;
-        let files: Vec<RepositoryDiffFileResponse> = commit
-            .diffs
-            .iter()
+
+        let pairs = paths
+            .into_iter()
             .enumerate()
-            .map(|(i, d)| RepositoryDiffFileResponse {
-                path: d.path.clone(),
-                left_content: left[i].clone(),
-                right_content: right[i].clone(),
-                lines_added: d.lines_added as u32,
-                lines_removed: d.lines_removed as u32,
+            .map(|(i, path)| RepositoryBlobPairResponse {
+                path,
+                old: left[i].clone(),
+                new: right[i].clone(),
             })
             .collect();
-        let diff_files_ms = diff_start.elapsed().as_millis() as u64;
 
-        tracing::error!(
-            %owner,
-            %repo_name,
-            sha = %sha,
-            is_initial,
-            file_count = files.len(),
-            repo_lookup_ms,
-            commit_lookup_ms,
-            diff_files_ms,
-            "get_repository_commit_diff stage timings"
-        );
-
-        Ok(CommitDiffResponse {
-            sha,
-            parent_sha,
-            files,
-        })
+        Ok(pairs)
     }
 
     async fn list_repository_commits(

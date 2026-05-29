@@ -1,17 +1,16 @@
-import type { RepositoryDiffFileResource } from "gitdot-api";
+import type { DiffEntry } from "gitdot-dal/client";
 import { Maximize2 } from "lucide-react";
 
 export function ReviewDiffFileHeader({
-  diffFile,
+  entry,
   onClick,
 }: {
-  diffFile: RepositoryDiffFileResource;
+  entry: DiffEntry;
   onClick?: () => void;
 }) {
-  const { path, lines_added, lines_removed, left_content, right_content } =
-    diffFile;
-  const isCreated = !left_content;
-  const isDeleted = !right_content;
+  const { path, linesAdded, linesRemoved } = entry;
+  const isCreated = !entry.old;
+  const isDeleted = !entry.new;
 
   return (
     <div
@@ -29,8 +28,8 @@ export function ReviewDiffFileHeader({
         {isDeleted && <span className="text-red-600">deleted</span>}
         {!isCreated && !isDeleted && (
           <span className="flex flex-row font-mono select-none gap-1">
-            <span className="text-green-600">+{lines_added}</span>
-            <span className="text-red-600">-{lines_removed}</span>
+            <span className="text-green-600">+{linesAdded}</span>
+            <span className="text-red-600">-{linesRemoved}</span>
           </span>
         )}
       </div>

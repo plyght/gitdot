@@ -80,15 +80,6 @@ export const UserCommitResource = z.object({
 });
 export type UserCommitResource = z.infer<typeof UserCommitResource>;
 
-export const RepositoryCommitDiffResource = z.object({
-  sha: z.string(),
-  parent_sha: z.string(),
-  files: z.array(RepositoryDiffFileResource),
-});
-export type RepositoryCommitDiffResource = z.infer<
-  typeof RepositoryCommitDiffResource
->;
-
 export const PathType = z.enum(["blob", "tree", "commit", "unknown"]);
 export type PathType = z.infer<typeof PathType>;
 
@@ -125,6 +116,15 @@ export const RepositoryBlobsResource = z.object({
   blobs: z.array(RepositoryBlobResource),
 });
 export type RepositoryBlobsResource = z.infer<typeof RepositoryBlobsResource>;
+
+export const RepositoryBlobPairResource = z.object({
+  path: z.string(),
+  old: RepositoryBlobResource.optional(),
+  new: RepositoryBlobResource.optional(),
+});
+export type RepositoryBlobPairResource = z.infer<
+  typeof RepositoryBlobPairResource
+>;
 
 export const RepositoryBlobDiffsResource = z.object({
   diffs: z.record(z.string(), RepositoryDiffFileResource),

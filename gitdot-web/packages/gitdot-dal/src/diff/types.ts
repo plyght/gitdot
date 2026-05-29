@@ -1,4 +1,4 @@
-import type { RepositoryDiffFileResource } from "gitdot-api";
+import type { RepositoryBlobResource } from "gitdot-api";
 import type { Element } from "hast";
 
 export type DiffPair = [number | null, number | null];
@@ -26,6 +26,12 @@ export type DiffSpans =
   | { kind: "no-change" };
 
 export type DiffEntry = {
-  resource: RepositoryDiffFileResource;
+  path: string;
+  old: RepositoryBlobResource | null;
+  new: RepositoryBlobResource | null;
   spans: DiffSpans;
+  linesAdded: number;
+  linesRemoved: number;
 };
+
+export type DiffData = DiffEntry[];

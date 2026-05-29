@@ -1,13 +1,40 @@
 import "server-only";
 
-import type { RepositoryDiffFileResource } from "gitdot-api";
+import type {
+  RepositoryBlobPairResource,
+  RepositoryBlobResource,
+  RepositoryDiffFileResource,
+} from "gitdot-api";
 import {
   getRepositoryBlobDiffs,
-  getRepositoryCommitDiff,
+  getRepositoryCommitBlobs,
   getReviewDiff,
 } from "gitdot-client";
 import { renderDiff } from "./shiki";
-import type { DiffEntry } from "./types";
+import type { DiffData, DiffEntry } from "./types";
+
+/**
+ * Adapt the legacy file-diff shape (left/right content strings) into a blob
+ * pair. Transitional: the review and blob-diff endpoints still return
+ * RepositoryDiffFileResource; drop this once they emit blob pairs natively.
+ */
+function fileToPair(
+  file: RepositoryDiffFileResource,
+): RepositoryBlobPairResource {
+  const blob = (content: string): RepositoryBlobResource => ({
+    type: "file",
+    path: file.path,
+    content,
+    commit_sha: "",
+    sha: "",
+    encoding: "utf-8",
+  });
+  return {
+    path: file.path,
+    old: file.left_content != null ? blob(file.left_content) : undefined,
+    new: file.right_content != null ? blob(file.right_content) : undefined,
+  };
+}
 
 export async function renderBlobDiffs(
   owner: string,
@@ -20,23 +47,21 @@ export async function renderBlobDiffs(
     path,
   });
   if (!result) return {};
-  const entries = await Promise.all(
-    Object.entries(result.diffs).map(
-      async ([sha, file]) =>
-        [sha, { resource: file, spans: await renderDiff(file) }] as const,
-    ),
+  const shas = Object.keys(result.diffs);
+  const data = await renderDiff(
+    shas.map((sha) => fileToPair(result.diffs[sha])),
   );
-  return Object.fromEntries(entries);
+  return Object.fromEntries(shas.map((sha, i) => [sha, data[i]]));
 }
 
 export async function renderCommitDiff(
   owner: string,
   repo: string,
   sha: string,
-): Promise<DiffEntry[]> {
-  const result = await getRepositoryCommitDiff(owner, repo, sha);
-  if (!result) return [];
-  return renderDiffs(result.files);
+): Promise<DiffData> {
+  const pairs = await getRepositoryCommitBlobs(owner, repo, sha);
+  if (!pairs) return [];
+  return renderDiff(pairs);
 }
 
 export async function renderReviewDiff(
@@ -46,7 +71,7 @@ export async function renderReviewDiff(
   position: number,
   revision?: number,
   compareTo?: number,
-): Promise<DiffEntry[]> {
+): Promise<DiffData> {
   const result = await getReviewDiff(
     owner,
     repo,
@@ -56,12 +81,5 @@ export async function renderReviewDiff(
     compareTo,
   );
   if (!result) return [];
-  return renderDiffs(result.files);
-}
-
-async function renderDiffs(
-  files: RepositoryDiffFileResource[],
-): Promise<DiffEntry[]> {
-  const datas = await Promise.all(files.map(renderDiff));
-  return files.map((file, i) => ({ resource: file, spans: datas[i] }));
+  return renderDiff(result.files.map(fileToPair));
 }

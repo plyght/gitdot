@@ -6,8 +6,8 @@ import type {
 } from "gitdot-api";
 import type { Root } from "hast";
 import { openIdb } from "../db";
-import { fetchCommitDiffFiles } from "../diff/client";
-import type { DiffEntry } from "../diff/types";
+import { fetchCommitBlobs } from "../diff/client";
+import type { DiffData } from "../diff/types";
 import { createShikiWorker, createSyncWorker } from "../workers";
 import type { ShikiRequest, ShikiResponse } from "../workers/shiki";
 import type { SyncResponse } from "../workers/sync";
@@ -26,13 +26,13 @@ export class ClientProvider extends GitdotProvider {
   private paths = new Map<string, RepositoryPathsResource>();
   private commits = new Map<string, RepositoryCommitResource[]>();
   private hasts = new Map<string, Root>();
-  private diffs = new Map<string, DiffEntry[]>();
+  private diffs = new Map<string, DiffData>();
 
   private syncWorker: SharedWorker | null = null;
   private shikiWorker: SharedWorker | null = null;
   private syncRequests = new Map<string, () => void>();
   private shikiBlobRequests = new Map<string, (hast: Root) => void>();
-  private shikiDiffRequests = new Map<string, (entries: DiffEntry[]) => void>();
+  private shikiDiffRequests = new Map<string, (data: DiffData) => void>();
 
   private constructor() {
     super();
@@ -60,7 +60,7 @@ export class ClientProvider extends GitdotProvider {
         const resolve = this.shikiDiffRequests.get(res.id);
         if (!resolve) return;
         this.shikiDiffRequests.delete(res.id);
-        resolve(res.entries);
+        resolve(res.data);
       }
     };
   }
@@ -147,22 +147,22 @@ export class ClientProvider extends GitdotProvider {
     owner: string,
     repo: string,
     sha: string,
-  ): Promise<DiffEntry[]> {
+  ): Promise<DiffData> {
     const key = `${owner}/${repo}/${sha}`;
     const cached = this.diffs.get(key);
     if (cached) return cached;
 
-    const files = await fetchCommitDiffFiles(owner, repo, sha);
-    const entries = await new Promise<DiffEntry[]>((resolve) => {
+    const pairs = await fetchCommitBlobs(owner, repo, sha);
+    const data = await new Promise<DiffData>((resolve) => {
       const id = crypto.randomUUID();
       this.shikiDiffRequests.set(id, resolve);
       this.shikiWorker?.port.postMessage({
         id,
         kind: "diff",
-        files,
+        pairs,
       } satisfies ShikiRequest);
     });
-    this.diffs.set(key, entries);
-    return entries;
+    this.diffs.set(key, data);
+    return data;
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import type { CommitAuthorResource } from "gitdot-api";
-import { ClientProvider, type DiffEntry } from "gitdot-dal/client";
+import { ClientProvider, type DiffData } from "gitdot-dal/client";
 import { useEffect, useState } from "react";
 import { CommitBody } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-body";
 import { CommitHeader } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-header";
@@ -24,7 +24,7 @@ export function CommitDialog() {
   const [commit, setCommit] = useState<OpenCommitDialogDetail["commit"] | null>(
     null,
   );
-  const [diffEntries, setDiffEntries] = useState<DiffEntry[] | null>(null);
+  const [diffEntries, setDiffEntries] = useState<DiffData | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {

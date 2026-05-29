@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReviewResource } from "gitdot-api";
-import type { DiffEntry } from "gitdot-dal/client";
+import type { DiffData } from "gitdot-dal/client";
 import { Suspense, useEffect, useState } from "react";
 import { Loading } from "@/ui/loading";
 import { ReviewDiffCode } from "./review-diff-code";
@@ -17,7 +17,7 @@ export function ReviewDiff({
 }: {
   position: number;
   review: ReviewResource;
-  diffEntriesPromise: Promise<DiffEntry[]>;
+  diffEntriesPromise: Promise<DiffData>;
 }) {
   const [view, setView] = useState<DiffView>("code");
 

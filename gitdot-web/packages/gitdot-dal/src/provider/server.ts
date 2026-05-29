@@ -14,7 +14,7 @@ import {
 import type { Root } from "hast";
 import { renderCommitDiff } from "../diff/server";
 import { inferLanguage, renderHast } from "../diff/shiki";
-import type { DiffEntry } from "../diff/types";
+import type { DiffData } from "../diff/types";
 import {
   GitdotProvider,
   type ResourceDefinition,
@@ -117,7 +117,7 @@ export class ServerProvider extends GitdotProvider {
     owner: string,
     repo: string,
     sha: string,
-  ): Promise<DiffEntry[]> {
+  ): Promise<DiffData> {
     return await renderCommitDiff(owner, repo, sha);
   }
 }

@@ -3,7 +3,7 @@ mod create_commits;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use super::RepositoryDiffFileResponse;
+use super::RepositoryBlobResponse;
 use crate::model::{Commit, CommitDiff};
 
 pub use create_commits::CreateCommitsRequest;
@@ -31,10 +31,10 @@ pub struct CommitResponse {
 }
 
 #[derive(Debug, Clone)]
-pub struct CommitDiffResponse {
-    pub sha: String,
-    pub parent_sha: String,
-    pub files: Vec<RepositoryDiffFileResponse>,
+pub struct RepositoryBlobPairResponse {
+    pub path: String,
+    pub old: Option<RepositoryBlobResponse>,
+    pub new: Option<RepositoryBlobResponse>,
 }
 
 impl From<Commit> for CommitResponse {

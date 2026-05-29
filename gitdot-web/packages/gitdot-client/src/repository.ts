@@ -8,6 +8,7 @@ import {
   GetRepositoryActivityResponse,
   type GetRepositoryBlobDiffsRequest,
   type GetRepositoryBlobRequest,
+  GetRepositoryCommitBlobsResponse,
   type GetRepositoryPathsRequest,
   type GetRepositoryResourcesRequest,
   ListLatestRepositoriesResponse,
@@ -16,8 +17,8 @@ import {
   ListRepositoryCommitsResponse,
   ListTrendingRepositoriesResponse,
   RepositoryBlobDiffsResource,
+  type RepositoryBlobPairResource,
   RepositoryBlobResource,
-  RepositoryCommitDiffResource,
   type RepositoryCommitFilterResource,
   RepositoryCommitResource,
   RepositoryPathsResource,
@@ -183,15 +184,15 @@ export async function getRepositoryBlobDiffs(
   return await handleResponse(response, RepositoryBlobDiffsResource);
 }
 
-export async function getRepositoryCommitDiff(
+export async function getRepositoryCommitBlobs(
   owner: string,
   repo: string,
   sha: string,
-): Promise<RepositoryCommitDiffResource | null> {
+): Promise<RepositoryBlobPairResource[] | null> {
   const response = await authFetch(
-    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commits/${sha}/diff`,
+    `${GITDOT_SERVER_URL}/repository/${owner}/${repo}/commits/${sha}/blobs`,
   );
-  return await handleResponse(response, RepositoryCommitDiffResource);
+  return await handleResponse(response, GetRepositoryCommitBlobsResponse);
 }
 
 export async function getRepository(

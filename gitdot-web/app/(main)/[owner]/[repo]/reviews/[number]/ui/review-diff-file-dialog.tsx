@@ -1,26 +1,22 @@
 "use client";
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import type { RepositoryDiffFileResource } from "gitdot-api";
-import type { DiffSpans } from "gitdot-dal/client";
+import type { DiffEntry } from "gitdot-dal/client";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 import { DiffBody } from "../../../commits/[sha]/ui/diff-body";
 
 export function ReviewDiffFileDialog({
-  diff,
-  spans,
+  entry,
   open,
   setOpen,
 }: {
-  diff: RepositoryDiffFileResource;
-  spans: DiffSpans;
+  entry: DiffEntry;
   open: boolean;
   setOpen: (open: boolean) => void;
 }) {
-  const { path, lines_added, lines_removed, left_content, right_content } =
-    diff;
-  const isCreated = !left_content;
-  const isDeleted = !right_content;
+  const { path, linesAdded, linesRemoved, spans } = entry;
+  const isCreated = !entry.old;
+  const isDeleted = !entry.new;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -40,8 +36,8 @@ export function ReviewDiffFileDialog({
             {isDeleted && <span className="text-red-600">deleted</span>}
             {!isCreated && !isDeleted && (
               <span className="flex flex-row font-mono select-none gap-1">
-                <span className="text-green-600">+{lines_added}</span>
-                <span className="text-red-600">-{lines_removed}</span>
+                <span className="text-green-600">+{linesAdded}</span>
+                <span className="text-red-600">-{linesRemoved}</span>
               </span>
             )}
           </div>

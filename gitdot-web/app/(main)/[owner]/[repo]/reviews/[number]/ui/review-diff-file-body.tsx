@@ -1,10 +1,7 @@
 "use client";
 
-import type {
-  RepositoryDiffFileResource,
-  ReviewCommentResource,
-} from "gitdot-api";
-import type { DiffSpans } from "gitdot-dal/client";
+import type { ReviewCommentResource } from "gitdot-api";
+import type { DiffEntry } from "gitdot-dal/client";
 import { useCallback } from "react";
 import { DiffCreated } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/diff-created";
 import { DiffSplit } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/diff-split";
@@ -19,18 +16,17 @@ import { ReviewDiffFileCommentNew } from "./review-diff-file-comment-new";
 import { ReviewDiffFileCommentThread } from "./review-diff-file-comment-thread";
 
 export function ReviewDiffFileBody({
-  diffFile,
-  diffSpans,
+  entry,
   diffFileComments,
   layout = "heuristic",
   className,
 }: {
-  diffFile: RepositoryDiffFileResource;
-  diffSpans: DiffSpans;
+  entry: DiffEntry;
   diffFileComments: ReviewCommentResource[];
   layout?: "split" | "unified" | "heuristic";
   className?: string;
 }) {
+  const { path, spans: diffSpans } = entry;
   const { addComment, activeComment, setActiveComment } = useReviewContext();
   const {
     containerRef,
@@ -54,14 +50,14 @@ export function ReviewDiffFileBody({
     (body: string) =>
       addComment({
         body,
-        file_path: diffFile.path,
+        file_path: path,
         line_number_start: selectionRef.current?.lineNumberStart,
         line_number_end: selectionRef.current?.lineNumberEnd,
         start_character: selectionRef.current?.startCharacter,
         end_character: selectionRef.current?.endCharacter,
         side: selectionRef.current?.side,
       }),
-    [addComment, diffFile.path, selectionRef],
+    [addComment, path, selectionRef],
   );
 
   const useSplit =
@@ -94,10 +90,10 @@ export function ReviewDiffFileBody({
         "[&.has-active-comment_.diff-line:not(:has(.token-active))]:opacity-30",
         "[&.has-active-comment_.diff-line:not(:has(.token-active))]:transition-opacity",
         "[&.has-active-comment_.diff-line:not(:has(.token-active))]:duration-200",
-        activeComment?.file_path === diffFile.path && "has-active-comment",
+        activeComment?.file_path === path && "has-active-comment",
         // dim this file body when another file has the active comment
         activeComment &&
-          activeComment.file_path !== diffFile.path &&
+          activeComment.file_path !== path &&
           "opacity-30 transition-opacity duration-200",
         className,
       )}

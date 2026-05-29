@@ -1,10 +1,7 @@
 "use client";
 
-import type {
-  RepositoryDiffFileResource,
-  ReviewCommentResource,
-} from "gitdot-api";
-import type { DiffSpans } from "gitdot-dal/client";
+import type { ReviewCommentResource } from "gitdot-api";
+import type { DiffEntry } from "gitdot-dal/client";
 import { Maximize2 } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -19,19 +16,13 @@ import { ReviewDiffFileBubbles } from "./review-diff-file-bubbles";
 import { ReviewDiffFileDialog } from "./review-diff-file-dialog";
 import { ReviewDiffFileHeader } from "./review-diff-file-header";
 
-export function ReviewDiffFile({
-  diffFile,
-  diffSpans,
-}: {
-  diffFile: RepositoryDiffFileResource;
-  diffSpans: DiffSpans;
-}) {
+export function ReviewDiffFile({ entry }: { entry: DiffEntry }) {
   const { activeDiffComments, activeDiffCommentThreads } = useReviewContext();
   const [dialogOpen, setDialogOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const diffFileComments = useMemo(
-    () => activeDiffComments.filter((c) => c.file_path === diffFile.path),
-    [activeDiffComments, diffFile.path],
+    () => activeDiffComments.filter((c) => c.file_path === entry.path),
+    [activeDiffComments, entry.path],
   );
 
   const [bubblePositionsLeft, setBubblePositionsLeft] = useState<
@@ -66,7 +57,7 @@ export function ReviewDiffFile({
     }> = [];
 
     const fileThreads = activeDiffCommentThreads.filter(
-      (t) => t[0].file_path === diffFile.path,
+      (t) => t[0].file_path === entry.path,
     );
 
     for (const thread of fileThreads) {
@@ -87,7 +78,7 @@ export function ReviewDiffFile({
 
     setBubblePositionsLeft(left);
     setBubblePositionsRight(right);
-  }, [activeDiffCommentThreads, diffFile.path]);
+  }, [activeDiffCommentThreads, entry.path]);
 
   return (
     <div ref={containerRef} className="relative">
@@ -96,15 +87,14 @@ export function ReviewDiffFile({
         className="rounded-sm border border-border overflow-hidden"
       >
         <ReviewDiffFileHeader
-          diffFile={diffFile}
+          entry={entry}
           onClick={() => setDialogOpen(true)}
         />
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <div>
               <ReviewDiffFileBody
-                diffFile={diffFile}
-                diffSpans={diffSpans}
+                entry={entry}
                 diffFileComments={diffFileComments}
               />
             </div>
@@ -123,8 +113,7 @@ export function ReviewDiffFile({
         bubblePositions={bubblePositionsRight}
       />
       <ReviewDiffFileDialog
-        diff={diffFile}
-        spans={diffSpans}
+        entry={entry}
         open={dialogOpen}
         setOpen={setDialogOpen}
       />

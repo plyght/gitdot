@@ -7,11 +7,11 @@ import type {
 
 export * from "./diff/client";
 export * from "./diff/shiki";
+export { default as gitdotLight } from "./diff/themes/gitdot-light";
+export { default as vitesseDark } from "./diff/themes/vitesse-dark";
 export * from "./diff/types";
 export * from "./provider/client";
 export * from "./provider/types";
-export { default as gitdotLight } from "./diff/themes/gitdot-light";
-export { default as vitesseDark } from "./diff/themes/vitesse-dark";
 export { createShikiWorker, createSyncWorker } from "./workers";
 export type { ShikiRequest, ShikiResponse } from "./workers/shiki";
 export type { SyncRequest, SyncResponse } from "./workers/sync";

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReviewDiffResource } from "gitdot-api";
-import type { DiffEntry } from "gitdot-dal/client";
+import type { DiffData } from "gitdot-dal/client";
 import { use } from "react";
 import { ReviewDiffActions } from "./review-diff-actions";
 import { ReviewDiffFile } from "./review-diff-file";
@@ -12,7 +12,7 @@ export function ReviewDiffCode({
   diffEntriesPromise,
   diff,
 }: {
-  diffEntriesPromise: Promise<DiffEntry[]>;
+  diffEntriesPromise: Promise<DiffData>;
   diff: ReviewDiffResource;
 }) {
   const entries = use(diffEntriesPromise);
@@ -33,11 +33,7 @@ export function ReviewDiffCode({
       </div>
       <div className="mx-16 flex flex-col gap-6 pt-8 pb-4">
         {entries.map((entry) => (
-          <ReviewDiffFile
-            key={entry.resource.path}
-            diffFile={entry.resource}
-            diffSpans={entry.spans}
-          />
+          <ReviewDiffFile key={entry.path} entry={entry} />
         ))}
       </div>
     </div>

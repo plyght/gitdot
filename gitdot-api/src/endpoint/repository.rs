@@ -9,7 +9,7 @@ pub mod get_repository_blob;
 pub mod get_repository_blob_diffs;
 pub mod get_repository_blobs;
 pub mod get_repository_commit;
-pub mod get_repository_commit_diff;
+pub mod get_repository_commit_blobs;
 pub mod get_repository_paths;
 pub mod get_repository_resources;
 pub mod list_latest_repositories;
