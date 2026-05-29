@@ -13,8 +13,8 @@ use crate::{
     error::{ConflictError, InputError, NotFoundError, OptionNotFoundExt, ReviewError},
     model::{DiffStatus, Review, ReviewStatus, Verdict},
     repository::{
-        RepositoryRepository, RepositoryRepositoryImpl, ReviewRepository, ReviewRepositoryImpl,
-        UserRepository, UserRepositoryImpl,
+        PgRepositoryRepository, PgReviewRepository, PgUserRepository, RepositoryRepository,
+        ReviewRepository, UserRepository,
     },
     util::{
         cursor,
@@ -272,18 +272,11 @@ where
     git_client: G,
 }
 
-impl
-    ReviewServiceImpl<
-        ReviewRepositoryImpl,
-        RepositoryRepositoryImpl,
-        UserRepositoryImpl,
-        Git2Client,
-    >
-{
+impl ReviewServiceImpl<PgReviewRepository, PgRepositoryRepository, PgUserRepository, Git2Client> {
     pub fn new(
-        review_repo: ReviewRepositoryImpl,
-        repo_repo: RepositoryRepositoryImpl,
-        user_repo: UserRepositoryImpl,
+        review_repo: PgReviewRepository,
+        repo_repo: PgRepositoryRepository,
+        user_repo: PgUserRepository,
         git_client: Git2Client,
     ) -> Self {
         Self {

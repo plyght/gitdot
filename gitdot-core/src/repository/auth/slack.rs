@@ -27,11 +27,11 @@ pub trait SlackRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct SlackRepositoryImpl {
+pub struct PgSlackRepository {
     pool: PgPool,
 }
 
-impl SlackRepositoryImpl {
+impl PgSlackRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -39,7 +39,7 @@ impl SlackRepositoryImpl {
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl SlackRepository for SlackRepositoryImpl {
+impl SlackRepository for PgSlackRepository {
     async fn create_slack_account(
         &self,
         gitdot_user_id: Uuid,
@@ -88,12 +88,12 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{SlackRepository, SlackRepositoryImpl};
+    use super::{PgSlackRepository, SlackRepository};
     use crate::repository::test_common::insert_user;
 
     #[sqlx::test]
     async fn create_and_get_slack_account(pool: PgPool) {
-        let repo = SlackRepositoryImpl::new(pool.clone());
+        let repo = PgSlackRepository::new(pool.clone());
         let user = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
 

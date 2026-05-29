@@ -9,8 +9,8 @@ use crate::{
     error::{NotFoundExt, OptionNotFoundExt, TaskError},
     model::TaskStatus,
     repository::{
-        RepositoryRepository, RepositoryRepositoryImpl, RunnerRepository, RunnerRepositoryImpl,
-        TaskRepository, TaskRepositoryImpl,
+        PgRepositoryRepository, PgRunnerRepository, PgTaskRepository, RepositoryRepository,
+        RunnerRepository, TaskRepository,
     },
 };
 
@@ -68,11 +68,11 @@ where
     repository_repo: S,
 }
 
-impl TaskServiceImpl<TaskRepositoryImpl, RunnerRepositoryImpl, RepositoryRepositoryImpl> {
+impl TaskServiceImpl<PgTaskRepository, PgRunnerRepository, PgRepositoryRepository> {
     pub fn new(
-        task_repo: TaskRepositoryImpl,
-        runner_repo: RunnerRepositoryImpl,
-        repository_repo: RepositoryRepositoryImpl,
+        task_repo: PgTaskRepository,
+        runner_repo: PgRunnerRepository,
+        repository_repo: PgRepositoryRepository,
     ) -> Self {
         Self {
             task_repo,

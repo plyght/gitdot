@@ -11,9 +11,9 @@ use crate::{
     error::{AuthorizationError, OptionNotFoundExt},
     model::{OrganizationRole, RepositoryOwnerType},
     repository::{
-        OrganizationRepository, OrganizationRepositoryImpl, QuestionRepository,
-        QuestionRepositoryImpl, RepositoryRepository, RepositoryRepositoryImpl, ReviewRepository,
-        ReviewRepositoryImpl, UserRepository, UserRepositoryImpl,
+        OrganizationRepository, PgOrganizationRepository, PgQuestionRepository,
+        PgRepositoryRepository, PgReviewRepository, PgUserRepository, QuestionRepository,
+        RepositoryRepository, ReviewRepository, UserRepository,
     },
 };
 
@@ -183,19 +183,19 @@ where
 
 impl
     AuthorizationServiceImpl<
-        OrganizationRepositoryImpl,
-        RepositoryRepositoryImpl,
-        QuestionRepositoryImpl,
-        UserRepositoryImpl,
-        ReviewRepositoryImpl,
+        PgOrganizationRepository,
+        PgRepositoryRepository,
+        PgQuestionRepository,
+        PgUserRepository,
+        PgReviewRepository,
     >
 {
     pub fn new(
-        org_repo: OrganizationRepositoryImpl,
-        repo_repo: RepositoryRepositoryImpl,
-        question_repo: QuestionRepositoryImpl,
-        user_repo: UserRepositoryImpl,
-        review_repo: ReviewRepositoryImpl,
+        org_repo: PgOrganizationRepository,
+        repo_repo: PgRepositoryRepository,
+        question_repo: PgQuestionRepository,
+        user_repo: PgUserRepository,
+        review_repo: PgReviewRepository,
     ) -> Self {
         Self {
             org_repo,

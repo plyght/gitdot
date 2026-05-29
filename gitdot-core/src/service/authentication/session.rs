@@ -13,7 +13,7 @@ use crate::{
     },
     error::{OptionNotFoundExt, SessionError},
     model::AuthProvider,
-    repository::{SessionRepository, SessionRepositoryImpl, UserRepository, UserRepositoryImpl},
+    repository::{PgSessionRepository, PgUserRepository, SessionRepository, UserRepository},
     util::{
         auth::{NOREPLY_EMAIL, get_auth_email},
         crypto::hash_string,
@@ -142,8 +142,8 @@ where
 
 impl
     SessionServiceImpl<
-        SessionRepositoryImpl,
-        UserRepositoryImpl,
+        PgSessionRepository,
+        PgUserRepository,
         SmtpClient,
         OctocrabClient,
         TokenClientImpl,
@@ -153,8 +153,8 @@ impl
     >
 {
     pub fn new(
-        session_repo: SessionRepositoryImpl,
-        user_repo: UserRepositoryImpl,
+        session_repo: PgSessionRepository,
+        user_repo: PgUserRepository,
         email_client: SmtpClient,
         github_client: OctocrabClient,
         token_client: TokenClientImpl,

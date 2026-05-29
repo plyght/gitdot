@@ -12,8 +12,8 @@ use crate::{
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, UserError},
     repository::{
-        CommitRepository, CommitRepositoryImpl, OrganizationRepository, OrganizationRepositoryImpl,
-        ReviewRepository, ReviewRepositoryImpl, UserRepository, UserRepositoryImpl,
+        CommitRepository, OrganizationRepository, PgCommitRepository, PgOrganizationRepository,
+        PgReviewRepository, PgUserRepository, ReviewRepository, UserRepository,
     },
     util::{auth::is_reserved_name, cursor},
 };
@@ -172,20 +172,20 @@ where
 
 impl
     UserServiceImpl<
-        UserRepositoryImpl,
-        OrganizationRepositoryImpl,
-        ReviewRepositoryImpl,
-        CommitRepositoryImpl,
+        PgUserRepository,
+        PgOrganizationRepository,
+        PgReviewRepository,
+        PgCommitRepository,
         ImageClientImpl,
         R2ClientImpl,
         Git2Client,
     >
 {
     pub fn new(
-        user_repo: UserRepositoryImpl,
-        org_repo: OrganizationRepositoryImpl,
-        review_repo: ReviewRepositoryImpl,
-        commit_repo: CommitRepositoryImpl,
+        user_repo: PgUserRepository,
+        org_repo: PgOrganizationRepository,
+        review_repo: PgReviewRepository,
+        commit_repo: PgCommitRepository,
         image_client: ImageClientImpl,
         r2_client: R2ClientImpl,
         git_client: Git2Client,

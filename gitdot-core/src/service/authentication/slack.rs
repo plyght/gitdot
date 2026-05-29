@@ -4,7 +4,7 @@ use crate::{
     client::{SlackBotClient, SlackBotClientImpl},
     dto::{LinkSlackAccountRequest, LinkSlackAccountResponse},
     error::SlackError,
-    repository::{SlackRepository, SlackRepositoryImpl},
+    repository::{PgSlackRepository, SlackRepository},
 };
 
 /// Links a Slack identity to a Gitdot user, completing the Slack app's
@@ -35,8 +35,8 @@ where
     slack_bot_client: SBC,
 }
 
-impl SlackServiceImpl<SlackRepositoryImpl, SlackBotClientImpl> {
-    pub fn new(slack_repo: SlackRepositoryImpl, slack_bot_client: SlackBotClientImpl) -> Self {
+impl SlackServiceImpl<PgSlackRepository, SlackBotClientImpl> {
+    pub fn new(slack_repo: PgSlackRepository, slack_bot_client: SlackBotClientImpl) -> Self {
         Self {
             slack_repo,
             slack_bot_client,

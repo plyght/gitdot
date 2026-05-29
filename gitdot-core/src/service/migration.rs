@@ -18,9 +18,9 @@ use crate::{
         Repository, RepositoryOwnerType, RepositoryVisibility,
     },
     repository::{
-        GitHubRepository, GitHubRepositoryImpl, MigrationRepository, MigrationRepositoryImpl,
-        OrganizationRepository, OrganizationRepositoryImpl, RepositoryRepository,
-        RepositoryRepositoryImpl, UserRepository, UserRepositoryImpl,
+        GitHubRepository, MigrationRepository, OrganizationRepository, PgGitHubRepository,
+        PgMigrationRepository, PgOrganizationRepository, PgRepositoryRepository, PgUserRepository,
+        RepositoryRepository, UserRepository,
     },
     util::{
         cursor,
@@ -170,21 +170,21 @@ impl
     MigrationServiceImpl<
         Git2Client,
         OctocrabClient,
-        RepositoryRepositoryImpl,
-        MigrationRepositoryImpl,
-        OrganizationRepositoryImpl,
-        GitHubRepositoryImpl,
-        UserRepositoryImpl,
+        PgRepositoryRepository,
+        PgMigrationRepository,
+        PgOrganizationRepository,
+        PgGitHubRepository,
+        PgUserRepository,
     >
 {
     pub fn new(
         git_client: Git2Client,
         github_client: OctocrabClient,
-        repo_repo: RepositoryRepositoryImpl,
-        migration_repo: MigrationRepositoryImpl,
-        org_repo: OrganizationRepositoryImpl,
-        github_repo: GitHubRepositoryImpl,
-        user_repo: UserRepositoryImpl,
+        repo_repo: PgRepositoryRepository,
+        migration_repo: PgMigrationRepository,
+        org_repo: PgOrganizationRepository,
+        github_repo: PgGitHubRepository,
+        user_repo: PgUserRepository,
     ) -> Self {
         Self {
             git_client,

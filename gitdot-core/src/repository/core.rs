@@ -5,9 +5,9 @@ mod repository;
 mod review;
 mod user;
 
-pub use commit::{CommitRepository, CommitRepositoryImpl};
-pub use organization::{OrganizationRepository, OrganizationRepositoryImpl};
-pub use question::{QuestionRepository, QuestionRepositoryImpl};
-pub use repository::{RepositoryRepository, RepositoryRepositoryImpl};
-pub use review::{ReviewRepository, ReviewRepositoryImpl};
-pub use user::{UserRepository, UserRepositoryImpl};
+pub use commit::{CommitRepository, PgCommitRepository};
+pub use organization::{OrganizationRepository, PgOrganizationRepository};
+pub use question::{PgQuestionRepository, QuestionRepository};
+pub use repository::{PgRepositoryRepository, RepositoryRepository};
+pub use review::{PgReviewRepository, ReviewRepository};
+pub use user::{PgUserRepository, UserRepository};

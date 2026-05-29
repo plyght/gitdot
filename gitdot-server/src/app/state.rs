@@ -11,10 +11,10 @@ use gitdot_core::{
         R2ClientImpl, S2ClientImpl, SlackBotClientImpl, TokenClientImpl,
     },
     repository::{
-        BuildRepositoryImpl, CommitRepositoryImpl, GitHubRepositoryImpl, MigrationRepositoryImpl,
-        OrganizationRepositoryImpl, QuestionRepositoryImpl, RepositoryRepositoryImpl,
-        ReviewRepositoryImpl, RunnerRepositoryImpl, SlackWebhookRepositoryImpl, TaskRepositoryImpl,
-        TokenRepositoryImpl, UserRepositoryImpl, WebhookRepositoryImpl,
+        PgBuildRepository, PgCommitRepository, PgGitHubRepository, PgMigrationRepository,
+        PgOrganizationRepository, PgQuestionRepository, PgRepositoryRepository, PgReviewRepository,
+        PgRunnerRepository, PgSlackWebhookRepository, PgTaskRepository, PgTokenRepository,
+        PgUserRepository, PgWebhookRepository,
     },
     service::{
         AuthorizationService, AuthorizationServiceImpl, BuildService, BuildServiceImpl,
@@ -66,20 +66,20 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new(settings: Arc<Settings>, pool: PgPool) -> anyhow::Result<Self> {
-        let token_repo = TokenRepositoryImpl::new(pool.clone());
-        let user_repo = UserRepositoryImpl::new(pool.clone());
-        let org_repo = OrganizationRepositoryImpl::new(pool.clone());
-        let repo_repo = RepositoryRepositoryImpl::new(pool.clone());
-        let question_repo = QuestionRepositoryImpl::new(pool.clone());
-        let review_repo = ReviewRepositoryImpl::new(pool.clone());
-        let commit_repo = CommitRepositoryImpl::new(pool.clone());
-        let github_repo = GitHubRepositoryImpl::new(pool.clone());
-        let migration_repo = MigrationRepositoryImpl::new(pool.clone());
-        let webhook_repo = WebhookRepositoryImpl::new(pool.clone());
-        let build_repo = BuildRepositoryImpl::new(pool.clone());
-        let runner_repo = RunnerRepositoryImpl::new(pool.clone());
-        let task_repo = TaskRepositoryImpl::new(pool.clone());
-        let slack_webhook_repo = SlackWebhookRepositoryImpl::new(pool.clone());
+        let token_repo = PgTokenRepository::new(pool.clone());
+        let user_repo = PgUserRepository::new(pool.clone());
+        let org_repo = PgOrganizationRepository::new(pool.clone());
+        let repo_repo = PgRepositoryRepository::new(pool.clone());
+        let question_repo = PgQuestionRepository::new(pool.clone());
+        let review_repo = PgReviewRepository::new(pool.clone());
+        let commit_repo = PgCommitRepository::new(pool.clone());
+        let github_repo = PgGitHubRepository::new(pool.clone());
+        let migration_repo = PgMigrationRepository::new(pool.clone());
+        let webhook_repo = PgWebhookRepository::new(pool.clone());
+        let build_repo = PgBuildRepository::new(pool.clone());
+        let runner_repo = PgRunnerRepository::new(pool.clone());
+        let task_repo = PgTaskRepository::new(pool.clone());
+        let slack_webhook_repo = PgSlackWebhookRepository::new(pool.clone());
 
         let git_client = Git2Client::new(settings.git_project_root.clone());
         let git_http_client = GitHttpClientImpl::new(settings.git_project_root.clone());

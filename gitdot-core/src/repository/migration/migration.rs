@@ -96,11 +96,11 @@ pub trait MigrationRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct MigrationRepositoryImpl {
+pub struct PgMigrationRepository {
     pool: PgPool,
 }
 
-impl MigrationRepositoryImpl {
+impl PgMigrationRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -108,7 +108,7 @@ impl MigrationRepositoryImpl {
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl MigrationRepository for MigrationRepositoryImpl {
+impl MigrationRepository for PgMigrationRepository {
     async fn create(
         &self,
         author_id: Uuid,
@@ -353,14 +353,14 @@ mod tests {
     use uuid::Uuid;
 
     use super::{
-        MigrationOriginService, MigrationRepository, MigrationRepositoryImpl,
-        MigrationRepositoryStatus, MigrationStatus, RepositoryOwnerType, RepositoryVisibility,
+        MigrationOriginService, MigrationRepository, MigrationRepositoryStatus, MigrationStatus,
+        PgMigrationRepository, RepositoryOwnerType, RepositoryVisibility,
     };
     use crate::repository::test_common::{insert_migration_at, insert_user, insert_user_repo};
 
     #[sqlx::test]
     async fn create_assigns_sequential_numbers_per_author(pool: PgPool) {
-        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let repo = PgMigrationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -418,7 +418,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_returns_migration_with_repositories(pool: PgPool) {
-        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let repo = PgMigrationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let migration = repo
@@ -460,7 +460,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_paginates_newest_first(pool: PgPool) {
-        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let repo = PgMigrationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let now = Utc::now();
@@ -482,7 +482,7 @@ mod tests {
 
     #[sqlx::test]
     async fn update_status_changes_status(pool: PgPool) {
-        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let repo = PgMigrationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let migration = repo
@@ -507,7 +507,7 @@ mod tests {
 
     #[sqlx::test]
     async fn migration_repository_create_and_update_status(pool: PgPool) {
-        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let repo = PgMigrationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let migration = repo
@@ -554,7 +554,7 @@ mod tests {
 
     #[sqlx::test]
     async fn set_destination_and_list_by_origin_repository_id(pool: PgPool) {
-        let repo = MigrationRepositoryImpl::new(pool.clone());
+        let repo = PgMigrationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let migration = repo

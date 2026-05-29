@@ -13,8 +13,8 @@ use crate::{
     error::{BuildError, GitError, NotFoundError, OptionNotFoundExt},
     model::{BuildStatus, TaskStatus},
     repository::{
-        BuildRepository, BuildRepositoryImpl, RepositoryRepository, RepositoryRepositoryImpl,
-        TaskRepository, TaskRepositoryImpl,
+        BuildRepository, PgBuildRepository, PgRepositoryRepository, PgTaskRepository,
+        RepositoryRepository, TaskRepository,
     },
     util::{cursor, git::DEFAULT_BRANCH},
 };
@@ -110,17 +110,17 @@ impl
     BuildServiceImpl<
         Git2Client,
         S2ClientImpl,
-        BuildRepositoryImpl,
-        TaskRepositoryImpl,
-        RepositoryRepositoryImpl,
+        PgBuildRepository,
+        PgTaskRepository,
+        PgRepositoryRepository,
     >
 {
     pub fn new(
         git_client: Git2Client,
         s2_client: S2ClientImpl,
-        build_repo: BuildRepositoryImpl,
-        task_repo: TaskRepositoryImpl,
-        repo_repo: RepositoryRepositoryImpl,
+        build_repo: PgBuildRepository,
+        task_repo: PgTaskRepository,
+        repo_repo: PgRepositoryRepository,
     ) -> Self {
         Self {
             git_client,

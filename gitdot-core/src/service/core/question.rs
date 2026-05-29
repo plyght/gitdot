@@ -11,7 +11,7 @@ use crate::{
     error::{OptionNotFoundExt, QuestionError},
     model::VoteTarget,
     repository::{
-        QuestionRepository, QuestionRepositoryImpl, RepositoryRepository, RepositoryRepositoryImpl,
+        PgQuestionRepository, PgRepositoryRepository, QuestionRepository, RepositoryRepository,
     },
     util::cursor,
 };
@@ -146,8 +146,8 @@ where
     repo_repo: R,
 }
 
-impl QuestionServiceImpl<QuestionRepositoryImpl, RepositoryRepositoryImpl> {
-    pub fn new(question_repo: QuestionRepositoryImpl, repo_repo: RepositoryRepositoryImpl) -> Self {
+impl QuestionServiceImpl<PgQuestionRepository, PgRepositoryRepository> {
+    pub fn new(question_repo: PgQuestionRepository, repo_repo: PgRepositoryRepository) -> Self {
         Self {
             question_repo,
             repo_repo,

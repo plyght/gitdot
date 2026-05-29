@@ -10,8 +10,8 @@ use crate::{
     error::{NotFoundExt, OptionNotFoundExt, RunnerError},
     model::{RunnerOwnerType, TokenType},
     repository::{
-        OrganizationRepository, OrganizationRepositoryImpl, RunnerRepository, RunnerRepositoryImpl,
-        TokenRepository, TokenRepositoryImpl,
+        OrganizationRepository, PgOrganizationRepository, PgRunnerRepository, PgTokenRepository,
+        RunnerRepository, TokenRepository,
     },
     util::cursor,
 };
@@ -92,16 +92,16 @@ where
 
 impl
     RunnerServiceImpl<
-        RunnerRepositoryImpl,
-        OrganizationRepositoryImpl,
-        TokenRepositoryImpl,
+        PgRunnerRepository,
+        PgOrganizationRepository,
+        PgTokenRepository,
         TokenClientImpl,
     >
 {
     pub fn new(
-        runner_repo: RunnerRepositoryImpl,
-        org_repo: OrganizationRepositoryImpl,
-        token_repo: TokenRepositoryImpl,
+        runner_repo: PgRunnerRepository,
+        org_repo: PgOrganizationRepository,
+        token_repo: PgTokenRepository,
         token_client: TokenClientImpl,
     ) -> Self {
         Self {

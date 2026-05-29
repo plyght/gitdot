@@ -119,19 +119,19 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct OrganizationRepositoryImpl {
+pub struct PgOrganizationRepository {
     pool: PgPool,
 }
 
-impl OrganizationRepositoryImpl {
-    pub fn new(pool: PgPool) -> OrganizationRepositoryImpl {
-        OrganizationRepositoryImpl { pool }
+impl PgOrganizationRepository {
+    pub fn new(pool: PgPool) -> PgOrganizationRepository {
+        PgOrganizationRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl OrganizationRepository for OrganizationRepositoryImpl {
+impl OrganizationRepository for PgOrganizationRepository {
     async fn create(
         &self,
         org_name: &str,
@@ -471,12 +471,12 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{OrganizationRepository, OrganizationRepositoryImpl, OrganizationRole};
+    use super::{OrganizationRepository, OrganizationRole, PgOrganizationRepository};
     use crate::repository::test_common::{insert_membership_at, insert_org_at, insert_user};
 
     #[sqlx::test]
     async fn create_persists_org_and_owner_admin_membership(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
 
@@ -497,7 +497,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_returns_org_with_members(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
         repo.create("acme", owner, None).await.unwrap();
@@ -513,7 +513,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_id_round_trips(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
         let org = repo.create("acme", owner, None).await.unwrap();
@@ -524,7 +524,7 @@ mod tests {
 
     #[sqlx::test]
     async fn touch_image_advances_timestamp(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let id = Uuid::new_v4();
         // Seed with an old image timestamp so the touch is observable.
         sqlx::query(
@@ -545,7 +545,7 @@ mod tests {
 
     #[sqlx::test]
     async fn is_member_reflects_membership(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         let outsider = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
@@ -558,7 +558,7 @@ mod tests {
 
     #[sqlx::test]
     async fn add_member_inserts_then_is_idempotent(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
@@ -599,7 +599,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_member_role_resolves_by_org_and_user(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         let outsider = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
@@ -626,7 +626,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_member_fetches_by_member_id(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
@@ -656,7 +656,7 @@ mod tests {
 
     #[sqlx::test]
     async fn update_changes_only_provided_fields(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
         repo.create("acme", owner, None).await.unwrap();
@@ -698,7 +698,7 @@ mod tests {
 
     #[sqlx::test]
     async fn update_member_coalesces_role_description(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
@@ -740,7 +740,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_paginates_newest_first(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let now = Utc::now();
         let (o1, o2, o3) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
         insert_org_at(&pool, o1, "first", now - Duration::days(3)).await;
@@ -761,7 +761,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_by_user_id_returns_member_orgs(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         let outsider = Uuid::new_v4();
         insert_user(&pool, owner, "owner").await;
@@ -789,7 +789,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_memberships_paginates_newest_first(pool: PgPool) {
-        let repo = OrganizationRepositoryImpl::new(pool.clone());
+        let repo = PgOrganizationRepository::new(pool.clone());
         let user = Uuid::new_v4();
         insert_user(&pool, user, "member").await;
 

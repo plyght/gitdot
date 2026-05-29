@@ -7,7 +7,7 @@ use crate::{
     },
     error::{NotFoundError, OptionNotFoundExt, WebhookError},
     repository::{
-        RepositoryRepository, RepositoryRepositoryImpl, WebhookRepository, WebhookRepositoryImpl,
+        PgRepositoryRepository, PgWebhookRepository, RepositoryRepository, WebhookRepository,
     },
     util::cursor,
 };
@@ -89,8 +89,8 @@ where
     repo_repo: R,
 }
 
-impl WebhookServiceImpl<WebhookRepositoryImpl, RepositoryRepositoryImpl> {
-    pub fn new(webhook_repo: WebhookRepositoryImpl, repo_repo: RepositoryRepositoryImpl) -> Self {
+impl WebhookServiceImpl<PgWebhookRepository, PgRepositoryRepository> {
+    pub fn new(webhook_repo: PgWebhookRepository, repo_repo: PgRepositoryRepository) -> Self {
         Self {
             webhook_repo,
             repo_repo,

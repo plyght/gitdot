@@ -21,8 +21,8 @@ use crate::{
     error::{ConflictError, NotFoundError, OptionNotFoundExt, RepositoryError},
     model::{CommitDiff, RepositoryOwnerType},
     repository::{
-        CommitRepository, CommitRepositoryImpl, OrganizationRepository, OrganizationRepositoryImpl,
-        RepositoryRepository, RepositoryRepositoryImpl, UserRepository, UserRepositoryImpl,
+        CommitRepository, OrganizationRepository, PgCommitRepository, PgOrganizationRepository,
+        PgRepositoryRepository, PgUserRepository, RepositoryRepository, UserRepository,
     },
     util::{
         cursor,
@@ -274,18 +274,18 @@ where
 impl
     RepositoryServiceImpl<
         Git2Client,
-        OrganizationRepositoryImpl,
-        RepositoryRepositoryImpl,
-        CommitRepositoryImpl,
-        UserRepositoryImpl,
+        PgOrganizationRepository,
+        PgRepositoryRepository,
+        PgCommitRepository,
+        PgUserRepository,
     >
 {
     pub fn new(
         git_client: Git2Client,
-        org_repo: OrganizationRepositoryImpl,
-        repo_repo: RepositoryRepositoryImpl,
-        commit_repo: CommitRepositoryImpl,
-        user_repo: UserRepositoryImpl,
+        org_repo: PgOrganizationRepository,
+        repo_repo: PgRepositoryRepository,
+        commit_repo: PgCommitRepository,
+        user_repo: PgUserRepository,
     ) -> Self {
         Self {
             git_client,

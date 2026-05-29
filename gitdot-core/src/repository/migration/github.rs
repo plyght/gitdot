@@ -48,11 +48,11 @@ pub trait GitHubRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct GitHubRepositoryImpl {
+pub struct PgGitHubRepository {
     pool: PgPool,
 }
 
-impl GitHubRepositoryImpl {
+impl PgGitHubRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -60,7 +60,7 @@ impl GitHubRepositoryImpl {
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl GitHubRepository for GitHubRepositoryImpl {
+impl GitHubRepository for PgGitHubRepository {
     async fn create(
         &self,
         installation_id: i64,
@@ -159,12 +159,12 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{GitHubInstallationType, GitHubRepository, GitHubRepositoryImpl};
+    use super::{GitHubInstallationType, GitHubRepository, PgGitHubRepository};
     use crate::repository::test_common::{insert_installation_at, insert_user};
 
     #[sqlx::test]
     async fn create_and_get_installation(pool: PgPool) {
-        let repo = GitHubRepositoryImpl::new(pool.clone());
+        let repo = PgGitHubRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         let other = Uuid::new_v4();
         insert_user(&pool, owner, "alice").await;
@@ -189,7 +189,7 @@ mod tests {
 
     #[sqlx::test]
     async fn delete_by_installation_id_removes(pool: PgPool) {
-        let repo = GitHubRepositoryImpl::new(pool.clone());
+        let repo = PgGitHubRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         insert_user(&pool, owner, "alice").await;
         repo.create(1001, owner, GitHubInstallationType::Organization, "acme")
@@ -202,7 +202,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_by_owner_paginates_newest_first(pool: PgPool) {
-        let repo = GitHubRepositoryImpl::new(pool.clone());
+        let repo = PgGitHubRepository::new(pool.clone());
         let owner = Uuid::new_v4();
         let other = Uuid::new_v4();
         insert_user(&pool, owner, "alice").await;

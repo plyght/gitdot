@@ -305,19 +305,19 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct ReviewRepositoryImpl {
+pub struct PgReviewRepository {
     pool: PgPool,
 }
 
-impl ReviewRepositoryImpl {
-    pub fn new(pool: PgPool) -> ReviewRepositoryImpl {
-        ReviewRepositoryImpl { pool }
+impl PgReviewRepository {
+    pub fn new(pool: PgPool) -> PgReviewRepository {
+        PgReviewRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl ReviewRepository for ReviewRepositoryImpl {
+impl ReviewRepository for PgReviewRepository {
     async fn get_review_by_number(
         &self,
         owner: &str,

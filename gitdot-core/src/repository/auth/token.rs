@@ -40,11 +40,11 @@ pub trait TokenRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct TokenRepositoryImpl {
+pub struct PgTokenRepository {
     pool: PgPool,
 }
 
-impl TokenRepositoryImpl {
+impl PgTokenRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -52,7 +52,7 @@ impl TokenRepositoryImpl {
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl TokenRepository for TokenRepositoryImpl {
+impl TokenRepository for PgTokenRepository {
     async fn create_token(
         &self,
         principal_id: Uuid,
@@ -128,11 +128,11 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{TokenRepository, TokenRepositoryImpl, TokenType};
+    use super::{PgTokenRepository, TokenRepository, TokenType};
 
     #[sqlx::test]
     async fn create_and_get_token(pool: PgPool) {
-        let repo = TokenRepositoryImpl::new(pool.clone());
+        let repo = PgTokenRepository::new(pool.clone());
         let principal = Uuid::new_v4();
 
         let token = repo
@@ -156,7 +156,7 @@ mod tests {
 
     #[sqlx::test]
     async fn touch_token_sets_last_used(pool: PgPool) {
-        let repo = TokenRepositoryImpl::new(pool.clone());
+        let repo = PgTokenRepository::new(pool.clone());
         let token = repo
             .create_token(Uuid::new_v4(), "cli", "hash", TokenType::Runner)
             .await
@@ -176,7 +176,7 @@ mod tests {
 
     #[sqlx::test]
     async fn delete_token_removes_it(pool: PgPool) {
-        let repo = TokenRepositoryImpl::new(pool.clone());
+        let repo = PgTokenRepository::new(pool.clone());
         let token = repo
             .create_token(Uuid::new_v4(), "cli", "hash", TokenType::Personal)
             .await
@@ -188,7 +188,7 @@ mod tests {
 
     #[sqlx::test]
     async fn delete_token_by_principal_removes_all_their_tokens(pool: PgPool) {
-        let repo = TokenRepositoryImpl::new(pool.clone());
+        let repo = PgTokenRepository::new(pool.clone());
         let principal = Uuid::new_v4();
         let other = Uuid::new_v4();
         repo.create_token(principal, "cli", "h1", TokenType::Personal)

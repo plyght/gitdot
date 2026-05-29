@@ -104,11 +104,11 @@ pub trait CommitRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct CommitRepositoryImpl {
+pub struct PgCommitRepository {
     pool: PgPool,
 }
 
-impl CommitRepositoryImpl {
+impl PgCommitRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -116,7 +116,7 @@ impl CommitRepositoryImpl {
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl CommitRepository for CommitRepositoryImpl {
+impl CommitRepository for PgCommitRepository {
     async fn get_commit(&self, repo_id: Uuid, sha: &str) -> Result<Option<Commit>, DatabaseError> {
         let short = if sha.len() >= 7 { &sha[..7] } else { sha };
 
@@ -329,7 +329,7 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{Commit, CommitDiff, CommitRepository, CommitRepositoryImpl};
+    use super::{Commit, CommitDiff, CommitRepository, PgCommitRepository};
     use crate::{
         model::OrganizationRole,
         repository::test_common::{
@@ -346,7 +346,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_commit_matches_full_and_short_sha(pool: PgPool) {
-        let repo = CommitRepositoryImpl::new(pool.clone());
+        let repo = PgCommitRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let repo_id = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -399,7 +399,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_by_repository_filters_and_paginates(pool: PgPool) {
-        let repo = CommitRepositoryImpl::new(pool.clone());
+        let repo = PgCommitRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let repo_id = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -476,7 +476,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_by_user_returns_authored_commits_newest_first(pool: PgPool) {
-        let repo = CommitRepositoryImpl::new(pool.clone());
+        let repo = PgCommitRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         let repo_id = Uuid::new_v4();
@@ -556,7 +556,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_by_user_reflects_viewer_access(pool: PgPool) {
-        let repo = CommitRepositoryImpl::new(pool.clone());
+        let repo = PgCommitRepository::new(pool.clone());
         let alice = Uuid::new_v4(); // commit author + owner of the user repos
         let bob = Uuid::new_v4(); // unrelated outsider
         let member = Uuid::new_v4(); // member of the org that owns org_repo
@@ -655,7 +655,7 @@ mod tests {
 
     #[sqlx::test]
     async fn create_bulk_inserts_and_skips_conflicts(pool: PgPool) {
-        let repo = CommitRepositoryImpl::new(pool.clone());
+        let repo = PgCommitRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let repo_id = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;

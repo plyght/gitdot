@@ -55,19 +55,19 @@ pub trait TaskRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct TaskRepositoryImpl {
+pub struct PgTaskRepository {
     pool: PgPool,
 }
 
-impl TaskRepositoryImpl {
-    pub fn new(pool: PgPool) -> TaskRepositoryImpl {
-        TaskRepositoryImpl { pool }
+impl PgTaskRepository {
+    pub fn new(pool: PgPool) -> PgTaskRepository {
+        PgTaskRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl TaskRepository for TaskRepositoryImpl {
+impl TaskRepository for PgTaskRepository {
     async fn create(
         &self,
         id: Uuid,

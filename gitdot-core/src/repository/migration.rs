@@ -1,5 +1,5 @@
 mod github;
 mod migration;
 
-pub use github::{GitHubRepository, GitHubRepositoryImpl};
-pub use migration::{MigrationRepository, MigrationRepositoryImpl};
+pub use github::{GitHubRepository, PgGitHubRepository};
+pub use migration::{MigrationRepository, PgMigrationRepository};

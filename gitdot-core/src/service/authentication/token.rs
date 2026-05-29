@@ -11,7 +11,7 @@ use crate::{
         ValidateTokenResponse, VerifyGithubSignatureRequest, VerifySlackBotSignatureRequest,
     },
     error::TokenServiceError,
-    repository::{TokenRepository, TokenRepositoryImpl},
+    repository::{PgTokenRepository, TokenRepository},
     util::{
         auth::{GITDOT_SERVER_ID, S2_SERVER_ID},
         crypto::hash_string,
@@ -82,9 +82,9 @@ where
     token_client: TC,
 }
 
-impl TokenServiceImpl<TokenRepositoryImpl, OctocrabClient, SlackBotClientImpl, TokenClientImpl> {
+impl TokenServiceImpl<PgTokenRepository, OctocrabClient, SlackBotClientImpl, TokenClientImpl> {
     pub fn new(
-        token_repo: TokenRepositoryImpl,
+        token_repo: PgTokenRepository,
         github_client: OctocrabClient,
         slack_bot_client: SlackBotClientImpl,
         token_client: TokenClientImpl,

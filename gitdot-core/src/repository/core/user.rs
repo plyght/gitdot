@@ -176,19 +176,19 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct UserRepositoryImpl {
+pub struct PgUserRepository {
     pool: PgPool,
 }
 
-impl UserRepositoryImpl {
-    pub fn new(pool: PgPool) -> UserRepositoryImpl {
-        UserRepositoryImpl { pool }
+impl PgUserRepository {
+    pub fn new(pool: PgPool) -> PgUserRepository {
+        PgUserRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl UserRepository for UserRepositoryImpl {
+impl UserRepository for PgUserRepository {
     async fn create(
         &self,
         email: &str,
@@ -691,14 +691,14 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{AuthProvider, UserRepository, UserRepositoryImpl};
+    use super::{AuthProvider, PgUserRepository, UserRepository};
     use crate::repository::test_common::{
         insert_commit, insert_org, insert_star, insert_user, insert_user_repo,
     };
 
     #[sqlx::test]
     async fn create_persists_user_with_primary_email(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
 
         let user = repo
             .create("alice@example.com", true, AuthProvider::Email)
@@ -728,7 +728,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_and_get_by_id_round_trip(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let user = repo
             .create("a@x.com", true, AuthProvider::Email)
             .await
@@ -745,7 +745,7 @@ mod tests {
 
     #[sqlx::test]
     async fn update_changes_only_provided_fields(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let user = repo
             .create("u@x.com", true, AuthProvider::Email)
             .await
@@ -780,7 +780,7 @@ mod tests {
 
     #[sqlx::test]
     async fn touch_image_advances_timestamp(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let id = Uuid::new_v4();
         // Seed with an old image timestamp so the touch is observable.
         sqlx::query(
@@ -801,7 +801,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_by_email_matches_primary_only(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let user = repo
             .create("primary@x.com", true, AuthProvider::Email)
             .await
@@ -827,7 +827,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_by_emails_returns_verified_only(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let verified = repo
             .create("verified@x.com", true, AuthProvider::Email)
             .await
@@ -853,7 +853,7 @@ mod tests {
 
     #[sqlx::test]
     async fn verify_email_marks_primary_verified(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let user = repo
             .create("v@x.com", false, AuthProvider::Email)
             .await
@@ -869,7 +869,7 @@ mod tests {
 
     #[sqlx::test]
     async fn is_name_taken_checks_users_and_orgs(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let user = repo
             .create("n@x.com", true, AuthProvider::Email)
             .await
@@ -883,7 +883,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_emails_orders_primary_first(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let user = repo
             .create("primary@x.com", true, AuthProvider::Email)
             .await
@@ -900,7 +900,7 @@ mod tests {
 
     #[sqlx::test]
     async fn create_and_get_email_for_user(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let user = repo
             .create("p@x.com", true, AuthProvider::Email)
             .await
@@ -939,7 +939,7 @@ mod tests {
 
     #[sqlx::test]
     async fn upsert_verified_emails_inserts_and_skips_conflicts(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let a = repo
             .create("a@x.com", true, AuthProvider::Email)
             .await
@@ -978,7 +978,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_repositories_filters_visibility_and_counts_own_commits(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -1044,7 +1044,7 @@ mod tests {
 
     #[sqlx::test]
     async fn starred_repos_respect_viewer_visibility(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -1083,7 +1083,7 @@ mod tests {
 
     #[sqlx::test]
     async fn contributed_repos_respect_from_window(pool: PgPool) {
-        let repo = UserRepositoryImpl::new(pool.clone());
+        let repo = PgUserRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
 

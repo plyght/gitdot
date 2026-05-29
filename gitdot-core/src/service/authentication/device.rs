@@ -10,8 +10,8 @@ use crate::{
     error::{DeviceError, InputError, OptionNotFoundExt},
     model::{DeviceAuthorizationStatus, TokenType},
     repository::{
-        DeviceRepository, DeviceRepositoryImpl, TokenRepository, TokenRepositoryImpl,
-        UserRepository, UserRepositoryImpl,
+        DeviceRepository, PgDeviceRepository, PgTokenRepository, PgUserRepository, TokenRepository,
+        UserRepository,
     },
     util::crypto::hash_string,
 };
@@ -66,18 +66,11 @@ where
     token_client: TC,
 }
 
-impl
-    DeviceServiceImpl<
-        DeviceRepositoryImpl,
-        TokenRepositoryImpl,
-        UserRepositoryImpl,
-        TokenClientImpl,
-    >
-{
+impl DeviceServiceImpl<PgDeviceRepository, PgTokenRepository, PgUserRepository, TokenClientImpl> {
     pub fn new(
-        device_repo: DeviceRepositoryImpl,
-        token_repo: TokenRepositoryImpl,
-        user_repo: UserRepositoryImpl,
+        device_repo: PgDeviceRepository,
+        token_repo: PgTokenRepository,
+        user_repo: PgUserRepository,
         token_client: TokenClientImpl,
     ) -> Self {
         Self {

@@ -61,19 +61,19 @@ pub trait SessionRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct SessionRepositoryImpl {
+pub struct PgSessionRepository {
     pool: PgPool,
 }
 
-impl SessionRepositoryImpl {
-    pub fn new(pool: PgPool) -> SessionRepositoryImpl {
-        SessionRepositoryImpl { pool }
+impl PgSessionRepository {
+    pub fn new(pool: PgPool) -> PgSessionRepository {
+        PgSessionRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl SessionRepository for SessionRepositoryImpl {
+impl SessionRepository for PgSessionRepository {
     async fn create_auth_code(
         &self,
         user_id: Uuid,
@@ -201,12 +201,12 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{SessionRepository, SessionRepositoryImpl};
+    use super::{PgSessionRepository, SessionRepository};
     use crate::repository::test_common::insert_user;
 
     #[sqlx::test]
     async fn auth_code_create_get_and_mark_used(pool: PgPool) {
-        let repo = SessionRepositoryImpl::new(pool.clone());
+        let repo = PgSessionRepository::new(pool.clone());
         let user = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
 
@@ -239,7 +239,7 @@ mod tests {
 
     #[sqlx::test]
     async fn session_create_get_and_revoke(pool: PgPool) {
-        let repo = SessionRepositoryImpl::new(pool.clone());
+        let repo = PgSessionRepository::new(pool.clone());
         let user = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
         let family = Uuid::new_v4();
@@ -289,7 +289,7 @@ mod tests {
 
     #[sqlx::test]
     async fn revoke_sessions_by_family_revokes_active(pool: PgPool) {
-        let repo = SessionRepositoryImpl::new(pool.clone());
+        let repo = PgSessionRepository::new(pool.clone());
         let user = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
         let family = Uuid::new_v4();

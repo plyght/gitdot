@@ -4,8 +4,8 @@ mod session;
 mod slack;
 mod token;
 
-pub use device::{DeviceRepository, DeviceRepositoryImpl};
-pub use email_verification::{EmailVerificationRepository, EmailVerificationRepositoryImpl};
-pub use session::{SessionRepository, SessionRepositoryImpl};
-pub use slack::{SlackRepository, SlackRepositoryImpl};
-pub use token::{TokenRepository, TokenRepositoryImpl};
+pub use device::{DeviceRepository, PgDeviceRepository};
+pub use email_verification::{EmailVerificationRepository, PgEmailVerificationRepository};
+pub use session::{PgSessionRepository, SessionRepository};
+pub use slack::{PgSlackRepository, SlackRepository};
+pub use token::{PgTokenRepository, TokenRepository};

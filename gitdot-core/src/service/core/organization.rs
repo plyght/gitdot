@@ -10,8 +10,8 @@ use crate::{
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, OrganizationError},
     repository::{
-        OrganizationRepository, OrganizationRepositoryImpl, RepositoryRepository,
-        RepositoryRepositoryImpl, UserRepository, UserRepositoryImpl,
+        OrganizationRepository, PgOrganizationRepository, PgRepositoryRepository, PgUserRepository,
+        RepositoryRepository, UserRepository,
     },
     util::cursor,
 };
@@ -132,17 +132,17 @@ where
 
 impl
     OrganizationServiceImpl<
-        OrganizationRepositoryImpl,
-        UserRepositoryImpl,
-        RepositoryRepositoryImpl,
+        PgOrganizationRepository,
+        PgUserRepository,
+        PgRepositoryRepository,
         ImageClientImpl,
         R2ClientImpl,
     >
 {
     pub fn new(
-        org_repo: OrganizationRepositoryImpl,
-        user_repo: UserRepositoryImpl,
-        repo_repo: RepositoryRepositoryImpl,
+        org_repo: PgOrganizationRepository,
+        user_repo: PgUserRepository,
+        repo_repo: PgRepositoryRepository,
         image_client: ImageClientImpl,
         r2_client: R2ClientImpl,
     ) -> Self {

@@ -57,11 +57,11 @@ pub trait DeviceRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct DeviceRepositoryImpl {
+pub struct PgDeviceRepository {
     pool: PgPool,
 }
 
-impl DeviceRepositoryImpl {
+impl PgDeviceRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -69,7 +69,7 @@ impl DeviceRepositoryImpl {
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl DeviceRepository for DeviceRepositoryImpl {
+impl DeviceRepository for PgDeviceRepository {
     async fn create_device_authorization(
         &self,
         device_code_hash: &str,
@@ -194,12 +194,12 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{DeviceRepository, DeviceRepositoryImpl};
+    use super::{DeviceRepository, PgDeviceRepository};
     use crate::{model::DeviceAuthorizationStatus, repository::test_common::insert_user};
 
     #[sqlx::test]
     async fn create_and_get_device_authorization(pool: PgPool) {
-        let repo = DeviceRepositoryImpl::new(pool.clone());
+        let repo = PgDeviceRepository::new(pool.clone());
         let created = repo
             .create_device_authorization("dch", "USER-CODE", "cli", Utc::now() + Duration::hours(1))
             .await
@@ -240,7 +240,7 @@ mod tests {
 
     #[sqlx::test]
     async fn expire_device_authorization_sets_status(pool: PgPool) {
-        let repo = DeviceRepositoryImpl::new(pool.clone());
+        let repo = PgDeviceRepository::new(pool.clone());
         let created = repo
             .create_device_authorization("dch", "CODE", "cli", Utc::now() + Duration::hours(1))
             .await
@@ -258,7 +258,7 @@ mod tests {
 
     #[sqlx::test]
     async fn authorize_device_requires_pending_and_unexpired(pool: PgPool) {
-        let repo = DeviceRepositoryImpl::new(pool.clone());
+        let repo = PgDeviceRepository::new(pool.clone());
         let user = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
 

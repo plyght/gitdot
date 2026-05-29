@@ -7,7 +7,7 @@ use sqlx::PgPool;
 
 use gitdot_core::{
     client::{GcpKafkaContext, KafkaAuthMode, SlackBotClientImpl},
-    repository::{RepositoryRepositoryImpl, SlackWebhookRepositoryImpl},
+    repository::{PgRepositoryRepository, PgSlackWebhookRepository},
     service::{SlackWebhookService, SlackWebhookServiceImpl},
 };
 
@@ -21,8 +21,8 @@ pub struct ConsumerState {
 
 impl ConsumerState {
     pub async fn new(settings: Settings, pool: PgPool) -> anyhow::Result<Self> {
-        let slack_webhook_repo = SlackWebhookRepositoryImpl::new(pool.clone());
-        let repo_repo = RepositoryRepositoryImpl::new(pool.clone());
+        let slack_webhook_repo = PgSlackWebhookRepository::new(pool.clone());
+        let repo_repo = PgRepositoryRepository::new(pool.clone());
 
         let slack_bot_client = SlackBotClientImpl::new(
             settings.gitdot_slack_bot_server_url.clone(),

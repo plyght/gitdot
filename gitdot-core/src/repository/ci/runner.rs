@@ -53,19 +53,19 @@ pub trait RunnerRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct RunnerRepositoryImpl {
+pub struct PgRunnerRepository {
     pool: PgPool,
 }
 
-impl RunnerRepositoryImpl {
-    pub fn new(pool: PgPool) -> RunnerRepositoryImpl {
-        RunnerRepositoryImpl { pool }
+impl PgRunnerRepository {
+    pub fn new(pool: PgPool) -> PgRunnerRepository {
+        PgRunnerRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl RunnerRepository for RunnerRepositoryImpl {
+impl RunnerRepository for PgRunnerRepository {
     async fn create(
         &self,
         name: &str,

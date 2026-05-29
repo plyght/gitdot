@@ -10,8 +10,8 @@ use crate::{
     error::{CommitError, OptionNotFoundExt},
     model,
     repository::{
-        CommitRepository, CommitRepositoryImpl, RepositoryRepository, RepositoryRepositoryImpl,
-        UserRepository, UserRepositoryImpl,
+        CommitRepository, PgCommitRepository, PgRepositoryRepository, PgUserRepository,
+        RepositoryRepository, UserRepository,
     },
 };
 
@@ -54,18 +54,11 @@ where
     git_client: G,
 }
 
-impl
-    CommitServiceImpl<
-        CommitRepositoryImpl,
-        RepositoryRepositoryImpl,
-        UserRepositoryImpl,
-        Git2Client,
-    >
-{
+impl CommitServiceImpl<PgCommitRepository, PgRepositoryRepository, PgUserRepository, Git2Client> {
     pub fn new(
-        commit_repo: CommitRepositoryImpl,
-        repo_repo: RepositoryRepositoryImpl,
-        user_repo: UserRepositoryImpl,
+        commit_repo: PgCommitRepository,
+        repo_repo: PgRepositoryRepository,
+        user_repo: PgUserRepository,
         git_client: Git2Client,
     ) -> Self {
         Self {

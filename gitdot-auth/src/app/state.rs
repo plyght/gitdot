@@ -12,8 +12,8 @@ use gitdot_core::{
         SlackBotClientImpl, SmtpClient, TokenClientImpl,
     },
     repository::{
-        DeviceRepositoryImpl, EmailVerificationRepositoryImpl, SessionRepositoryImpl,
-        SlackRepositoryImpl, TokenRepositoryImpl, UserRepositoryImpl,
+        PgDeviceRepository, PgEmailVerificationRepository, PgSessionRepository, PgSlackRepository,
+        PgTokenRepository, PgUserRepository,
     },
     service::{
         AccountService, AccountServiceImpl, DeviceService, DeviceServiceImpl, SessionService,
@@ -38,12 +38,12 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new(pool: PgPool, settings: Arc<Settings>) -> anyhow::Result<Self> {
-        let session_repo = SessionRepositoryImpl::new(pool.clone());
-        let token_repo = TokenRepositoryImpl::new(pool.clone());
-        let user_repo = UserRepositoryImpl::new(pool.clone());
-        let device_repo = DeviceRepositoryImpl::new(pool.clone());
-        let slack_repo = SlackRepositoryImpl::new(pool.clone());
-        let email_verification_repo = EmailVerificationRepositoryImpl::new(pool.clone());
+        let session_repo = PgSessionRepository::new(pool.clone());
+        let token_repo = PgTokenRepository::new(pool.clone());
+        let user_repo = PgUserRepository::new(pool.clone());
+        let device_repo = PgDeviceRepository::new(pool.clone());
+        let slack_repo = PgSlackRepository::new(pool.clone());
+        let email_verification_repo = PgEmailVerificationRepository::new(pool.clone());
 
         let email_client = SmtpClient::new(
             &settings.smtp_host,

@@ -42,19 +42,19 @@ pub trait SlackWebhookRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct SlackWebhookRepositoryImpl {
+pub struct PgSlackWebhookRepository {
     pool: PgPool,
 }
 
-impl SlackWebhookRepositoryImpl {
-    pub fn new(pool: PgPool) -> SlackWebhookRepositoryImpl {
-        SlackWebhookRepositoryImpl { pool }
+impl PgSlackWebhookRepository {
+    pub fn new(pool: PgPool) -> PgSlackWebhookRepository {
+        PgSlackWebhookRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl SlackWebhookRepository for SlackWebhookRepositoryImpl {
+impl SlackWebhookRepository for PgSlackWebhookRepository {
     async fn create(
         &self,
         user_id: Uuid,

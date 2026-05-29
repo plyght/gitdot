@@ -5,7 +5,7 @@ use crate::{
     client::{Git2Client, GitClient, KafkaClient, KafkaClientImpl},
     dto::{PublishRepoPushRequest, RepoPushCommit, RepoPushEvent},
     error::{OptionNotFoundExt, WebhookError},
-    repository::{UserRepository, UserRepositoryImpl},
+    repository::{PgUserRepository, UserRepository},
 };
 
 /// Publishes domain events for repository activity onto Kafka so downstream
@@ -38,9 +38,9 @@ where
     kafka_client: K,
 }
 
-impl EventServiceImpl<UserRepositoryImpl, Git2Client, KafkaClientImpl> {
+impl EventServiceImpl<PgUserRepository, Git2Client, KafkaClientImpl> {
     pub fn new(
-        user_repo: UserRepositoryImpl,
+        user_repo: PgUserRepository,
         git_client: Git2Client,
         kafka_client: KafkaClientImpl,
     ) -> Self {

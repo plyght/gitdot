@@ -54,19 +54,19 @@ pub trait WebhookRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct WebhookRepositoryImpl {
+pub struct PgWebhookRepository {
     pool: PgPool,
 }
 
-impl WebhookRepositoryImpl {
-    pub fn new(pool: PgPool) -> WebhookRepositoryImpl {
-        WebhookRepositoryImpl { pool }
+impl PgWebhookRepository {
+    pub fn new(pool: PgPool) -> PgWebhookRepository {
+        PgWebhookRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl WebhookRepository for WebhookRepositoryImpl {
+impl WebhookRepository for PgWebhookRepository {
     async fn create(
         &self,
         repository_id: Uuid,

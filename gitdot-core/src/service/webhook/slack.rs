@@ -9,8 +9,8 @@ use crate::{
     error::{NotFoundError, OptionNotFoundExt, WebhookError},
     model::WebhookEventType,
     repository::{
-        RepositoryRepository, RepositoryRepositoryImpl, SlackWebhookRepository,
-        SlackWebhookRepositoryImpl,
+        PgRepositoryRepository, PgSlackWebhookRepository, RepositoryRepository,
+        SlackWebhookRepository,
     },
 };
 
@@ -79,16 +79,10 @@ where
     slack_bot_client: SBC,
 }
 
-impl
-    SlackWebhookServiceImpl<
-        SlackWebhookRepositoryImpl,
-        RepositoryRepositoryImpl,
-        SlackBotClientImpl,
-    >
-{
+impl SlackWebhookServiceImpl<PgSlackWebhookRepository, PgRepositoryRepository, SlackBotClientImpl> {
     pub fn new(
-        slack_webhook_repo: SlackWebhookRepositoryImpl,
-        repo_repo: RepositoryRepositoryImpl,
+        slack_webhook_repo: PgSlackWebhookRepository,
+        repo_repo: PgRepositoryRepository,
         slack_bot_client: SlackBotClientImpl,
     ) -> Self {
         Self {

@@ -8,8 +8,8 @@ use crate::{
     },
     error::WebhookError,
     repository::{
-        GitHubRepository, GitHubRepositoryImpl, MigrationRepository, MigrationRepositoryImpl,
-        RepositoryRepository, RepositoryRepositoryImpl,
+        GitHubRepository, MigrationRepository, PgGitHubRepository, PgMigrationRepository,
+        PgRepositoryRepository, RepositoryRepository,
     },
     util::{git::ZERO_SHA, github::get_github_clone_url},
 };
@@ -69,17 +69,17 @@ where
 
 impl
     GithubWebhookServiceImpl<
-        RepositoryRepositoryImpl,
-        MigrationRepositoryImpl,
-        GitHubRepositoryImpl,
+        PgRepositoryRepository,
+        PgMigrationRepository,
+        PgGitHubRepository,
         Git2Client,
         OctocrabClient,
     >
 {
     pub fn new(
-        repo_repo: RepositoryRepositoryImpl,
-        migration_repo: MigrationRepositoryImpl,
-        github_repo: GitHubRepositoryImpl,
+        repo_repo: PgRepositoryRepository,
+        migration_repo: PgMigrationRepository,
+        github_repo: PgGitHubRepository,
         git_client: Git2Client,
         github_client: OctocrabClient,
     ) -> Self {

@@ -9,8 +9,8 @@ use crate::{
     },
     error::{AccountError, ConflictError, DatabaseError, NotFoundError, OptionNotFoundExt},
     repository::{
-        EmailVerificationRepository, EmailVerificationRepositoryImpl, UserRepository,
-        UserRepositoryImpl,
+        EmailVerificationRepository, PgEmailVerificationRepository, PgUserRepository,
+        UserRepository,
     },
     util::{
         auth::{NOREPLY_EMAIL, get_verify_email_email},
@@ -63,16 +63,11 @@ where
 }
 
 impl
-    AccountServiceImpl<
-        UserRepositoryImpl,
-        EmailVerificationRepositoryImpl,
-        SmtpClient,
-        TokenClientImpl,
-    >
+    AccountServiceImpl<PgUserRepository, PgEmailVerificationRepository, SmtpClient, TokenClientImpl>
 {
     pub fn new(
-        user_repo: UserRepositoryImpl,
-        email_verification_repo: EmailVerificationRepositoryImpl,
+        user_repo: PgUserRepository,
+        email_verification_repo: PgEmailVerificationRepository,
         email_client: SmtpClient,
         token_client: TokenClientImpl,
     ) -> Self {

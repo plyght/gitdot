@@ -41,19 +41,19 @@ pub trait BuildRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct BuildRepositoryImpl {
+pub struct PgBuildRepository {
     pool: PgPool,
 }
 
-impl BuildRepositoryImpl {
-    pub fn new(pool: PgPool) -> BuildRepositoryImpl {
-        BuildRepositoryImpl { pool }
+impl PgBuildRepository {
+    pub fn new(pool: PgPool) -> PgBuildRepository {
+        PgBuildRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl BuildRepository for BuildRepositoryImpl {
+impl BuildRepository for PgBuildRepository {
     async fn create(
         &self,
         repository_id: Uuid,

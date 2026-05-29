@@ -41,11 +41,11 @@ pub trait EmailVerificationRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct EmailVerificationRepositoryImpl {
+pub struct PgEmailVerificationRepository {
     pool: PgPool,
 }
 
-impl EmailVerificationRepositoryImpl {
+impl PgEmailVerificationRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -53,7 +53,7 @@ impl EmailVerificationRepositoryImpl {
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl EmailVerificationRepository for EmailVerificationRepositoryImpl {
+impl EmailVerificationRepository for PgEmailVerificationRepository {
     async fn create_code(
         &self,
         user_email_id: Uuid,
@@ -162,7 +162,7 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{EmailVerificationRepository, EmailVerificationRepositoryImpl};
+    use super::{EmailVerificationRepository, PgEmailVerificationRepository};
     use crate::repository::test_common::insert_user;
 
     async fn insert_user_email(pool: &PgPool, id: Uuid, user_id: Uuid, email: &str) {
@@ -196,7 +196,7 @@ mod tests {
 
     #[sqlx::test]
     async fn create_and_get_code(pool: PgPool) {
-        let repo = EmailVerificationRepositoryImpl::new(pool.clone());
+        let repo = PgEmailVerificationRepository::new(pool.clone());
         let user = Uuid::new_v4();
         let email_id = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
@@ -217,7 +217,7 @@ mod tests {
 
     #[sqlx::test]
     async fn invalidate_codes_marks_outstanding_used(pool: PgPool) {
-        let repo = EmailVerificationRepositoryImpl::new(pool.clone());
+        let repo = PgEmailVerificationRepository::new(pool.clone());
         let user = Uuid::new_v4();
         let email_id = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
@@ -252,7 +252,7 @@ mod tests {
 
     #[sqlx::test]
     async fn mark_code_used_verifies_and_removes_squatters(pool: PgPool) {
-        let repo = EmailVerificationRepositoryImpl::new(pool.clone());
+        let repo = PgEmailVerificationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         let alice_email = Uuid::new_v4();

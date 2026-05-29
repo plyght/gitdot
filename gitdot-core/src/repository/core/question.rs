@@ -333,19 +333,19 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct QuestionRepositoryImpl {
+pub struct PgQuestionRepository {
     pool: PgPool,
 }
 
-impl QuestionRepositoryImpl {
-    pub fn new(pool: PgPool) -> QuestionRepositoryImpl {
-        QuestionRepositoryImpl { pool }
+impl PgQuestionRepository {
+    pub fn new(pool: PgPool) -> PgQuestionRepository {
+        PgQuestionRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl QuestionRepository for QuestionRepositoryImpl {
+impl QuestionRepository for PgQuestionRepository {
     async fn create_question(
         &self,
         author_id: Uuid,

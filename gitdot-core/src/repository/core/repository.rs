@@ -157,19 +157,19 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct RepositoryRepositoryImpl {
+pub struct PgRepositoryRepository {
     pool: PgPool,
 }
 
-impl RepositoryRepositoryImpl {
-    pub fn new(pool: PgPool) -> RepositoryRepositoryImpl {
-        RepositoryRepositoryImpl { pool }
+impl PgRepositoryRepository {
+    pub fn new(pool: PgPool) -> PgRepositoryRepository {
+        PgRepositoryRepository { pool }
     }
 }
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl RepositoryRepository for RepositoryRepositoryImpl {
+impl RepositoryRepository for PgRepositoryRepository {
     async fn create(
         &self,
         name: &str,
@@ -681,7 +681,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::{
-        Repository, RepositoryOwnerType, RepositoryRepository, RepositoryRepositoryImpl,
+        PgRepositoryRepository, Repository, RepositoryOwnerType, RepositoryRepository,
         RepositoryVisibility,
     };
     use crate::{
@@ -694,7 +694,7 @@ mod tests {
 
     // The common case: a user-owned, non-readonly repo with no description.
     async fn make_repo(
-        repo: &RepositoryRepositoryImpl,
+        repo: &PgRepositoryRepository,
         name: &str,
         owner: Uuid,
         visibility: RepositoryVisibility,
@@ -715,7 +715,7 @@ mod tests {
 
     #[sqlx::test]
     async fn create_returns_repo_with_owner_name(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
 
@@ -744,7 +744,7 @@ mod tests {
 
     #[sqlx::test]
     async fn create_supports_organization_owner(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let org = Uuid::new_v4();
         insert_org(&pool, org, "acme").await;
 
@@ -767,7 +767,7 @@ mod tests {
 
     #[sqlx::test]
     async fn get_lookups_round_trip(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let created = make_repo(&repo, "proj", alice, RepositoryVisibility::Public, None).await;
@@ -802,7 +802,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_by_owner_paginates_newest_first(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -852,7 +852,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_by_owner_filters_user_repos_by_viewer(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -882,7 +882,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_by_owner_shows_org_private_repos_to_members(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let member = Uuid::new_v4();
         let outsider = Uuid::new_v4();
         let org_id = Uuid::new_v4();
@@ -913,7 +913,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_latest_returns_public_only_newest_first(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let now = Utc::now();
@@ -950,7 +950,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_trending_orders_by_stars(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         let carol = Uuid::new_v4();
@@ -974,7 +974,7 @@ mod tests {
 
     #[sqlx::test]
     async fn delete_removes_repo(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let created = make_repo(&repo, "proj", alice, RepositoryVisibility::Public, None).await;
@@ -985,7 +985,7 @@ mod tests {
 
     #[sqlx::test]
     async fn update_sets_description(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let created = repo
@@ -1018,7 +1018,7 @@ mod tests {
 
     #[sqlx::test]
     async fn update_clears_readonly_flag(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let created = repo
@@ -1051,7 +1051,7 @@ mod tests {
 
     #[sqlx::test]
     async fn star_is_idempotent_and_counts(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -1084,7 +1084,7 @@ mod tests {
 
     #[sqlx::test]
     async fn unstar_decrements_and_reports(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
@@ -1116,7 +1116,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_recent_stars_returns_users_newest_first(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         let bob = Uuid::new_v4();
         let carol = Uuid::new_v4();
@@ -1143,7 +1143,7 @@ mod tests {
 
     #[sqlx::test]
     async fn list_commit_filters_paginates(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let created = make_repo(&repo, "proj", alice, RepositoryVisibility::Public, None).await;
@@ -1170,7 +1170,7 @@ mod tests {
 
     #[sqlx::test]
     async fn create_and_update_commit_filter(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let created = make_repo(&repo, "proj", alice, RepositoryVisibility::Public, None).await;
@@ -1209,7 +1209,7 @@ mod tests {
 
     #[sqlx::test]
     async fn delete_commit_filter_reports(pool: PgPool) {
-        let repo = RepositoryRepositoryImpl::new(pool.clone());
+        let repo = PgRepositoryRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
         let created = make_repo(&repo, "proj", alice, RepositoryVisibility::Public, None).await;
