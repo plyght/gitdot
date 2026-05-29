@@ -506,7 +506,7 @@ where
             let github_repo = github_repos
                 .repositories
                 .iter()
-                .find(|r| r.name == name)
+                .find(|r| r.full_name.as_deref() == Some(origin_full_name.as_str()))
                 .ok_or_else(|| InputError::new("repository", &origin_full_name))?;
             let visibility = if github_repo.private.unwrap_or(false) {
                 RepositoryVisibility::Private
