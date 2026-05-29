@@ -8,8 +8,8 @@ use mockall::mock;
 use crate::{
     client::GitClient,
     dto::{
-        CommitDiffResponse, InitialCommitFile, RepositoryBlobResponse, RepositoryBlobsResponse,
-        RepositoryCommitResponse, RepositoryPathsResponse,
+        CommitDiffResponse, InitialCommitFile, RepositoryBlobResponse, RepositoryCommitResponse,
+        RepositoryPathsResponse,
     },
     error::GitError,
     util::git::GitHookType,
