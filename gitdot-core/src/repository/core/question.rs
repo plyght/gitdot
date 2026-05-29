@@ -189,8 +189,16 @@ SELECT
 FROM core.questions q
 "#;
 
+/// sqlx data-access layer for the Q&A domain.
+///
+/// Owns `core.questions`, `core.answers`, `core.comments`, and `core.votes`,
+/// joining `core.repositories`/`core.users`/`core.user_emails` to project
+/// authors, threaded comments, and the viewer's vote (`user_id`/`$3`/`$4`).
 #[async_trait]
 pub trait QuestionRepository: Send + Sync + Clone + 'static {
+    /// Inserts a question into `core.questions`, assigning `number` as the
+    /// per-repository max + 1 (`COALESCE(MAX(number) … , 0) + 1`). Returns the
+    /// row with `user_vote`/`author`/`comments`/`answers` projected as `NULL`.
     async fn create_question(
         &self,
         author_id: Uuid,
@@ -199,6 +207,9 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         body: &str,
     ) -> Result<Question, DatabaseError>;
 
+    /// Updates a question's `title`/`body` and `updated_at` by
+    /// `(repository_id, number)`. Returns the updated row (nested fields
+    /// `NULL`), or `Ok(None)` if no such question.
     async fn update_question(
         &self,
         repository_id: Uuid,
@@ -207,6 +218,10 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         body: &str,
     ) -> Result<Option<Question>, DatabaseError>;
 
+    /// Returns a question by `(repository_id, number)` fully hydrated via
+    /// `QUESTION_DETAILS_QUERY` (author, threaded comments, answers with nested
+    /// comments) with each `user_vote` resolved for `user_id` (`NULL` when
+    /// `user_id` is `None`). Returns `Ok(None)` if not found.
     async fn get_question(
         &self,
         repository_id: Uuid,
@@ -214,6 +229,9 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         user_id: Option<Uuid>,
     ) -> Result<Option<Question>, DatabaseError>;
 
+    /// Resolves a question's id from `owner`/`repo`/`question_number`, where
+    /// `owner` matches either a `core.users` or `core.organizations` name (joins
+    /// `core.repositories`). Returns `Ok(None)` if not found.
     async fn get_question_id(
         &self,
         owner: &str,
@@ -221,6 +239,10 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         question_number: i32,
     ) -> Result<Option<Uuid>, DatabaseError>;
 
+    /// Lists fully-hydrated questions (via `QUESTION_LIST_QUERY`) for a
+    /// repository, newest-first (`ORDER BY q.created_at DESC, q.id DESC`) with
+    /// keyset cursor pagination, resolving each `user_vote` for `user_id`.
+    /// Returns the page plus the next cursor (`None` when exhausted).
     async fn list_questions(
         &self,
         repository_id: Uuid,
@@ -229,6 +251,10 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Question>, Option<Cursor>), DatabaseError>;
 
+    /// Inserts an answer into `core.answers`, resolving the parent question via
+    /// `owner`/`repo`/`question_number` (`owner` may be a user or org name).
+    /// Returns the new answer (nested fields `NULL`), or `Ok(None)` if the
+    /// question doesn't resolve.
     async fn create_answer(
         &self,
         owner: &str,
@@ -238,8 +264,12 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         body: &str,
     ) -> Result<Option<Answer>, DatabaseError>;
 
+    /// Updates an answer's `body` and `updated_at` by id. Returns the updated
+    /// row (nested fields `NULL`), or `Ok(None)` if no such answer.
     async fn update_answer(&self, id: Uuid, body: &str) -> Result<Option<Answer>, DatabaseError>;
 
+    /// Inserts a comment into `core.comments` under `parent_id` (a question or
+    /// answer id). Returns the new comment with nested fields `NULL`.
     async fn create_comment(
         &self,
         parent_id: Uuid,
@@ -247,6 +277,10 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         body: &str,
     ) -> Result<Comment, DatabaseError>;
 
+    /// Inserts a comment on a question, resolving the question via
+    /// `owner`/`repo`/`question_number` and setting `parent_id` to the question
+    /// id (`owner` may be a user or org name). Returns the new comment, or
+    /// `Ok(None)` if the question doesn't resolve.
     async fn create_question_comment(
         &self,
         owner: &str,
@@ -256,8 +290,13 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         body: &str,
     ) -> Result<Option<Comment>, DatabaseError>;
 
+    /// Updates a comment's `body` and `updated_at` by id. Returns the updated
+    /// row (nested fields `NULL`), or `Ok(None)` if no such comment.
     async fn update_comment(&self, id: Uuid, body: &str) -> Result<Option<Comment>, DatabaseError>;
 
+    /// Returns a question's `author_id`, resolved via
+    /// `owner`/`repo`/`question_number` (`owner` may be a user or org name), or
+    /// `Ok(None)` if not found.
     async fn get_question_author_id(
         &self,
         owner: &str,
@@ -265,12 +304,25 @@ pub trait QuestionRepository: Send + Sync + Clone + 'static {
         question_number: i32,
     ) -> Result<Option<Uuid>, DatabaseError>;
 
+    /// Returns the `author_id` of the answer with the given id from
+    /// `core.answers`, or `Ok(None)` if not found.
     async fn get_answer_author_id(&self, id: Uuid) -> Result<Option<Uuid>, DatabaseError>;
 
+    /// Returns the `author_id` of the comment with the given id from
+    /// `core.comments`, or `Ok(None)` if not found.
     async fn get_comment_author_id(&self, id: Uuid) -> Result<Option<Uuid>, DatabaseError>;
 
     /// Vote on a target (question, answer, or comment)
     /// value: 1 (upvote), -1 (downvote), 0 (remove vote)
+    ///
+    /// Runs in a transaction: reads the existing `core.votes` row, then for
+    /// `value == 0` deletes it, for an existing vote updates `value`, otherwise
+    /// inserts; then bumps the target's `upvote` column on the matching table
+    /// by the vote delta and `RETURNING`s the new score. Returns the new score
+    /// and the viewer's final vote (`None` once removed).
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::RowNotFound` if the target row does not exist.
     async fn vote(
         &self,
         user_id: Uuid,

@@ -4,8 +4,12 @@ use uuid::Uuid;
 
 use crate::{error::DatabaseError, model::SlackAccount};
 
+/// sqlx data-access layer for the `auth.slack_accounts` table, which links a
+/// Slack identity to a gitdot user.
 #[async_trait]
 pub trait SlackRepository: Send + Sync + Clone + 'static {
+    /// Inserts a row linking `gitdot_user_id` to a Slack identity
+    /// (`slack_user_id`, `slack_team_id`) and returns the created row.
     async fn create_slack_account(
         &self,
         gitdot_user_id: Uuid,
@@ -13,6 +17,8 @@ pub trait SlackRepository: Send + Sync + Clone + 'static {
         slack_team_id: &str,
     ) -> Result<SlackAccount, DatabaseError>;
 
+    /// Returns the Slack account matching the `(slack_user_id, slack_team_id)`
+    /// pair, or `Ok(None)` if none exists.
     async fn get_slack_account_by_slack_identity(
         &self,
         slack_user_id: &str,

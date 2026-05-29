@@ -7,8 +7,12 @@ use crate::{
     model::{Task, TaskStatus},
 };
 
+/// sqlx data-access layer for the `ci.tasks` table (individual CI tasks within a
+/// build, with status, dependency (`waits_for`) and runner-assignment columns).
 #[async_trait]
 pub trait TaskRepository: Send + Sync + Clone + 'static {
+    /// Inserts a task into `ci.tasks` with the caller-supplied `id`, `status` and
+    /// `waits_for` dependency array. Returns the inserted row via `RETURNING`.
     async fn create(
         &self,
         id: Uuid,
@@ -21,18 +25,32 @@ pub trait TaskRepository: Send + Sync + Clone + 'static {
         waits_for: &[Uuid],
     ) -> Result<Task, DatabaseError>;
 
+    /// Returns the task with the given id, or `Ok(None)` if none exists.
     async fn get_by_id(&self, id: Uuid) -> Result<Option<Task>, DatabaseError>;
 
+    /// Lists all tasks for a build ordered by `created_at ASC`.
     async fn list_by_build_id(&self, build_id: Uuid) -> Result<Vec<Task>, DatabaseError>;
 
+    /// Updates the task's `status` and sets `updated_at = NOW()`, returning the
+    /// updated row via `RETURNING`.
     async fn update_task(&self, id: Uuid, status: TaskStatus) -> Result<Task, DatabaseError>;
 
+    /// Atomically claims the oldest `pending` task whose `repository_id` is in
+    /// `repository_ids`: an inner `SELECT ... ORDER BY created_at ASC LIMIT 1
+    /// FOR UPDATE SKIP LOCKED` locks one candidate (skipping rows locked by
+    /// concurrent claimers), and the outer `UPDATE` sets `status = 'assigned'`,
+    /// `runner_id` and `updated_at = NOW()`. Returns the claimed task, or
+    /// `Ok(None)` when no eligible task is available.
     async fn claim_task(
         &self,
         runner_id: Uuid,
         repository_ids: &[Uuid],
     ) -> Result<Option<Task>, DatabaseError>;
 
+    /// Transitions a build's `blocked` tasks to `pending` once all of their
+    /// `waits_for` dependencies have `status = 'success'` (the `NOT EXISTS`
+    /// guard against any non-success dependency). Returns the rows that were
+    /// unblocked (empty `Vec` when none became eligible).
     async fn unblock_tasks(&self, build_id: Uuid) -> Result<Vec<Task>, DatabaseError>;
 }
 

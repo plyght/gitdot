@@ -39,10 +39,22 @@ struct UserCommitRow {
     viewer_has_access: bool,
 }
 
+/// sqlx data-access layer for the `core.commits` table. Reads join to
+/// `core.repositories` (and `core.users`/`core.organizations` for owner name,
+/// `core.users` for the author) to hydrate each `Commit` with its embedded
+/// `repository` object and author display fields.
 #[async_trait]
 pub trait CommitRepository: Send + Sync + Clone + 'static {
+    /// Returns the commit in `repo_id` matching `sha`. Matches against the
+    /// generated `sha_short` column using the first 7 chars of `sha` (or the
+    /// whole string if shorter), so both full and abbreviated SHAs resolve.
+    /// `Ok(None)` if no commit matches in that repo.
     async fn get_commit(&self, repo_id: Uuid, sha: &str) -> Result<Option<Commit>, DatabaseError>;
 
+    /// Lists commits in `repo_id` on `ref_name` within the `[from, to]`
+    /// `created_at` window, newest first (`ORDER BY created_at DESC, id DESC`),
+    /// cursor-paginated. Returns the page plus the next `Cursor` (`None` on the
+    /// last page).
     async fn list_by_repository(
         &self,
         repo_id: Uuid,
@@ -53,6 +65,12 @@ pub trait CommitRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Commit>, Option<Cursor>), DatabaseError>;
 
+    /// Lists commits authored by `author_id` within the `[from, to]`
+    /// `created_at` window, newest first, cursor-paginated. Each row carries a
+    /// computed `viewer_has_access` bool: true when the commit's repo is public,
+    /// owned by `viewer_id`, or owned by an org `viewer_id` belongs to (via
+    /// `core.organization_members`). Returns `(Commit, access)` pairs plus the
+    /// next `Cursor`.
     async fn list_by_user(
         &self,
         author_id: Uuid,
@@ -63,6 +81,11 @@ pub trait CommitRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<(Commit, bool)>, Option<Cursor>), DatabaseError>;
 
+    /// Bulk-inserts commits into `core.commits` from parallel column arrays
+    /// (`UNNEST`), with `ON CONFLICT (repo_id, sha) DO NOTHING`. Returns the
+    /// hydrated rows that were actually inserted (conflicting SHAs are skipped
+    /// and absent from the result). Empty `shas` is a no-op returning an empty
+    /// `Vec`. Caller must supply equal-length slices.
     async fn create_bulk(
         &self,
         author_ids: &[Option<Uuid>],

@@ -8,8 +8,14 @@ use crate::{
     model::{GitHubInstallation, GitHubInstallationType},
 };
 
+/// sqlx data-access layer for the `migration.github_installations` table
+/// (GitHub App installations linked to a gitdot owner). This is a Postgres
+/// repository, not a GitHub API client.
 #[async_trait]
 pub trait GitHubRepository: Send + Sync + Clone + 'static {
+    /// Inserts a GitHub installation row (mapping `installation_id` and
+    /// `github_login` to a gitdot `owner_id`) and returns the inserted row via
+    /// `RETURNING`. The `installation_type` is stored in the `type` column.
     async fn create(
         &self,
         installation_id: i64,
@@ -18,14 +24,21 @@ pub trait GitHubRepository: Send + Sync + Clone + 'static {
         github_login: &str,
     ) -> Result<GitHubInstallation, DatabaseError>;
 
+    /// Returns the installation matching `(owner_id, installation_id)`, or
+    /// `Ok(None)` if none exists (lookup is scoped to both columns).
     async fn get(
         &self,
         owner_id: Uuid,
         installation_id: i64,
     ) -> Result<Option<GitHubInstallation>, DatabaseError>;
 
+    /// Hard-deletes all rows with the given `installation_id`. Does not error
+    /// when no row matched.
     async fn delete_by_installation_id(&self, installation_id: i64) -> Result<(), DatabaseError>;
 
+    /// Lists installations for an owner, newest first
+    /// (`created_at DESC, id DESC`), keyset-paginated by `cursor`. Returns the
+    /// page and the next cursor (`None` when no further rows remain).
     async fn list_by_owner(
         &self,
         owner_id: Uuid,

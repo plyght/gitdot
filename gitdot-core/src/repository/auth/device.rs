@@ -5,8 +5,12 @@ use uuid::Uuid;
 
 use crate::{error::DatabaseError, model::DeviceAuthorization};
 
+/// sqlx data-access layer for the `auth.device_authorizations` table, which
+/// backs the OAuth device-authorization flow.
 #[async_trait]
 pub trait DeviceRepository: Send + Sync + Clone + 'static {
+    /// Inserts a new `pending` device authorization with the given hashed
+    /// device code, user code, client id, and expiry, and returns the created row.
     async fn create_device_authorization(
         &self,
         device_code_hash: &str,
@@ -15,24 +19,36 @@ pub trait DeviceRepository: Send + Sync + Clone + 'static {
         expires_at: DateTime<Utc>,
     ) -> Result<DeviceAuthorization, DatabaseError>;
 
+    /// Returns the device authorization matching `device_code_hash`, or
+    /// `Ok(None)` if none exists. Does not check expiry or status.
     async fn get_device_authorization_by_device_code_hash(
         &self,
         device_code_hash: &str,
     ) -> Result<Option<DeviceAuthorization>, DatabaseError>;
 
+    /// Returns the device authorization matching `user_code`, or `Ok(None)` if
+    /// none exists. Does not check expiry or status.
     async fn get_device_authorization_by_user_code(
         &self,
         user_code: &str,
     ) -> Result<Option<DeviceAuthorization>, DatabaseError>;
 
+    /// Sets `status = 'expired'` on the row with the given id. No-op (and still
+    /// `Ok`) if no row matches.
     async fn expire_device_authorization(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Marks the matching row `authorized` and sets `user_id`, only if it is
+    /// still `pending` and unexpired (`expires_at > NOW()`). Returns the updated
+    /// row, or `Ok(None)` if no `pending`/unexpired row matched the user code.
     async fn authorize_device(
         &self,
         user_code: &str,
         user_id: Uuid,
     ) -> Result<Option<DeviceAuthorization>, DatabaseError>;
 
+    /// Marks the matching row `denied` and sets `user_id`, only if it is still
+    /// `pending` and unexpired (`expires_at > NOW()`). Returns the updated row,
+    /// or `Ok(None)` if no `pending`/unexpired row matched the user code.
     async fn deny_device(
         &self,
         user_code: &str,

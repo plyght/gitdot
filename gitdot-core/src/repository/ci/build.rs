@@ -8,8 +8,13 @@ use crate::{
     model::{Build, BuildTrigger, BuildWithStats},
 };
 
+/// sqlx data-access layer for the `ci.builds` table (CI builds belonging to a
+/// repository), joined with `ci.tasks` for aggregate status/stats.
 #[async_trait]
 pub trait BuildRepository: Send + Sync + Clone + 'static {
+    /// Inserts a build into `ci.builds`, assigning the next per-repository
+    /// `number` (`MAX(number) + 1` scoped to `repository_id`, starting at 1).
+    /// Returns the inserted row via `RETURNING`.
     async fn create(
         &self,
         repository_id: Uuid,
@@ -18,8 +23,15 @@ pub trait BuildRepository: Send + Sync + Clone + 'static {
         ref_name: &str,
     ) -> Result<Build, DatabaseError>;
 
+    /// Returns the build matching `(repository_id, number)`, or `Ok(None)` if
+    /// no such build exists.
     async fn get(&self, repository_id: Uuid, number: i32) -> Result<Option<Build>, DatabaseError>;
 
+    /// Lists builds for a repository, newest first (`created_at DESC, id DESC`),
+    /// keyset-paginated by `cursor`. Each row LEFT JOINs `ci.tasks` to derive an
+    /// aggregate `status` (running/failure/success based on task statuses) plus
+    /// `total_tasks`/`completed_tasks` counts. Returns the page and the next
+    /// cursor (`None` when no further rows remain).
     async fn list_by_repo(
         &self,
         repository_id: Uuid,

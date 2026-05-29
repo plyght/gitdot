@@ -7,8 +7,12 @@ use crate::{
     model::{SlackWebhook, WebhookEventType},
 };
 
+/// sqlx data-access layer for the `webhook.slack_webhooks` table, which binds a
+/// repository's webhook events to a Slack user/team/channel destination.
 #[async_trait]
 pub trait SlackWebhookRepository: Send + Sync + Clone + 'static {
+    /// Inserts a row into `webhook.slack_webhooks` and returns the created
+    /// webhook via `RETURNING`.
     async fn create(
         &self,
         user_id: Uuid,
@@ -19,14 +23,21 @@ pub trait SlackWebhookRepository: Send + Sync + Clone + 'static {
         slack_channel_id: &str,
     ) -> Result<SlackWebhook, DatabaseError>;
 
+    /// Returns the `webhook.slack_webhooks` row with the given `id`, or
+    /// `Ok(None)` if no such row exists.
     async fn get(&self, id: Uuid) -> Result<Option<SlackWebhook>, DatabaseError>;
 
+    /// Lists `webhook.slack_webhooks` rows for `repository_id` whose `events`
+    /// array contains `event` (`$2 = ANY(events)`), ordered by `created_at` ASC.
+    /// Returns an empty `Vec` when none match.
     async fn list_by_repository_and_event(
         &self,
         repository_id: Uuid,
         event: WebhookEventType,
     ) -> Result<Vec<SlackWebhook>, DatabaseError>;
 
+    /// Hard-deletes the `webhook.slack_webhooks` row with the given `id`.
+    /// Succeeds even if no row matched.
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError>;
 }
 

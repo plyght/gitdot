@@ -8,8 +8,12 @@ use crate::{
     model::{Runner, RunnerOwnerType},
 };
 
+/// sqlx data-access layer for the `ci.runners` table (CI runners owned by a user
+/// or organization).
 #[async_trait]
 pub trait RunnerRepository: Send + Sync + Clone + 'static {
+    /// Inserts a runner into `ci.runners` and returns the inserted row via
+    /// `RETURNING`.
     async fn create(
         &self,
         name: &str,
@@ -18,18 +22,28 @@ pub trait RunnerRepository: Send + Sync + Clone + 'static {
         owner_type: &RunnerOwnerType,
     ) -> Result<Runner, DatabaseError>;
 
+    /// Returns the runner matching `(owner_name, name)`, or `Ok(None)` if none
+    /// exists.
     async fn get(
         &self,
         owner_name: &str,
         runner_name: &str,
     ) -> Result<Option<Runner>, DatabaseError>;
 
+    /// Hard-deletes the runner with the given id. Returns
+    /// `DatabaseError::RowNotFound` when no row was affected.
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Returns the runner with the given id, or `Ok(None)` if none exists.
     async fn get_by_id(&self, id: Uuid) -> Result<Option<Runner>, DatabaseError>;
 
+    /// Updates the runner's `last_active` to `NOW()` (heartbeat). Returns
+    /// `DatabaseError::RowNotFound` when no row was affected.
     async fn touch(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Lists runners for an owner, newest first (`created_at DESC, id DESC`),
+    /// keyset-paginated by `cursor`. Returns the page and the next cursor
+    /// (`None` when no further rows remain).
     async fn list_by_owner(
         &self,
         owner_name: &str,

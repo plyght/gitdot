@@ -8,8 +8,12 @@ use crate::{
     model::{Webhook, WebhookEventType},
 };
 
+/// sqlx data-access layer for the `webhook.webhooks` table, which stores a
+/// repository's outbound HTTP webhook destinations (url, signing secret, events).
 #[async_trait]
 pub trait WebhookRepository: Send + Sync + Clone + 'static {
+    /// Inserts a row into `webhook.webhooks` and returns the created webhook via
+    /// `RETURNING`.
     async fn create(
         &self,
         repository_id: Uuid,
@@ -18,8 +22,14 @@ pub trait WebhookRepository: Send + Sync + Clone + 'static {
         events: &[WebhookEventType],
     ) -> Result<Webhook, DatabaseError>;
 
+    /// Returns the `webhook.webhooks` row with the given `id`, or `Ok(None)` if
+    /// no such row exists.
     async fn get(&self, id: Uuid) -> Result<Option<Webhook>, DatabaseError>;
 
+    /// Lists `webhook.webhooks` rows for `repository_id`, keyset-paginated by
+    /// `(created_at, id)` descending. Fetches `limit + 1` rows to detect a next
+    /// page; returns the page (capped at `limit`) plus `Some(Cursor)` of the
+    /// last returned row when more rows exist, else `None`.
     async fn list_by_repo(
         &self,
         repository_id: Uuid,
@@ -27,6 +37,9 @@ pub trait WebhookRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Webhook>, Option<Cursor>), DatabaseError>;
 
+    /// Updates the `webhook.webhooks` row with the given `id`, applying only the
+    /// `Some` fields via `COALESCE` (each `None` leaves the column unchanged) and
+    /// bumping `updated_at` to `now()`. Returns the updated row via `RETURNING`.
     async fn update(
         &self,
         id: Uuid,
@@ -35,6 +48,8 @@ pub trait WebhookRepository: Send + Sync + Clone + 'static {
         events: Option<&[WebhookEventType]>,
     ) -> Result<Webhook, DatabaseError>;
 
+    /// Hard-deletes the `webhook.webhooks` row with the given `id`. Succeeds even
+    /// if no row matched.
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError>;
 }
 

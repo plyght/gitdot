@@ -9,8 +9,12 @@ use crate::{
     model::{AuthCode, Session},
 };
 
+/// sqlx data-access layer for the `auth.auth_codes` and `auth.sessions` tables,
+/// which back short-lived auth codes and long-lived refresh-token sessions.
 #[async_trait]
 pub trait SessionRepository: Send + Sync + Clone + 'static {
+    /// Inserts an auth code (`user_id`, `user_code`, expiry) into
+    /// `auth.auth_codes` and returns the created row.
     async fn create_auth_code(
         &self,
         user_id: Uuid,
@@ -18,10 +22,17 @@ pub trait SessionRepository: Send + Sync + Clone + 'static {
         expires_at: DateTime<Utc>,
     ) -> Result<AuthCode, DatabaseError>;
 
+    /// Returns the auth code matching `user_code`, or `Ok(None)` if none exists.
+    /// Does not check expiry or `used_at`.
     async fn get_auth_code(&self, user_code: &str) -> Result<Option<AuthCode>, DatabaseError>;
 
+    /// Sets `used_at = NOW()` on the auth code with the given id. No-op (and
+    /// still `Ok`) if no row matches.
     async fn mark_auth_code_used(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Inserts a session into `auth.sessions` (`user_id`, hashed refresh token,
+    /// `refresh_token_family`, optional user agent and IP, expiry) and returns
+    /// the created row.
     async fn create_session(
         &self,
         user_id: Uuid,
@@ -32,13 +43,20 @@ pub trait SessionRepository: Send + Sync + Clone + 'static {
         expires_at: DateTime<Utc>,
     ) -> Result<Session, DatabaseError>;
 
+    /// Returns the session matching `refresh_token_hash`, or `Ok(None)` if none
+    /// exists. Does not check expiry or `revoked_at`.
     async fn get_session_by_refresh_hash(
         &self,
         hash: &str,
     ) -> Result<Option<Session>, DatabaseError>;
 
+    /// Revokes a single session by setting `revoked_at = NOW()` on the row with
+    /// the given id (soft delete). No-op (and still `Ok`) if no row matches.
     async fn revoke_session(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Revokes every active session in a refresh-token family by setting
+    /// `revoked_at = NOW()` where `refresh_token_family` matches and `revoked_at
+    /// IS NULL` (soft delete; already-revoked rows are left untouched).
     async fn revoke_sessions_by_family(&self, family: Uuid) -> Result<(), DatabaseError>;
 }
 

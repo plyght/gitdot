@@ -12,8 +12,17 @@ use crate::{
     },
 };
 
+/// sqlx data-access layer for repositories.
+///
+/// Owns `core.repositories` and its related tables `core.stars` and
+/// `core.commit_filters`, resolving owner names by joining against
+/// `core.users` / `core.organizations`.
 #[async_trait]
 pub trait RepositoryRepository: Send + Sync + Clone + 'static {
+    /// Inserts a row into `core.repositories` (defaulting `created_at` to
+    /// `NOW()` when not supplied) and returns it with `owner_name` resolved via
+    /// a `LEFT JOIN` against `core.users`/`core.organizations` and `user_star`
+    /// hard-coded to `false`.
     async fn create(
         &self,
         name: &str,
@@ -25,6 +34,10 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         created_at: Option<DateTime<Utc>>,
     ) -> Result<Repository, DatabaseError>;
 
+    /// Returns the repository named `repo` whose owner (user or organization)
+    /// is named `owner`, with `owner_name` joined in and `user_star` reflecting
+    /// whether `viewer_id` has a row in `core.stars` for it. `Ok(None)` if no
+    /// such repo exists. No visibility filtering is applied here.
     async fn get(
         &self,
         owner: &str,
@@ -32,14 +45,25 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         viewer_id: Option<Uuid>,
     ) -> Result<Option<Repository>, DatabaseError>;
 
+    /// Returns the id of the repository named `repo` under the user- or
+    /// organization-owner named `owner`, or `Ok(None)` if none matches.
     async fn get_id(&self, owner: &str, repo: &str) -> Result<Option<Uuid>, DatabaseError>;
 
+    /// Returns the repository with the given `id`, with `owner_name` joined in
+    /// and `user_star` reflecting whether `viewer_id` starred it. `Ok(None)` if
+    /// no row matches. No visibility filtering is applied here.
     async fn get_by_id(
         &self,
         id: Uuid,
         viewer_id: Option<Uuid>,
     ) -> Result<Option<Repository>, DatabaseError>;
 
+    /// Lists repositories owned by the user/organization named `owner_name`,
+    /// keyset-paginated newest-first (`ORDER BY created_at DESC, id DESC`).
+    /// Visibility-gated to rows that are public, owned by `viewer_id` (for
+    /// user-owned repos), or owned by an org `viewer_id` is a member of (via
+    /// `core.organization_members`). Returns the page plus the next `Cursor`
+    /// (`None` when no further rows remain).
     async fn list_by_owner(
         &self,
         owner_name: &str,
@@ -48,12 +72,22 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError>;
 
+    /// Lists up to `limit` public repositories ordered newest-first
+    /// (`created_at DESC, id DESC`); `user_star` is always `false`.
     async fn list_latest(&self, limit: i64) -> Result<Vec<Repository>, DatabaseError>;
 
+    /// Lists up to `limit` public repositories ordered by `stars DESC`, then
+    /// `created_at DESC, id DESC`; `user_star` is always `false`.
     async fn list_trending(&self, limit: i64) -> Result<Vec<Repository>, DatabaseError>;
 
+    /// Hard-deletes the `core.repositories` row with the given `id`. No-op (no
+    /// error) when no row matches.
     async fn delete(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Updates `description` and/or `readonly` on the repository with the given
+    /// `id` (each `COALESCE`d, so `None` leaves the column unchanged) and
+    /// returns the updated row with `owner_name` joined in and `user_star`
+    /// always `false`. `Ok(None)` when no row matches `id`.
     async fn update(
         &self,
         id: Uuid,
@@ -61,16 +95,31 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         readonly: Option<bool>,
     ) -> Result<Option<Repository>, DatabaseError>;
 
+    /// Stars a repository in a transaction: inserts into `core.stars`
+    /// (`ON CONFLICT (user_id, repository_id) DO NOTHING`) and, only when a row
+    /// was inserted, increments `core.repositories.stars`. Returns the new
+    /// `RepositoryStar`, or `Ok(None)` if the star already existed (no-op).
     async fn star(&self, id: Uuid, user_id: Uuid) -> Result<Option<RepositoryStar>, DatabaseError>;
 
+    /// Unstars a repository in a transaction: deletes the matching `core.stars`
+    /// row and, when a row was removed, decrements `core.repositories.stars`
+    /// (floored at 0 via `GREATEST`). Returns `true` if a star was removed,
+    /// `false` if none existed.
     async fn unstar(&self, id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError>;
 
+    /// Returns up to `limit` users who recently starred `repository_id`, each
+    /// paired with the star's `created_at`, ordered by star time descending
+    /// (joins `core.stars` to `core.users`). Hydrates each `User` with its
+    /// `core.user_emails` (primary first, then oldest). Empty `Vec` if none.
     async fn list_recent_stars(
         &self,
         repository_id: Uuid,
         limit: i64,
     ) -> Result<Vec<(User, DateTime<Utc>)>, DatabaseError>;
 
+    /// Lists commit filters for `repository_id` from `core.commit_filters`,
+    /// keyset-paginated newest-first (`ORDER BY created_at DESC, id DESC`).
+    /// Returns the page plus the next `Cursor` (`None` when exhausted).
     async fn list_commit_filters(
         &self,
         repository_id: Uuid,
@@ -78,6 +127,8 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<CommitFilter>, Option<Cursor>), DatabaseError>;
 
+    /// Inserts a row into `core.commit_filters` for `repository_id` and returns
+    /// it (`RETURNING` all columns).
     async fn create_commit_filter(
         &self,
         repository_id: Uuid,
@@ -87,6 +138,10 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         paths: Option<Vec<String>>,
     ) -> Result<CommitFilter, DatabaseError>;
 
+    /// Overwrites `name`, `authors`, `tags`, `paths` (set unconditionally, so
+    /// `None` clears the column) and bumps `updated_at` on the
+    /// `core.commit_filters` row with `filter_id`, returning the updated row.
+    /// `Ok(None)` when no row matches.
     async fn update_commit_filter(
         &self,
         filter_id: Uuid,
@@ -96,6 +151,8 @@ pub trait RepositoryRepository: Send + Sync + Clone + 'static {
         paths: Option<Vec<String>>,
     ) -> Result<Option<CommitFilter>, DatabaseError>;
 
+    /// Hard-deletes the `core.commit_filters` row with `filter_id`. Returns
+    /// `true` if a row was removed, `false` if none matched.
     async fn delete_commit_filter(&self, filter_id: Uuid) -> Result<bool, DatabaseError>;
 }
 

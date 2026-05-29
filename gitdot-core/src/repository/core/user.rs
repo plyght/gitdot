@@ -28,8 +28,18 @@ SELECT
     ) AS emails
 "#;
 
+/// sqlx data-access layer for the `core.users` and `core.user_emails` tables,
+/// plus read-only joins against repositories, stars, commits, and organizations
+/// for a user's repository listings.
 #[async_trait]
 pub trait UserRepository: Send + Sync + Clone + 'static {
+    /// Inserts a new `core.users` row (with a random `user_<hex>` name and the
+    /// default README) and its primary `core.user_emails` row in one CTE,
+    /// returning the projected [`User`]. The email is marked verified (with
+    /// `verified_at = NOW()`) only when `is_email_verified` is true.
+    ///
+    /// The data-modifying CTE inserts the email after the projection reads, so
+    /// the returned [`User`] has an empty `emails`; re-fetch to see it.
     async fn create(
         &self,
         email: &str,
@@ -37,8 +47,14 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
         provider: AuthProvider,
     ) -> Result<User, DatabaseError>;
 
+    /// Returns the [`User`] (with aggregated emails) whose `name` matches, or
+    /// `Ok(None)` if no such user exists.
     async fn get(&self, user_name: &str) -> Result<Option<User>, DatabaseError>;
 
+    /// Updates the `core.users` row identified by `id`, dynamically setting only
+    /// the `Some` fields (`name`, `location`, `readme`, `links`, `display_name`)
+    /// and returning the projected [`User`] via `RETURNING`. Passing all `None`
+    /// produces invalid SQL; callers must supply at least one field.
     async fn update(
         &self,
         id: Uuid,
@@ -49,34 +65,69 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
         display_name: Option<String>,
     ) -> Result<User, DatabaseError>;
 
+    /// Returns the [`User`] (with aggregated emails) whose `id` matches, or
+    /// `Ok(None)` if no such user exists.
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DatabaseError>;
 
+    /// Sets `core.users.image_updated_at = now()` for the given `id`. A no-op if
+    /// no row matches.
     async fn touch_image(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Returns the [`User`] whose primary `core.user_emails` row matches `email`,
+    /// joining `users` to `user_emails` on `is_primary`. Non-primary addresses
+    /// never match; `Ok(None)` if none.
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DatabaseError>;
 
+    /// Returns `(email, user_id)` pairs from `core.user_emails` for every input
+    /// address that is verified (`is_verified = TRUE`). Short-circuits to an
+    /// empty `Vec` when `emails` is empty; unmatched/unverified addresses are
+    /// omitted.
     async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<(String, Uuid)>, DatabaseError>;
 
+    /// Marks the user's primary `core.user_emails` row verified, setting
+    /// `is_verified = TRUE` and `verified_at` (preserving an existing
+    /// `verified_at` via `COALESCE`). A no-op if no primary email matches.
     async fn verify_email(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Returns whether `name` is already used by a `core.users` or
+    /// `core.organizations` row (namespaces share one slug space).
     async fn is_name_taken(&self, name: &str) -> Result<bool, DatabaseError>;
 
+    /// Lists all `core.user_emails` rows for `user_id`, ordered primary first
+    /// then by `created_at ASC`.
     async fn list_emails(&self, user_id: Uuid) -> Result<Vec<UserEmail>, DatabaseError>;
 
+    /// Inserts a non-primary, unverified `core.user_emails` row for `user_id`
+    /// and returns it via `RETURNING`.
     async fn create_email(&self, user_id: Uuid, email: &str) -> Result<UserEmail, DatabaseError>;
 
+    /// Returns the `core.user_emails` row matching both `user_id` and `email`,
+    /// or `Ok(None)` if the user has no such address.
     async fn get_email_for_user(
         &self,
         user_id: Uuid,
         email: &str,
     ) -> Result<Option<UserEmail>, DatabaseError>;
 
+    /// Bulk-inserts the given addresses as non-primary, verified
+    /// (`verified_at = NOW()`) `core.user_emails` rows for `user_id` from an
+    /// `UNNEST` of the input array. `ON CONFLICT DO NOTHING` skips any address
+    /// already owned (by this user or, via the verified-email unique index, by
+    /// another); other rows still insert. No-op when `emails` is empty.
     async fn upsert_verified_emails(
         &self,
         user_id: Uuid,
         emails: &[String],
     ) -> Result<(), DatabaseError>;
 
+    /// Lists a user's own `core.repositories` (`owner_type = 'user'`,
+    /// `owner_id = user_id`), cursor-paginated by `(created_at, id)` descending.
+    /// Each row carries the owner's name, a `user_star` flag for `viewer_id`,
+    /// and the user's own commit count plus last-commit time aggregated from
+    /// `core.commits` where `author_id = user_id` (both `None` when there are no
+    /// such commits). Private repos are visible only when `viewer_id` is the
+    /// owner. Returns the page plus the next [`Cursor`] (`None` on the last
+    /// page).
     #[allow(clippy::type_complexity)]
     async fn list_repositories(
         &self,
@@ -92,6 +143,13 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
         DatabaseError,
     >;
 
+    /// Lists `core.repositories` that `user_id` has starred (joined through
+    /// `core.stars`), cursor-paginated by the star's `(created_at, id)`
+    /// descending. Visibility gates each repo to `viewer_id`: public, owned by
+    /// the viewer, or owned by an org the viewer belongs to (via
+    /// `core.organization_members`). Each row carries the owner's name and a
+    /// `user_star` flag for `viewer_id`. Returns the page plus the next
+    /// [`Cursor`] (`None` on the last page).
     async fn list_starred_repositories(
         &self,
         user_id: Uuid,
@@ -100,6 +158,13 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Repository>, Option<Cursor>), DatabaseError>;
 
+    /// Lists `core.repositories` that `user_id` has authored commits in on or
+    /// after `since` (aggregated from `core.commits` where `author_id = user_id`
+    /// and `created_at >= since`), with the per-repo commit count and last-commit
+    /// time. Cursor-paginated by `(last_commit_at, repo id)` descending. The same
+    /// `viewer_id` visibility gate as starred repos applies (public, viewer-owned,
+    /// or viewer's-org-owned). Returns the page plus the next [`Cursor`] (`None`
+    /// on the last page).
     async fn list_contributed_repositories(
         &self,
         user_id: Uuid,

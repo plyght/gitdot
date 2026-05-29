@@ -7,8 +7,12 @@ use crate::{
     model::{AccessToken, TokenType},
 };
 
+/// sqlx data-access layer for the `auth.tokens` table, which stores hashed
+/// access tokens (personal, runner, etc.) per principal.
 #[async_trait]
 pub trait TokenRepository: Send + Sync + Clone + 'static {
+    /// Inserts a token (`principal_id`, `client_id`, hashed token,
+    /// `token_type`) and returns the created row.
     async fn create_token(
         &self,
         principal_id: Uuid,
@@ -17,15 +21,21 @@ pub trait TokenRepository: Send + Sync + Clone + 'static {
         token_type: TokenType,
     ) -> Result<AccessToken, DatabaseError>;
 
+    /// Returns the token matching `token_hash`, or `Ok(None)` if none exists.
     async fn get_token_by_hash(
         &self,
         token_hash: &str,
     ) -> Result<Option<AccessToken>, DatabaseError>;
 
+    /// Sets `last_used_at = NOW()` on the token with the given id. No-op (and
+    /// still `Ok`) if no row matches.
     async fn touch_token(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Hard-deletes the token with the given id. No-op (and still `Ok`) if no
+    /// row matches.
     async fn delete_token(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Hard-deletes every token belonging to `principal_id`.
     async fn delete_token_by_principal(&self, principal_id: Uuid) -> Result<(), DatabaseError>;
 }
 

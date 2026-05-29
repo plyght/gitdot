@@ -5,8 +5,12 @@ use uuid::Uuid;
 
 use crate::{error::DatabaseError, model::EmailVerificationCode};
 
+/// sqlx data-access layer for the `auth.email_verification_codes` table, with
+/// reads/writes against `core.user_emails` when consuming a code.
 #[async_trait]
 pub trait EmailVerificationRepository: Send + Sync + Clone + 'static {
+    /// Inserts a verification code (`user_email_id`, hashed code, expiry) and
+    /// returns the created row.
     async fn create_code(
         &self,
         user_email_id: Uuid,
@@ -14,13 +18,21 @@ pub trait EmailVerificationRepository: Send + Sync + Clone + 'static {
         expires_at: DateTime<Utc>,
     ) -> Result<EmailVerificationCode, DatabaseError>;
 
+    /// Returns the verification code matching `code_hash`, or `Ok(None)` if none
+    /// exists. Does not check expiry or `used_at`.
     async fn get_code_by_hash(
         &self,
         code_hash: &str,
     ) -> Result<Option<EmailVerificationCode>, DatabaseError>;
 
+    /// Invalidates all outstanding codes for the email by setting `used_at =
+    /// NOW()` on rows where `user_email_id` matches and `used_at IS NULL`.
     async fn invalidate_codes_for_email(&self, user_email_id: Uuid) -> Result<(), DatabaseError>;
 
+    /// In a single transaction: marks the code `used_at = NOW()`, deletes any
+    /// other unverified `core.user_emails` rows claiming the same address (id !=
+    /// `user_email_id`, `NOT is_verified`), then sets the email's `is_verified =
+    /// TRUE` and `verified_at` (preserving an existing `verified_at`).
     async fn mark_code_used_and_verify_email(
         &self,
         code_id: Uuid,

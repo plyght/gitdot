@@ -136,8 +136,15 @@ SELECT
 FROM core.reviews r
 "#;
 
+/// sqlx data-access layer for the review domain: `core.reviews` and its
+/// children `core.diffs`, `core.revisions`, `core.review_verdicts`,
+/// `core.reviewers`, and `core.review_comments`.
 #[async_trait]
 pub trait ReviewRepository: Send + Sync + Clone + 'static {
+    /// Returns the review with `number` in repo `owner/repo`, fully hydrated
+    /// (author, nested diffs/revisions/verdicts, reviewers, comments) via
+    /// `REVIEW_DETAILS_QUERY`. `owner` is resolved against both `core.users`
+    /// and `core.organizations`. `Ok(None)` if no such review exists.
     async fn get_review_by_number(
         &self,
         owner: &str,
@@ -145,6 +152,10 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         number: i32,
     ) -> Result<Option<Review>, DatabaseError>;
 
+    /// Lists hydrated reviews in repo `owner/repo`, newest first
+    /// (`ORDER BY created_at DESC, id DESC`), cursor-paginated. Draft reviews
+    /// are excluded unless `viewer_id` is the author. Returns the page plus the
+    /// next `Cursor` (`None` when the page is the last).
     async fn list_reviews(
         &self,
         owner: &str,
@@ -154,6 +165,12 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Review>, Option<Cursor>), DatabaseError>;
 
+    /// Lists reviews authored by `user_name` across repos, newest first,
+    /// cursor-paginated. Rows are filtered to those authored by `viewer_id` or
+    /// non-draft reviews in public repos; optionally narrowed by `status`,
+    /// `owner`, and `repo`. Returns the page plus the next `Cursor`. Note: the
+    /// nested author/diffs/reviewers/comments columns are selected as `NULL`
+    /// (not hydrated).
     async fn list_reviews_by_user(
         &self,
         user_name: &str,
@@ -165,6 +182,10 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Review>, Option<Cursor>), DatabaseError>;
 
+    /// Inserts a new row into `core.reviews` and returns it. Runs in a
+    /// transaction holding a per-repository advisory lock so `number` is
+    /// assigned as `MAX(number) + 1` for the repo. `title` and `description`
+    /// default to empty strings. Returned nested columns are `NULL`.
     async fn create_review(
         &self,
         repository_id: Uuid,
@@ -172,6 +193,9 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         target_branch: &str,
     ) -> Result<Review, DatabaseError>;
 
+    /// Updates `core.reviews` row `review_id`, coalescing `status`, `title`,
+    /// and `description` (only non-`None` args overwrite) and bumping
+    /// `updated_at`.
     async fn update_review(
         &self,
         review_id: Uuid,
@@ -180,6 +204,8 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         description: Option<String>,
     ) -> Result<(), DatabaseError>;
 
+    /// Inserts a row into `core.diffs` and returns it. The `revisions` column
+    /// is selected as `NULL`.
     async fn create_diff(
         &self,
         review_id: Uuid,
@@ -187,6 +213,8 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         message: &str,
     ) -> Result<Diff, DatabaseError>;
 
+    /// Updates `core.diffs` row `diff_id`, coalescing `status` and `message`
+    /// (only non-`None` args overwrite) and bumping `updated_at`.
     async fn update_diff(
         &self,
         diff_id: Uuid,
@@ -194,6 +222,8 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         message: Option<String>,
     ) -> Result<(), DatabaseError>;
 
+    /// Inserts a row into `core.revisions` (with `commit_hash`/`parent_hash`)
+    /// and returns it. The `verdicts` column is selected as `NULL`.
     async fn create_revision(
         &self,
         diff_id: Uuid,
@@ -202,6 +232,8 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         parent_hash: &str,
     ) -> Result<Revision, DatabaseError>;
 
+    /// Updates the `commit_hash` and `parent_hash` of `core.revisions` row
+    /// `revision_id`.
     async fn update_revision_sha(
         &self,
         revision_id: Uuid,
@@ -209,18 +241,25 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         parent_hash: &str,
     ) -> Result<(), DatabaseError>;
 
+    /// Inserts a row into `core.reviewers` with `ON CONFLICT (review_id,
+    /// reviewer_id) DO NOTHING`, returning the new `Reviewer` (with hydrated
+    /// `user`). `Ok(None)` when the reviewer was already present (conflict).
     async fn add_reviewer(
         &self,
         review_id: Uuid,
         reviewer_id: Uuid,
     ) -> Result<Option<Reviewer>, DatabaseError>;
 
+    /// Hard-deletes the `core.reviewers` row for `(review_id, reviewer_id)`.
+    /// Returns `true` if a row was removed, `false` if none matched.
     async fn remove_reviewer(
         &self,
         review_id: Uuid,
         reviewer_id: Uuid,
     ) -> Result<bool, DatabaseError>;
 
+    /// Inserts a row into `core.review_verdicts` linking `diff_id`,
+    /// `revision_id`, and `reviewer_id` with the given `verdict`.
     async fn create_verdict(
         &self,
         diff_id: Uuid,
@@ -229,6 +268,9 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         verdict: Verdict,
     ) -> Result<(), DatabaseError>;
 
+    /// Inserts a row into `core.review_comments` and returns it with the
+    /// hydrated `author`. Optional line/character/side fields capture the diff
+    /// anchor; `parent_id` threads the comment under another.
     async fn create_comment(
         &self,
         review_id: Uuid,
@@ -245,14 +287,20 @@ pub trait ReviewRepository: Send + Sync + Clone + 'static {
         side: Option<CommentSide>,
     ) -> Result<ReviewComment, DatabaseError>;
 
+    /// Returns the `core.review_comments` row `comment_id` with hydrated
+    /// `author`. `Ok(None)` if not found.
     async fn get_comment(&self, comment_id: Uuid) -> Result<Option<ReviewComment>, DatabaseError>;
 
+    /// Updates `body` (and `updated_at`) of `core.review_comments` row
+    /// `comment_id`, returning the row with hydrated `author`.
     async fn update_comment(
         &self,
         comment_id: Uuid,
         body: &str,
     ) -> Result<ReviewComment, DatabaseError>;
 
+    /// Sets `resolved` (and `updated_at`) on the `core.review_comments` row
+    /// `comment_id` and all of its replies (`WHERE id = $1 OR parent_id = $1`).
     async fn resolve_comment(&self, comment_id: Uuid, resolved: bool) -> Result<(), DatabaseError>;
 }
 

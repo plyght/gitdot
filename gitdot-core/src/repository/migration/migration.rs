@@ -12,8 +12,15 @@ use crate::{
     },
 };
 
+/// sqlx data-access layer for the `migration.migrations` and
+/// `migration.migration_repositories` tables (repository-import jobs and their
+/// per-repository child rows).
 #[async_trait]
 pub trait MigrationRepository: Send + Sync + Clone + 'static {
+    /// Inserts a migration into `migration.migrations`, assigning the next
+    /// per-author `number` (`MAX(number) + 1` scoped to `author_id`, starting at
+    /// 1). Returns the inserted row via `RETURNING`, with `repositories`
+    /// projected as `NULL`.
     async fn create(
         &self,
         author_id: Uuid,
@@ -24,8 +31,16 @@ pub trait MigrationRepository: Send + Sync + Clone + 'static {
         destination_type: &RepositoryOwnerType,
     ) -> Result<Migration, DatabaseError>;
 
+    /// Returns the migration matching `(author_id, number)`, or `Ok(None)` if
+    /// none exists. The `repositories` field is populated via a correlated
+    /// `json_agg` subquery over `migration.migration_repositories` (ordered by
+    /// `created_at ASC`, `'[]'` when empty).
     async fn get(&self, author_id: Uuid, number: i32) -> Result<Option<Migration>, DatabaseError>;
 
+    /// Lists an author's migrations, newest first (`created_at DESC, id DESC`),
+    /// keyset-paginated by `cursor`. Each row's `repositories` is populated via
+    /// the same `json_agg` subquery as `get`. Returns the page and the next
+    /// cursor (`None` when no further rows remain).
     async fn list(
         &self,
         author_id: Uuid,
@@ -33,12 +48,17 @@ pub trait MigrationRepository: Send + Sync + Clone + 'static {
         limit: i64,
     ) -> Result<(Vec<Migration>, Option<Cursor>), DatabaseError>;
 
+    /// Updates the migration's `status` and sets `updated_at = NOW()`. Returns
+    /// the updated row via `RETURNING`, with `repositories` projected as `NULL`.
     async fn update_status(
         &self,
         id: Uuid,
         status: MigrationStatus,
     ) -> Result<Migration, DatabaseError>;
 
+    /// Inserts a child row into `migration.migration_repositories` for the given
+    /// migration and returns it via `RETURNING`. `destination_repository_id`,
+    /// `status` and `error` take their column defaults.
     async fn create_migration_repository(
         &self,
         migration_id: Uuid,
@@ -49,6 +69,8 @@ pub trait MigrationRepository: Send + Sync + Clone + 'static {
         visibility: &RepositoryVisibility,
     ) -> Result<MigrationRepositoryModel, DatabaseError>;
 
+    /// Updates a migration-repository row's `status` and `error` (setting
+    /// `updated_at = NOW()`) and returns the updated row via `RETURNING`.
     async fn update_migration_repository_status(
         &self,
         id: Uuid,
@@ -56,12 +78,17 @@ pub trait MigrationRepository: Send + Sync + Clone + 'static {
         error: Option<&str>,
     ) -> Result<MigrationRepositoryModel, DatabaseError>;
 
+    /// Sets the `destination_repository_id` (and `updated_at = NOW()`) of a
+    /// migration-repository row, linking it to the created gitdot repository.
     async fn set_destination_repository_id(
         &self,
         migration_repository_id: Uuid,
         destination_repository_id: Uuid,
     ) -> Result<(), DatabaseError>;
 
+    /// Lists migration-repository rows for the given `origin_repository_id` that
+    /// have a non-null `destination_repository_id` (i.e. already linked to a
+    /// gitdot repo). Returns an empty `Vec` when none match.
     async fn list_by_origin_repository_id(
         &self,
         origin_repository_id: i64,

@@ -8,8 +8,15 @@ use crate::{
     model::{Organization, OrganizationMember, OrganizationRole, UserOrganization},
 };
 
+/// sqlx data-access layer for organizations.
+///
+/// Owns the `core.organizations` and `core.organization_members` tables and
+/// joins `core.users` to project member details.
 #[async_trait]
 pub trait OrganizationRepository: Send + Sync + Clone + 'static {
+    /// Inserts an organization and enrolls `owner_id` as an `admin` member in
+    /// the same transaction. Returns the new org with `members` projected as
+    /// `NULL` (not populated by this query).
     async fn create(
         &self,
         org_name: &str,
@@ -17,14 +24,25 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         readme: Option<String>,
     ) -> Result<Organization, DatabaseError>;
 
+    /// Returns the organization by name with its `members` JSON array populated
+    /// (joined from `core.organization_members`/`core.users`, ordered by
+    /// `created_at DESC, id DESC`), or `Ok(None)` if no such org.
     async fn get(&self, org_name: &str) -> Result<Option<Organization>, DatabaseError>;
 
+    /// Returns the organization's id by name, or `Ok(None)` if not found.
     async fn get_id(&self, org_name: &str) -> Result<Option<Uuid>, DatabaseError>;
 
+    /// Sets `image_updated_at = now()` for the given org id (no-op if absent).
     async fn touch_image(&self, org_id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Returns whether a `core.organization_members` row exists for the
+    /// `(org_id, user_id)` pair.
     async fn is_member(&self, org_id: Uuid, user_id: Uuid) -> Result<bool, DatabaseError>;
 
+    /// Inserts a membership resolving `user_name`/`org_name` to ids, with
+    /// `ON CONFLICT (user_id, organization_id) DO NOTHING`. Returns the new
+    /// member (joined to `core.users` for `user_name`), or `Ok(None)` when the
+    /// user/org name doesn't resolve or the membership already exists.
     async fn add_member(
         &self,
         org_name: &str,
@@ -33,18 +51,26 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         role_description: Option<String>,
     ) -> Result<Option<OrganizationMember>, DatabaseError>;
 
+    /// Returns the member's role for the given org name and user id (joins
+    /// `core.organization_members` to `core.organizations`), or `Ok(None)` if
+    /// the user is not a member.
     async fn get_member_role(
         &self,
         org_name: &str,
         user_id: Uuid,
     ) -> Result<Option<OrganizationRole>, DatabaseError>;
 
+    /// Returns the membership identified by org name and member id (joined to
+    /// `core.users` for `user_name`), or `Ok(None)` if not found.
     async fn get_member(
         &self,
         org_name: &str,
         member_id: Uuid,
     ) -> Result<Option<OrganizationMember>, DatabaseError>;
 
+    /// Updates only the provided (`Some`) fields on `core.organizations` via a
+    /// dynamic `QueryBuilder` and `RETURNING`s the row with `members` as `NULL`.
+    /// Returns `Ok(None)` if no org matches `org_name`.
     async fn update(
         &self,
         org_name: &str,
@@ -54,6 +80,9 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         display_name: Option<String>,
     ) -> Result<Option<Organization>, DatabaseError>;
 
+    /// Updates a member's `role_description` via `COALESCE($3, role_description)`
+    /// (a `None` leaves the existing value unchanged), scoped by org name and
+    /// member id. Returns the updated member, or `Ok(None)` if not found.
     async fn update_member(
         &self,
         org_name: &str,
@@ -61,14 +90,26 @@ pub trait OrganizationRepository: Send + Sync + Clone + 'static {
         role_description: Option<String>,
     ) -> Result<Option<OrganizationMember>, DatabaseError>;
 
+    /// Lists organizations newest-first (`ORDER BY created_at DESC, id DESC`)
+    /// with keyset cursor pagination. Returns the page plus an
+    /// `Option<Cursor>` for the next page (`None` when exhausted). `members` is
+    /// projected as `NULL`.
     async fn list(
         &self,
         cursor: Option<Cursor>,
         limit: i64,
     ) -> Result<(Vec<Organization>, Option<Cursor>), DatabaseError>;
 
+    /// Lists all organizations the user is a member of (join on
+    /// `core.organization_members`), ordered by org `created_at DESC`.
+    /// `members` is projected as `NULL`.
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Organization>, DatabaseError>;
 
+    /// Lists the user's memberships as `UserOrganization` rows (org fields plus
+    /// the member's role and `joined_at`), newest-join first
+    /// (`ORDER BY om.created_at DESC, o.id DESC`) with keyset cursor pagination.
+    /// Returns the page plus the next cursor (`None` when exhausted); the cursor
+    /// is keyed on membership `created_at` (join time).
     async fn list_memberships_by_user_id(
         &self,
         user_id: Uuid,
