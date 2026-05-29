@@ -105,8 +105,11 @@ function RepoGroup({
   const sortedRepos = [...repos].sort((a, b) => {
     if (sortBy === "stars") return b.stars - a.stars;
     if (sortBy === "contributions") return b.count - a.count;
-    const ta = a.lastDate ? a.lastDate.getTime() : Number.NEGATIVE_INFINITY;
-    const tb = b.lastDate ? b.lastDate.getTime() : Number.NEGATIVE_INFINITY;
+    // Date-less repos sort last; 0 (not -Infinity) avoids a NaN comparison
+    // between two such repos, which would order them nondeterministically
+    // across JS engines and break SSR hydration.
+    const ta = a.lastDate ? a.lastDate.getTime() : 0;
+    const tb = b.lastDate ? b.lastDate.getTime() : 0;
     return tb - ta;
   });
   return (
@@ -172,26 +175,21 @@ function buildRepositories(
   repos: UserRepositoryResource[],
   contributed: UserRepositoryResource[],
 ): Repository[] {
-  const contributedByKey = new Map<string, UserRepositoryResource>();
-  for (const r of contributed) {
-    contributedByKey.set(`${r.owner}/${r.name}`, r);
-  }
-
   const repositories: Repository[] = [];
   const seen = new Set<string>();
 
+  // TODO: owned repos carry the user's own all-time commit stats
+  // confusing to show recently contributed repos mixed with owned repos
   for (const r of repos) {
-    const key = `${r.owner}/${r.name}`;
-    seen.add(key);
-    const c = contributedByKey.get(key);
+    seen.add(`${r.owner}/${r.name}`);
     repositories.push({
       owner: r.owner,
       name: r.name,
       description: r.description,
       stars: r.stars,
       visibility: r.visibility,
-      count: c?.commit_count ?? 0,
-      lastDate: c?.last_commit_at ? new Date(c.last_commit_at) : null,
+      count: r.commit_count ?? 0,
+      lastDate: r.last_commit_at ? new Date(r.last_commit_at) : null,
     });
   }
 
