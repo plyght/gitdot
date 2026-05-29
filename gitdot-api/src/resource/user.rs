@@ -66,8 +66,11 @@ pub struct UserRepositoryResource {
     pub description: Option<String>,
     pub stars: u32,
     pub visibility: String,
-    pub commit_count: u32,
-    pub last_commit_at: DateTime<Utc>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit_count: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_commit_at: Option<DateTime<Utc>>,
 }
 
 /// A commit as surfaced on a user's profile. Most fields are optional so that

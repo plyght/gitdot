@@ -77,6 +77,21 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
         emails: &[String],
     ) -> Result<(), DatabaseError>;
 
+    #[allow(clippy::type_complexity)]
+    async fn list_repositories(
+        &self,
+        user_id: Uuid,
+        viewer_id: Option<Uuid>,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<
+        (
+            Vec<(Repository, Option<i64>, Option<DateTime<Utc>>)>,
+            Option<Cursor>,
+        ),
+        DatabaseError,
+    >;
+
     async fn list_starred_repositories(
         &self,
         user_id: Uuid,
@@ -380,6 +395,81 @@ impl UserRepository for UserRepositoryImpl {
         .await?;
 
         Ok(())
+    }
+
+    async fn list_repositories(
+        &self,
+        user_id: Uuid,
+        viewer_id: Option<Uuid>,
+        cursor: Option<Cursor>,
+        limit: i64,
+    ) -> Result<
+        (
+            Vec<(Repository, Option<i64>, Option<DateTime<Utc>>)>,
+            Option<Cursor>,
+        ),
+        DatabaseError,
+    > {
+        #[derive(FromRow)]
+        struct UserRepoRow {
+            #[sqlx(flatten)]
+            repository: Repository,
+            commit_count: Option<i64>,
+            last_commit_at: Option<DateTime<Utc>>,
+        }
+
+        let cursor_created_at = cursor.as_ref().map(|c| c.created_at);
+        let cursor_id = cursor.as_ref().map(|c| c.id);
+
+        let mut rows = sqlx::query_as::<_, UserRepoRow>(
+            r#"
+            WITH agg AS (
+                SELECT c.repo_id, COUNT(*) AS commit_count, MAX(c.created_at) AS last_commit_at
+                FROM core.commits c
+                WHERE c.author_id = $1
+                GROUP BY c.repo_id
+            )
+            SELECT r.id, r.name, r.owner_id, COALESCE(ru.name, ro.name) AS owner_name,
+                   r.owner_type, r.visibility, r.description, r.stars, r.readonly, r.created_at,
+                   EXISTS(SELECT 1 FROM core.stars vs WHERE vs.repository_id = r.id AND vs.user_id = $5) AS user_star,
+                   agg.commit_count, agg.last_commit_at
+            FROM core.repositories r
+            LEFT JOIN core.users ru
+              ON r.owner_id = ru.id AND r.owner_type = 'user'
+            LEFT JOIN core.organizations ro
+              ON r.owner_id = ro.id AND r.owner_type = 'organization'
+            LEFT JOIN agg ON agg.repo_id = r.id
+            WHERE r.owner_type = 'user' AND r.owner_id = $1
+              AND (r.visibility = 'public' OR r.owner_id = $5)
+              AND ($2::timestamptz IS NULL OR (r.created_at, r.id) < ($2, $3))
+            ORDER BY r.created_at DESC, r.id DESC
+            LIMIT $4
+            "#,
+        )
+        .bind(user_id)
+        .bind(cursor_created_at)
+        .bind(cursor_id)
+        .bind(limit + 1)
+        .bind(viewer_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let next_cursor = if rows.len() as i64 > limit {
+            rows.pop();
+            rows.last().map(|last| Cursor {
+                created_at: last.repository.created_at,
+                id: last.repository.id,
+            })
+        } else {
+            None
+        };
+
+        Ok((
+            rows.into_iter()
+                .map(|r| (r.repository, r.commit_count, r.last_commit_at))
+                .collect(),
+            next_cursor,
+        ))
     }
 
     async fn list_starred_repositories(
@@ -876,6 +966,72 @@ mod tests {
         // Empty input is a no-op.
         repo.upsert_verified_emails(a.id, &[]).await.unwrap();
         assert_eq!(repo.list_emails(a.id).await.unwrap().len(), 3);
+    }
+
+    #[sqlx::test]
+    async fn list_repositories_filters_visibility_and_counts_own_commits(pool: PgPool) {
+        let repo = UserRepositoryImpl::new(pool.clone());
+        let alice = Uuid::new_v4();
+        let bob = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+        insert_user(&pool, bob, "bob").await;
+
+        let pub_repo = Uuid::new_v4();
+        let priv_repo = Uuid::new_v4();
+        insert_repo(&pool, pub_repo, "pub", alice, "public").await;
+        insert_repo(&pool, priv_repo, "priv", alice, "private").await;
+
+        let now = Utc::now();
+        // Alice authored two commits in her public repo, ...
+        insert_commit(
+            &pool,
+            pub_repo,
+            alice,
+            &"a".repeat(40),
+            now - Duration::days(2),
+        )
+        .await;
+        insert_commit(
+            &pool,
+            pub_repo,
+            alice,
+            &"b".repeat(40),
+            now - Duration::days(1),
+        )
+        .await;
+        // ... bob's commit in the same repo must not be counted, ...
+        insert_commit(&pool, pub_repo, bob, &"c".repeat(40), now).await;
+        // ... and alice has no commits in her private repo.
+
+        // Owner sees both repos; stats reflect only alice's own commits.
+        let (rows, _) = repo
+            .list_repositories(alice, Some(alice), None, 20)
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 2);
+
+        let public = rows.iter().find(|(r, _, _)| r.name == "pub").unwrap();
+        assert_eq!(public.1, Some(2));
+        let last = public.2.expect("public repo should have a last_commit_at");
+        // bob's later commit is excluded, so the max is alice's day-1 commit.
+        assert!(last < now);
+
+        let private = rows.iter().find(|(r, _, _)| r.name == "priv").unwrap();
+        assert_eq!(private.1, None);
+        assert_eq!(private.2, None);
+
+        // A different viewer only sees the public repo.
+        let (rows, _) = repo
+            .list_repositories(alice, Some(bob), None, 20)
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0.name, "pub");
+
+        // Anonymous viewer only sees the public repo.
+        let (rows, _) = repo.list_repositories(alice, None, None, 20).await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0.name, "pub");
     }
 
     #[sqlx::test]

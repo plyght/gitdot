@@ -38,8 +38,8 @@ export const UserRepositoryResource = z.object({
   description: z.string().optional(),
   stars: z.number().int().nonnegative(),
   visibility: z.string(),
-  commit_count: z.number().int().nonnegative(),
-  last_commit_at: z.iso.datetime(),
+  commit_count: z.number().int().nonnegative().optional(),
+  last_commit_at: z.iso.datetime().optional(),
 });
 export type UserRepositoryResource = z.infer<typeof UserRepositoryResource>;
 

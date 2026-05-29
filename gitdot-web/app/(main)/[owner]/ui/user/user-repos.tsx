@@ -1,6 +1,6 @@
 "use client";
 
-import type { RepositoryResource, UserRepositoryResource } from "gitdot-api";
+import type { UserRepositoryResource } from "gitdot-api";
 import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTimezone } from "@/(main)/context/timezone";
@@ -36,7 +36,7 @@ export function UserRepos({
   contributed,
   isOwner,
 }: {
-  repos: RepositoryResource[];
+  repos: UserRepositoryResource[];
   contributed: UserRepositoryResource[];
   isOwner: boolean;
 }) {
@@ -169,7 +169,7 @@ function RepoRow({ repo }: { repo: Repository }) {
 }
 
 function buildRepositories(
-  repos: RepositoryResource[],
+  repos: UserRepositoryResource[],
   contributed: UserRepositoryResource[],
 ): Repository[] {
   const contributedByKey = new Map<string, UserRepositoryResource>();
@@ -191,7 +191,7 @@ function buildRepositories(
       stars: r.stars,
       visibility: r.visibility,
       count: c?.commit_count ?? 0,
-      lastDate: c ? new Date(c.last_commit_at) : null,
+      lastDate: c?.last_commit_at ? new Date(c.last_commit_at) : null,
     });
   }
 
@@ -204,8 +204,8 @@ function buildRepositories(
       description: c.description,
       stars: c.stars,
       visibility: c.visibility,
-      count: c.commit_count,
-      lastDate: new Date(c.last_commit_at),
+      count: c.commit_count ?? 0,
+      lastDate: c.last_commit_at ? new Date(c.last_commit_at) : null,
     });
   }
 

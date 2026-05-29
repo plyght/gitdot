@@ -1,7 +1,7 @@
-import type { RepositoryResource } from "gitdot-api";
+import type { UserRepositoryResource } from "gitdot-api";
 import Link from "@/ui/link";
 
-export function UserStars({ stars }: { stars: RepositoryResource[] }) {
+export function UserStars({ stars }: { stars: UserRepositoryResource[] }) {
   if (!stars.length) return null;
 
   return (
@@ -9,7 +9,7 @@ export function UserStars({ stars }: { stars: RepositoryResource[] }) {
       <p className="font-semibold dark:font-normal text-sm mb-0.5">stars</p>
       {stars.map((repo) => (
         <Link
-          key={repo.id}
+          key={`${repo.owner}/${repo.name}`}
           href={`/${repo.owner}/${repo.name}`}
           className="block w-full truncate text-xs underline decoration-transparent hover:decoration-current transition-colors duration-200"
         >

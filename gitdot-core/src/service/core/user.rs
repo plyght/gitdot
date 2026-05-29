@@ -6,15 +6,14 @@ use crate::{
         GetCurrentUserRequest, GetCurrentUserResponse, GetUserRequest, HasUserRequest,
         ListUserCommitsRequest, ListUserContributedRepositoriesRequest,
         ListUserOrganizationsRequest, ListUserRepositoriesRequest, ListUserReviewsRequest,
-        ListUserStarredRepositoriesRequest, MAX_PER_PAGE_LIMIT, Page, RepositoryResponse,
-        ReviewResponse, UpdateCurrentUserImageRequest, UpdateCurrentUserRequest,
-        UserCommitResponse, UserOrganizationResponse, UserRepositoryResponse, UserResponse,
+        ListUserStarredRepositoriesRequest, MAX_PER_PAGE_LIMIT, Page, ReviewResponse,
+        UpdateCurrentUserImageRequest, UpdateCurrentUserRequest, UserCommitResponse,
+        UserOrganizationResponse, UserRepositoryResponse, UserResponse,
     },
     error::{ConflictError, NotFoundError, OptionNotFoundExt, UserError},
     repository::{
         CommitRepository, CommitRepositoryImpl, OrganizationRepository, OrganizationRepositoryImpl,
-        RepositoryRepository, RepositoryRepositoryImpl, ReviewRepository, ReviewRepositoryImpl,
-        UserRepository, UserRepositoryImpl,
+        ReviewRepository, ReviewRepositoryImpl, UserRepository, UserRepositoryImpl,
     },
     util::{auth::is_reserved_name, cursor},
 };
@@ -43,12 +42,12 @@ pub trait UserService: Send + Sync + 'static {
     async fn list_repositories(
         &self,
         request: ListUserRepositoriesRequest,
-    ) -> Result<Page<RepositoryResponse>, UserError>;
+    ) -> Result<Page<UserRepositoryResponse>, UserError>;
 
     async fn list_starred_repositories(
         &self,
         request: ListUserStarredRepositoriesRequest,
-    ) -> Result<Page<RepositoryResponse>, UserError>;
+    ) -> Result<Page<UserRepositoryResponse>, UserError>;
 
     async fn list_contributed_repositories(
         &self,
@@ -72,10 +71,9 @@ pub trait UserService: Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct UserServiceImpl<U, R, O, V, C, I, R2, G>
+pub struct UserServiceImpl<U, O, V, C, I, R2, G>
 where
     U: UserRepository,
-    R: RepositoryRepository,
     O: OrganizationRepository,
     V: ReviewRepository,
     C: CommitRepository,
@@ -84,7 +82,6 @@ where
     G: GitClient,
 {
     user_repo: U,
-    repo_repo: R,
     org_repo: O,
     review_repo: V,
     commit_repo: C,
@@ -96,7 +93,6 @@ where
 impl
     UserServiceImpl<
         UserRepositoryImpl,
-        RepositoryRepositoryImpl,
         OrganizationRepositoryImpl,
         ReviewRepositoryImpl,
         CommitRepositoryImpl,
@@ -107,7 +103,6 @@ impl
 {
     pub fn new(
         user_repo: UserRepositoryImpl,
-        repo_repo: RepositoryRepositoryImpl,
         org_repo: OrganizationRepositoryImpl,
         review_repo: ReviewRepositoryImpl,
         commit_repo: CommitRepositoryImpl,
@@ -117,7 +112,6 @@ impl
     ) -> Self {
         Self {
             user_repo,
-            repo_repo,
             org_repo,
             review_repo,
             commit_repo,
@@ -130,10 +124,9 @@ impl
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl<U, R, O, V, C, I, R2, G> UserService for UserServiceImpl<U, R, O, V, C, I, R2, G>
+impl<U, O, V, C, I, R2, G> UserService for UserServiceImpl<U, O, V, C, I, R2, G>
 where
     U: UserRepository,
-    R: RepositoryRepository,
     O: OrganizationRepository,
     V: ReviewRepository,
     C: CommitRepository,
@@ -278,7 +271,7 @@ where
     async fn list_repositories(
         &self,
         request: ListUserRepositoriesRequest,
-    ) -> Result<Page<RepositoryResponse>, UserError> {
+    ) -> Result<Page<UserRepositoryResponse>, UserError> {
         let user_name = request.user_name.to_string();
         let user = self
             .user_repo
@@ -286,25 +279,25 @@ where
             .await?
             .or_not_found("user", &user_name)?;
 
-        let (repositories, next_cursor) = self
-            .repo_repo
-            .list_by_owner(
-                &user_name,
+        // visibility is filtered in SQL based on viewer_id; commit stats are
+        // the profile user's own commits (NULL when they have none in a repo)
+        let (rows, next_cursor) = self
+            .user_repo
+            .list_repositories(
+                user.id,
                 request.viewer_id,
                 request.cursor,
                 request.limit as i64,
             )
             .await?;
 
-        let is_owner = request.viewer_id.map(|id| id == user.id).unwrap_or(false);
-        let repositories = if is_owner {
-            repositories
-        } else {
-            repositories.into_iter().filter(|r| r.is_public()).collect()
-        };
-
         Ok(Page {
-            data: repositories.into_iter().map(|r| r.into()).collect(),
+            data: rows
+                .into_iter()
+                .map(|(repo, count, last)| {
+                    UserRepositoryResponse::from_repository(repo, count, last)
+                })
+                .collect(),
             next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
     }
@@ -312,7 +305,7 @@ where
     async fn list_starred_repositories(
         &self,
         request: ListUserStarredRepositoriesRequest,
-    ) -> Result<Page<RepositoryResponse>, UserError> {
+    ) -> Result<Page<UserRepositoryResponse>, UserError> {
         let user_name = request.user_name.to_string();
         let user = self
             .user_repo
@@ -331,8 +324,12 @@ where
             )
             .await?;
 
+        // commit stats are not surfaced for starred repos
         Ok(Page {
-            data: repositories.into_iter().map(|r| r.into()).collect(),
+            data: repositories
+                .into_iter()
+                .map(|r| UserRepositoryResponse::from_repository(r, None, None))
+                .collect(),
             next_cursor: next_cursor.as_ref().map(cursor::encode),
         })
     }
@@ -364,7 +361,7 @@ where
             data: rows
                 .into_iter()
                 .map(|(repo, count, last)| {
-                    UserRepositoryResponse::from_repository(repo, count, last)
+                    UserRepositoryResponse::from_repository(repo, Some(count), Some(last))
                 })
                 .collect(),
             next_cursor: next_cursor.as_ref().map(cursor::encode),

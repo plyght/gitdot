@@ -63,15 +63,16 @@ pub struct UserRepositoryResponse {
     pub description: Option<String>,
     pub stars: u32,
     pub visibility: String,
-    pub commit_count: u32,
-    pub last_commit_at: DateTime<Utc>,
+
+    pub commit_count: Option<u32>,
+    pub last_commit_at: Option<DateTime<Utc>>,
 }
 
 impl UserRepositoryResponse {
     pub fn from_repository(
         repo: Repository,
-        commit_count: i64,
-        last_commit_at: DateTime<Utc>,
+        commit_count: Option<i64>,
+        last_commit_at: Option<DateTime<Utc>>,
     ) -> Self {
         Self {
             owner: repo.owner_name,
@@ -79,7 +80,7 @@ impl UserRepositoryResponse {
             description: repo.description,
             stars: repo.stars as u32,
             visibility: repo.visibility.into(),
-            commit_count: commit_count as u32,
+            commit_count: commit_count.map(|c| c as u32),
             last_commit_at,
         }
     }

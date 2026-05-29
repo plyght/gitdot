@@ -2,9 +2,9 @@
 
 import type {
   CurrentUserResource,
-  RepositoryResource,
   UserEmailResource,
   UserOrganizationResource,
+  UserRepositoryResource,
   UserResource,
 } from "gitdot-api";
 import {
@@ -104,7 +104,7 @@ export async function getCurrentUserAction(): Promise<CurrentUserResource | null
 
 export async function listUserRepositoriesAction(
   username: string,
-): Promise<RepositoryResource[]> {
+): Promise<UserRepositoryResource[]> {
   const result = await listUserRepositories(username);
   return result?.data ?? [];
 }
@@ -118,7 +118,7 @@ export async function listUserOrganizationsAction(
 
 export async function listUserStarredRepositoriesAction(
   username: string,
-): Promise<RepositoryResource[]> {
+): Promise<UserRepositoryResource[]> {
   const result = await listUserStarredRepositories(username);
   return result?.data ?? [];
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { page, RepositoryResource } from "../../resource";
+import { page, UserRepositoryResource } from "../../resource";
 import type { Endpoint } from "../endpoint";
 
 export const ListUserStarredRepositoriesRequest = z.object({
@@ -10,7 +10,7 @@ export type ListUserStarredRepositoriesRequest = z.infer<
   typeof ListUserStarredRepositoriesRequest
 >;
 
-export const ListUserStarredRepositoriesResponse = page(RepositoryResource);
+export const ListUserStarredRepositoriesResponse = page(UserRepositoryResource);
 export type ListUserStarredRepositoriesResponse = z.infer<
   typeof ListUserStarredRepositoriesResponse
 >;
