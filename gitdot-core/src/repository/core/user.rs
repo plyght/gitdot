@@ -793,7 +793,7 @@ mod tests {
         insert_secondary_email(&pool, user.id, "secondary@x.com").await;
 
         let found = repo
-            .get_by_email("primary@x.com")
+            .get_by_primary_email("primary@x.com")
             .await
             .unwrap()
             .expect("found by primary email");
@@ -801,12 +801,17 @@ mod tests {
 
         // A non-primary email must not resolve a user here.
         assert!(
-            repo.get_by_email("secondary@x.com")
+            repo.get_by_primary_email("secondary@x.com")
                 .await
                 .unwrap()
                 .is_none()
         );
-        assert!(repo.get_by_email("missing@x.com").await.unwrap().is_none());
+        assert!(
+            repo.get_by_primary_email("missing@x.com")
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[sqlx::test]
