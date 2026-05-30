@@ -3,17 +3,21 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::{error::DatabaseError, model::EmailVerificationCode};
+use crate::{
+    error::DatabaseError,
+    model::{EmailVerificationCode, UserEmail},
+};
 
 /// sqlx data-access layer for the `auth.email_verification_codes` table, with
-/// reads/writes against `core.user_emails` when consuming a code.
+/// writes against `core.user_emails` when consuming a code.
 #[async_trait]
 pub trait EmailVerificationRepository: Send + Sync + Clone + 'static {
-    /// Inserts a verification code (`user_email_id`, hashed code, expiry) and
+    /// Inserts a verification code (`user_id`, `email`, hashed code, expiry) and
     /// returns the created row.
     async fn create_code(
         &self,
-        user_email_id: Uuid,
+        user_id: Uuid,
+        email: &str,
         code_hash: &str,
         expires_at: DateTime<Utc>,
     ) -> Result<EmailVerificationCode, DatabaseError>;
@@ -25,19 +29,25 @@ pub trait EmailVerificationRepository: Send + Sync + Clone + 'static {
         code_hash: &str,
     ) -> Result<Option<EmailVerificationCode>, DatabaseError>;
 
-    /// Invalidates all outstanding codes for the email by setting `used_at =
-    /// NOW()` on rows where `user_email_id` matches and `used_at IS NULL`.
-    async fn invalidate_codes_for_email(&self, user_email_id: Uuid) -> Result<(), DatabaseError>;
+    /// Invalidates all outstanding codes for `(user_id, email)` by setting
+    /// `used_at = NOW()` on rows where they match and `used_at IS NULL`.
+    async fn invalidate_codes_for_email(
+        &self,
+        user_id: Uuid,
+        email: &str,
+    ) -> Result<(), DatabaseError>;
 
-    /// In a single transaction: marks the code `used_at = NOW()`, deletes any
-    /// other unverified `core.user_emails` rows claiming the same address (id !=
-    /// `user_email_id`, `NOT is_verified`), then sets the email's `is_verified =
-    /// TRUE` and `verified_at` (preserving an existing `verified_at`).
-    async fn mark_code_used_and_verify_email(
+    /// In a single transaction: marks the code `used_at = NOW()`, then inserts
+    /// the verified `core.user_emails` row for `(user_id, email)` and returns it.
+    /// If the user already has a row for this email it is flipped to verified
+    /// instead. A `23505` surfaces when a *different* user has already verified
+    /// the address.
+    async fn mark_code_used_and_add_email(
         &self,
         code_id: Uuid,
-        user_email_id: Uuid,
-    ) -> Result<(), DatabaseError>;
+        user_id: Uuid,
+        email: &str,
+    ) -> Result<UserEmail, DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -56,18 +66,20 @@ impl PgEmailVerificationRepository {
 impl EmailVerificationRepository for PgEmailVerificationRepository {
     async fn create_code(
         &self,
-        user_email_id: Uuid,
+        user_id: Uuid,
+        email: &str,
         code_hash: &str,
         expires_at: DateTime<Utc>,
     ) -> Result<EmailVerificationCode, DatabaseError> {
         let code = sqlx::query_as::<_, EmailVerificationCode>(
             r#"
-            INSERT INTO auth.email_verification_codes (user_email_id, code_hash, expires_at)
-            VALUES ($1, $2, $3)
+            INSERT INTO auth.email_verification_codes (user_id, email, code_hash, expires_at)
+            VALUES ($1, $2, $3, $4)
             RETURNING *
             "#,
         )
-        .bind(user_email_id)
+        .bind(user_id)
+        .bind(email)
         .bind(code_hash)
         .bind(expires_at)
         .fetch_one(&self.pool)
@@ -92,26 +104,32 @@ impl EmailVerificationRepository for PgEmailVerificationRepository {
         Ok(code)
     }
 
-    async fn invalidate_codes_for_email(&self, user_email_id: Uuid) -> Result<(), DatabaseError> {
+    async fn invalidate_codes_for_email(
+        &self,
+        user_id: Uuid,
+        email: &str,
+    ) -> Result<(), DatabaseError> {
         sqlx::query(
             r#"
             UPDATE auth.email_verification_codes
             SET used_at = NOW()
-            WHERE user_email_id = $1 AND used_at IS NULL
+            WHERE user_id = $1 AND email = $2 AND used_at IS NULL
             "#,
         )
-        .bind(user_email_id)
+        .bind(user_id)
+        .bind(email)
         .execute(&self.pool)
         .await?;
 
         Ok(())
     }
 
-    async fn mark_code_used_and_verify_email(
+    async fn mark_code_used_and_add_email(
         &self,
         code_id: Uuid,
-        user_email_id: Uuid,
-    ) -> Result<(), DatabaseError> {
+        user_id: Uuid,
+        email: &str,
+    ) -> Result<UserEmail, DatabaseError> {
         let mut tx = self.pool.begin().await?;
 
         sqlx::query(
@@ -123,36 +141,24 @@ impl EmailVerificationRepository for PgEmailVerificationRepository {
         .execute(&mut *tx)
         .await?;
 
-        // Clean up squatter rows: any other unverified rows claiming the same
-        // email are bogus once one user verifies, so drop them. Done before the
-        // UPDATE so the partial unique index on `(email) WHERE is_verified`
-        // never sees two conflicting rows in flight.
-        sqlx::query(
+        let row = sqlx::query_as::<_, UserEmail>(
             r#"
-            DELETE FROM core.user_emails
-            WHERE email = (SELECT email FROM core.user_emails WHERE id = $1)
-              AND id != $1
-              AND NOT is_verified
+            INSERT INTO core.user_emails (user_id, email, is_primary, is_verified, verified_at)
+            VALUES ($1, $2, FALSE, TRUE, NOW())
+            ON CONFLICT (user_id, email)
+            DO UPDATE SET is_verified = TRUE,
+                          verified_at = COALESCE(core.user_emails.verified_at, NOW())
+            RETURNING id, user_id, email, is_primary, is_verified, created_at
             "#,
         )
-        .bind(user_email_id)
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query(
-            r#"
-            UPDATE core.user_emails
-            SET is_verified = TRUE, verified_at = COALESCE(verified_at, NOW())
-            WHERE id = $1
-            "#,
-        )
-        .bind(user_email_id)
-        .execute(&mut *tx)
+        .bind(user_id)
+        .bind(email)
+        .fetch_one(&mut *tx)
         .await?;
 
         tx.commit().await?;
 
-        Ok(())
+        Ok(row)
     }
 }
 
@@ -165,48 +171,18 @@ mod tests {
     use super::{EmailVerificationRepository, PgEmailVerificationRepository};
     use crate::repository::test_common::insert_user;
 
-    async fn insert_user_email(pool: &PgPool, id: Uuid, user_id: Uuid, email: &str) {
-        sqlx::query(
-            "INSERT INTO core.user_emails (id, user_id, email, is_primary, is_verified)
-             VALUES ($1, $2, $3, FALSE, FALSE)",
-        )
-        .bind(id)
-        .bind(user_id)
-        .bind(email)
-        .execute(pool)
-        .await
-        .unwrap();
-    }
-
-    async fn is_verified(pool: &PgPool, email_id: Uuid) -> bool {
-        sqlx::query_scalar::<_, bool>("SELECT is_verified FROM core.user_emails WHERE id = $1")
-            .bind(email_id)
-            .fetch_one(pool)
-            .await
-            .unwrap()
-    }
-
-    async fn email_count(pool: &PgPool, email: &str) -> i64 {
-        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM core.user_emails WHERE email = $1")
-            .bind(email)
-            .fetch_one(pool)
-            .await
-            .unwrap()
-    }
-
     #[sqlx::test]
     async fn create_and_get_code(pool: PgPool) {
         let repo = PgEmailVerificationRepository::new(pool.clone());
         let user = Uuid::new_v4();
-        let email_id = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
-        insert_user_email(&pool, email_id, user, "alice@x.com").await;
 
         let code = repo
-            .create_code(email_id, "hash", Utc::now() + Duration::hours(1))
+            .create_code(user, "alice@x.com", "hash", Utc::now() + Duration::hours(1))
             .await
             .unwrap();
-        assert_eq!(code.user_email_id, email_id);
+        assert_eq!(code.user_id, user);
+        assert_eq!(code.email, "alice@x.com");
         assert_eq!(code.code_hash, "hash");
         assert!(code.used_at.is_none());
 
@@ -219,18 +195,18 @@ mod tests {
     async fn invalidate_codes_marks_outstanding_used(pool: PgPool) {
         let repo = PgEmailVerificationRepository::new(pool.clone());
         let user = Uuid::new_v4();
-        let email_id = Uuid::new_v4();
         insert_user(&pool, user, "alice").await;
-        insert_user_email(&pool, email_id, user, "alice@x.com").await;
 
-        repo.create_code(email_id, "h1", Utc::now() + Duration::hours(1))
+        repo.create_code(user, "alice@x.com", "h1", Utc::now() + Duration::hours(1))
             .await
             .unwrap();
-        repo.create_code(email_id, "h2", Utc::now() + Duration::hours(1))
+        repo.create_code(user, "alice@x.com", "h2", Utc::now() + Duration::hours(1))
             .await
             .unwrap();
 
-        repo.invalidate_codes_for_email(email_id).await.unwrap();
+        repo.invalidate_codes_for_email(user, "alice@x.com")
+            .await
+            .unwrap();
 
         assert!(
             repo.get_code_by_hash("h1")
@@ -251,28 +227,27 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn mark_code_used_verifies_and_removes_squatters(pool: PgPool) {
+    async fn mark_code_used_consumes_code_and_creates_verified_email(pool: PgPool) {
         let repo = PgEmailVerificationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
-        let bob = Uuid::new_v4();
-        let alice_email = Uuid::new_v4();
-        let bob_email = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
-        insert_user(&pool, bob, "bob").await;
-        // Both unverified rows claim the same address.
-        insert_user_email(&pool, alice_email, alice, "shared@x.com").await;
-        insert_user_email(&pool, bob_email, bob, "shared@x.com").await;
 
         let code = repo
-            .create_code(alice_email, "hash", Utc::now() + Duration::hours(1))
+            .create_code(
+                alice,
+                "alice2@x.com",
+                "hash",
+                Utc::now() + Duration::hours(1),
+            )
             .await
             .unwrap();
 
-        repo.mark_code_used_and_verify_email(code.id, alice_email)
+        let row = repo
+            .mark_code_used_and_add_email(code.id, alice, "alice2@x.com")
             .await
             .unwrap();
 
-        // The code is consumed and alice's email becomes verified.
+        // The code is consumed and alice's verified row is created.
         assert!(
             repo.get_code_by_hash("hash")
                 .await
@@ -281,9 +256,8 @@ mod tests {
                 .used_at
                 .is_some()
         );
-        assert!(is_verified(&pool, alice_email).await);
-
-        // The competing unverified squatter row is removed.
-        assert_eq!(email_count(&pool, "shared@x.com").await, 1);
+        assert_eq!(row.user_id, alice);
+        assert_eq!(row.email, "alice2@x.com");
+        assert!(row.is_verified);
     }
 }

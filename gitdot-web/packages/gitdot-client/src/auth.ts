@@ -8,7 +8,6 @@ import {
   GitHubAuthRedirectResource,
   type LogoutRequest,
   type RefreshSessionRequest,
-  type ResendVerificationCodeRequest,
   type SendAuthEmailRequest,
   SlackAccountResource,
   UserEmailResource,
@@ -17,7 +16,12 @@ import {
 } from "gitdot-api";
 import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
-import { authFetch, authPost, handleResponse } from "./util";
+import {
+  authFetch,
+  authPost,
+  handleEmptyResponse,
+  handleResponse,
+} from "./util";
 
 export const GITDOT_AUTH_SERVER_URL =
   process.env.GITDOT_AUTH_SERVER_URL ?? "http://localhost:8082";
@@ -162,7 +166,7 @@ export async function verifyAuthCode(
 
 // --- Account management ---
 
-export async function addUserEmail(email: string) {
+export async function addUserEmail(email: string): Promise<void> {
   const body: AddUserEmailRequest = { email };
   const res = await authFetch(
     `${GITDOT_AUTH_SERVER_URL}/auth/account/add-email`,
@@ -172,7 +176,7 @@ export async function addUserEmail(email: string) {
       body: JSON.stringify(body),
     },
   );
-  return await handleResponse(res, UserEmailResource);
+  await handleEmptyResponse(res);
 }
 
 export async function verifyUserEmail(email: string, code: string) {
@@ -186,19 +190,6 @@ export async function verifyUserEmail(email: string, code: string) {
     },
   );
   return await handleResponse(res, UserEmailResource);
-}
-
-export async function resendUserEmailCode(email: string): Promise<boolean> {
-  const body: ResendVerificationCodeRequest = { email };
-  const res = await authFetch(
-    `${GITDOT_AUTH_SERVER_URL}/auth/account/resend-code`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  );
-  return res.ok;
 }
 
 // --- GitHub OAuth ---

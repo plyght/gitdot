@@ -5,7 +5,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, FromRow)]
 pub struct EmailVerificationCode {
     pub id: Uuid,
-    pub user_email_id: Uuid,
+    pub user_id: Uuid,
+    pub email: String,
     pub code_hash: String,
 
     pub created_at: DateTime<Utc>,

@@ -76,7 +76,7 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
     /// Returns the [`User`] whose primary `core.user_emails` row matches `email`,
     /// joining `users` to `user_emails` on `is_primary`. Non-primary addresses
     /// never match; `Ok(None)` if none.
-    async fn get_by_email(&self, email: &str) -> Result<Option<User>, DatabaseError>;
+    async fn get_by_primary_email(&self, email: &str) -> Result<Option<User>, DatabaseError>;
 
     /// Returns `(email, user_id)` pairs from `core.user_emails` for every input
     /// address that is verified (`is_verified = TRUE`). Short-circuits to an
@@ -93,21 +93,13 @@ pub trait UserRepository: Send + Sync + Clone + 'static {
     /// `core.organizations` row (namespaces share one slug space).
     async fn is_name_taken(&self, name: &str) -> Result<bool, DatabaseError>;
 
+    /// Returns whether `email` is already verified by any user (a verified
+    /// `core.user_emails` row exists for it).
+    async fn is_email_taken(&self, email: &str) -> Result<bool, DatabaseError>;
+
     /// Lists all `core.user_emails` rows for `user_id`, ordered primary first
     /// then by `created_at ASC`.
     async fn list_emails(&self, user_id: Uuid) -> Result<Vec<UserEmail>, DatabaseError>;
-
-    /// Inserts a non-primary, unverified `core.user_emails` row for `user_id`
-    /// and returns it via `RETURNING`.
-    async fn create_email(&self, user_id: Uuid, email: &str) -> Result<UserEmail, DatabaseError>;
-
-    /// Returns the `core.user_emails` row matching both `user_id` and `email`,
-    /// or `Ok(None)` if the user has no such address.
-    async fn get_email_for_user(
-        &self,
-        user_id: Uuid,
-        email: &str,
-    ) -> Result<Option<UserEmail>, DatabaseError>;
 
     /// Bulk-inserts the given addresses as non-primary, verified
     /// (`verified_at = NOW()`) `core.user_emails` rows for `user_id` from an
@@ -314,7 +306,7 @@ impl UserRepository for PgUserRepository {
         Ok(())
     }
 
-    async fn get_by_email(&self, email: &str) -> Result<Option<User>, DatabaseError> {
+    async fn get_by_primary_email(&self, email: &str) -> Result<Option<User>, DatabaseError> {
         let user = sqlx::query_as::<_, User>(&format!(
             r#"
             {USER_PROJECTION_QUERY}
@@ -381,6 +373,21 @@ impl UserRepository for PgUserRepository {
         Ok(exists)
     }
 
+    async fn is_email_taken(&self, email: &str) -> Result<bool, DatabaseError> {
+        let exists = sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM core.user_emails WHERE email = $1 AND is_verified
+            )
+            "#,
+        )
+        .bind(email)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(exists)
+    }
+
     async fn list_emails(&self, user_id: Uuid) -> Result<Vec<UserEmail>, DatabaseError> {
         let rows = sqlx::query_as::<_, UserEmail>(
             r#"
@@ -395,42 +402,6 @@ impl UserRepository for PgUserRepository {
         .await?;
 
         Ok(rows)
-    }
-
-    async fn create_email(&self, user_id: Uuid, email: &str) -> Result<UserEmail, DatabaseError> {
-        let row = sqlx::query_as::<_, UserEmail>(
-            r#"
-            INSERT INTO core.user_emails (user_id, email, is_primary, is_verified)
-            VALUES ($1, $2, FALSE, FALSE)
-            RETURNING id, user_id, email, is_primary, is_verified, created_at
-            "#,
-        )
-        .bind(user_id)
-        .bind(email)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(row)
-    }
-
-    async fn get_email_for_user(
-        &self,
-        user_id: Uuid,
-        email: &str,
-    ) -> Result<Option<UserEmail>, DatabaseError> {
-        let row = sqlx::query_as::<_, UserEmail>(
-            r#"
-            SELECT id, user_id, email, is_primary, is_verified, created_at
-            FROM core.user_emails
-            WHERE user_id = $1 AND email = $2
-            "#,
-        )
-        .bind(user_id)
-        .bind(email)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(row)
     }
 
     async fn upsert_verified_emails(
@@ -696,6 +667,19 @@ mod tests {
         insert_commit, insert_org, insert_star, insert_user, insert_user_repo,
     };
 
+    /// Inserts a non-primary, unverified `core.user_emails` row directly.
+    async fn insert_secondary_email(pool: &PgPool, user_id: Uuid, email: &str) {
+        sqlx::query(
+            "INSERT INTO core.user_emails (user_id, email, is_primary, is_verified)
+             VALUES ($1, $2, FALSE, FALSE)",
+        )
+        .bind(user_id)
+        .bind(email)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
     #[sqlx::test]
     async fn create_persists_user_with_primary_email(pool: PgPool) {
         let repo = PgUserRepository::new(pool.clone());
@@ -806,7 +790,7 @@ mod tests {
             .create("primary@x.com", true, AuthProvider::Email)
             .await
             .unwrap();
-        repo.create_email(user.id, "secondary@x.com").await.unwrap();
+        insert_secondary_email(&pool, user.id, "secondary@x.com").await;
 
         let found = repo
             .get_by_email("primary@x.com")
@@ -888,7 +872,7 @@ mod tests {
             .create("primary@x.com", true, AuthProvider::Email)
             .await
             .unwrap();
-        repo.create_email(user.id, "second@x.com").await.unwrap();
+        insert_secondary_email(&pool, user.id, "second@x.com").await;
 
         let emails = repo.list_emails(user.id).await.unwrap();
         assert_eq!(emails.len(), 2);
@@ -896,45 +880,6 @@ mod tests {
         assert_eq!(emails[0].email, "primary@x.com");
         assert!(!emails[1].is_primary);
         assert_eq!(emails[1].email, "second@x.com");
-    }
-
-    #[sqlx::test]
-    async fn create_and_get_email_for_user(pool: PgPool) {
-        let repo = PgUserRepository::new(pool.clone());
-        let user = repo
-            .create("p@x.com", true, AuthProvider::Email)
-            .await
-            .unwrap();
-        let other = repo
-            .create("o@x.com", true, AuthProvider::Email)
-            .await
-            .unwrap();
-
-        let created = repo.create_email(user.id, "second@x.com").await.unwrap();
-        assert_eq!(created.email, "second@x.com");
-        assert_eq!(created.user_id, user.id);
-        assert!(!created.is_primary);
-        assert!(!created.is_verified);
-
-        assert!(
-            repo.get_email_for_user(user.id, "second@x.com")
-                .await
-                .unwrap()
-                .is_some()
-        );
-        // Lookup is scoped to the owning user.
-        assert!(
-            repo.get_email_for_user(other.id, "second@x.com")
-                .await
-                .unwrap()
-                .is_none()
-        );
-        assert!(
-            repo.get_email_for_user(user.id, "nope@x.com")
-                .await
-                .unwrap()
-                .is_none()
-        );
     }
 
     #[sqlx::test]

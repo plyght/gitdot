@@ -109,7 +109,8 @@ pub trait SessionService: Send + Sync + 'static {
     /// successful exchange starts a new session family.
     ///
     /// # Errors
-    /// - [`SessionError::Unauthorized`] — `state` failed verification
+    /// - [`SessionError::Unauthorized`] — `state` failed verification, or the
+    ///   GitHub primary email is already a verified secondary of another account
     /// - [`SessionError::GitHubError`] — code exchange failed or no verified
     ///   primary email was found
     async fn exchange_github_code(
@@ -207,9 +208,14 @@ where
 {
     async fn send_auth_email(&self, request: SendAuthEmailRequest) -> Result<(), SessionError> {
         let email = request.email.as_ref().to_string();
-        let user = match self.user_repo.get_by_email(&email).await? {
+        let user = match self.user_repo.get_by_primary_email(&email).await? {
             Some(user) => user,
             None => {
+                // if the email is taken as a secondary email, do not create a user, just silently fail
+                if self.user_repo.is_email_taken(&email).await? {
+                    return Ok(());
+                }
+
                 let user = self
                     .user_repo
                     .create(&email, false, AuthProvider::Email)
@@ -247,7 +253,7 @@ where
         let email = request.email.as_ref();
         let user = self
             .user_repo
-            .get_by_email(email)
+            .get_by_primary_email(email)
             .await?
             .or_not_found("user", email)?;
 
@@ -438,9 +444,14 @@ where
                     "No verified primary email found".to_string(),
                 ))
             })?;
-        let (user, is_new) = match self.user_repo.get_by_email(&primary_email).await? {
+        let (user, is_new) = match self.user_repo.get_by_primary_email(&primary_email).await? {
             Some(user) => (user, false),
             None => {
+                // if the email is taken as a secondary email, throw an unauthorized error in oauth
+                if self.user_repo.is_email_taken(&primary_email).await? {
+                    return Err(SessionError::Unauthorized);
+                }
+
                 let user = self
                     .user_repo
                     .create(&primary_email, true, AuthProvider::GitHub)

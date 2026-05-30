@@ -95,13 +95,12 @@ mock! {
         async fn update(&self, id: Uuid, name: Option<String>, location: Option<String>, readme: Option<String>, links: Option<Vec<String>>, display_name: Option<String>) -> Result<User, crate::error::DatabaseError>;
         async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, crate::error::DatabaseError>;
         async fn touch_image(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
-        async fn get_by_email(&self, email: &str) -> Result<Option<User>, crate::error::DatabaseError>;
+        async fn get_by_primary_email(&self, email: &str) -> Result<Option<User>, crate::error::DatabaseError>;
         async fn get_by_emails(&self, emails: &[String]) -> Result<Vec<(String, Uuid)>, crate::error::DatabaseError>;
         async fn verify_email(&self, id: Uuid) -> Result<(), crate::error::DatabaseError>;
         async fn is_name_taken(&self, name: &str) -> Result<bool, crate::error::DatabaseError>;
+        async fn is_email_taken(&self, email: &str) -> Result<bool, crate::error::DatabaseError>;
         async fn list_emails(&self, user_id: Uuid) -> Result<Vec<UserEmail>, crate::error::DatabaseError>;
-        async fn create_email(&self, user_id: Uuid, email: &str) -> Result<UserEmail, crate::error::DatabaseError>;
-        async fn get_email_for_user(&self, user_id: Uuid, email: &str) -> Result<Option<UserEmail>, crate::error::DatabaseError>;
         async fn upsert_verified_emails(&self, user_id: Uuid, emails: &[String]) -> Result<(), crate::error::DatabaseError>;
         async fn list_repositories(&self, user_id: Uuid, viewer_id: Option<Uuid>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<(Repository, Option<i64>, Option<chrono::DateTime<chrono::Utc>>)>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
         async fn list_starred_repositories(&self, user_id: Uuid, viewer_id: Option<Uuid>, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<Repository>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;

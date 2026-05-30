@@ -19,7 +19,6 @@ import {
   listUserRepositories,
   listUserStarredRepositories,
   logout,
-  resendUserEmailCode,
   sendAuthEmail,
   updateCurrentUser,
   uploadUserImage,
@@ -169,9 +168,7 @@ export async function updateUserAction(
   return { user: result };
 }
 
-export type AddUserEmailActionResult =
-  | { email: UserEmailResource }
-  | { error: string };
+export type AddUserEmailActionResult = { success: true } | { error: string };
 
 export async function addUserEmailAction(
   _prev: AddUserEmailActionResult | null,
@@ -183,10 +180,9 @@ export async function addUserEmailAction(
   }
 
   try {
-    const result = await addUserEmail(email);
-    if (!result) return { error: "Could not add email" };
+    await addUserEmail(email);
     refresh();
-    return { email: result };
+    return { success: true };
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
       return { error: "This email is already in use" };
@@ -216,20 +212,6 @@ export async function verifyUserEmailAction(
       return { error: "Invalid or expired code" };
     }
     return { error: "Could not verify email" };
-  }
-}
-
-export type ResendUserEmailActionResult = { success: true } | { error: string };
-
-export async function resendUserEmailAction(
-  email: string,
-): Promise<ResendUserEmailActionResult> {
-  try {
-    const ok = await resendUserEmailCode(email);
-    if (!ok) return { error: "Could not resend code" };
-    return { success: true };
-  } catch {
-    return { error: "Could not resend code" };
   }
 }
 

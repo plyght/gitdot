@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { UserEmailResource } from "../../../resource";
 import type { Endpoint } from "../../endpoint";
 
 export const AddUserEmailRequest = z.object({
@@ -7,7 +6,7 @@ export const AddUserEmailRequest = z.object({
 });
 export type AddUserEmailRequest = z.infer<typeof AddUserEmailRequest>;
 
-export const AddUserEmailResponse = UserEmailResource;
+export const AddUserEmailResponse = z.void();
 export type AddUserEmailResponse = z.infer<typeof AddUserEmailResponse>;
 
 export const AddUserEmail = {

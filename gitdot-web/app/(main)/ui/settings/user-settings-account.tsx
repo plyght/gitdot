@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "@/(main)/context/toaster";
 import { useUserContext } from "@/(main)/context/user";
-import { resendUserEmailAction } from "@/actions";
+import { addUserEmailAction } from "@/actions";
 import { cn } from "@/util";
 import { UserAddEmailDialog } from "./user-add-email-dialog";
 import { UserChangeNameDialog } from "./user-change-name-dialog";
@@ -121,7 +121,9 @@ function PendingRow({
   function handleResend() {
     if (isPending) return;
     startTransition(async () => {
-      const result = await resendUserEmailAction(email);
+      const formData = new FormData();
+      formData.set("email", email);
+      const result = await addUserEmailAction(null, formData);
       if ("error" in result) {
         toast.error(result.error);
         return;

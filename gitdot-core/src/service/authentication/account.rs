@@ -3,11 +3,8 @@ use chrono::{Duration, Utc};
 
 use crate::{
     client::{EmailClient, SmtpClient, TokenClient, TokenClientImpl},
-    dto::{
-        AddUserEmailRequest, ResendVerificationCodeRequest, UserEmailResponse,
-        VerifyUserEmailRequest,
-    },
-    error::{AccountError, ConflictError, DatabaseError, NotFoundError, OptionNotFoundExt},
+    dto::{AddUserEmailRequest, UserEmailResponse, VerifyUserEmailRequest},
+    error::{AccountError, ConflictError, DatabaseError},
     repository::{
         EmailVerificationRepository, PgEmailVerificationRepository, PgUserRepository,
         UserRepository,
@@ -23,25 +20,16 @@ use crate::{
 /// time-limited, and scoped to the requesting user.
 #[async_trait]
 pub trait AccountService: Send + Sync + 'static {
-    /// Adds an email to the user's account in an unverified state and emails a
-    /// verification code. Fails with `Conflict` if the email already exists for
-    /// any user (verified or not). Use `resend_code` to re-issue a code for an
-    /// existing unverified row.
-    async fn add_email(
-        &self,
-        request: AddUserEmailRequest,
-    ) -> Result<UserEmailResponse, AccountError>;
-
-    /// Issues a fresh verification code for an existing unverified email row,
-    /// invalidating any prior active codes. Scoped to the caller — only the row
-    /// owner can request a resend.
-    async fn resend_code(&self, request: ResendVerificationCodeRequest)
-    -> Result<(), AccountError>;
+    /// Emails a verification code for the address without persisting anything to
+    /// `core.user_emails` — the row is only created once the code is verified.
+    /// Any prior active codes for the address are invalidated, so calling this
+    /// again simply re-issues a fresh code. Fails with `Conflict` if the email
+    /// is already verified by any user.
+    async fn add_email(&self, request: AddUserEmailRequest) -> Result<(), AccountError>;
 
     /// Verifies a code previously emailed for `request.email`. On success the
-    /// `user_emails` row flips to verified and the code is marked used. Scoped
-    /// to the caller — a code only verifies the email row belonging to
-    /// `request.user_id`.
+    /// verified `user_emails` row is created and the code is marked used. Scoped
+    /// to the caller — a code only verifies the address for `request.user_id`.
     async fn verify_email(
         &self,
         request: VerifyUserEmailRequest,
@@ -89,11 +77,11 @@ where
 {
     async fn issue_and_send_code(
         &self,
-        user_email_id: uuid::Uuid,
+        user_id: uuid::Uuid,
         email: &str,
     ) -> Result<(), AccountError> {
         self.email_verification_repo
-            .invalidate_codes_for_email(user_email_id)
+            .invalidate_codes_for_email(user_id, email)
             .await?;
 
         let code = self.token_client.generate_readable_code();
@@ -101,7 +89,7 @@ where
         let expires_at = Utc::now()
             + Duration::seconds(self.token_client.get_auth_code_expiry_in_seconds() as i64);
         self.email_verification_repo
-            .create_code(user_email_id, &code_hash, expires_at)
+            .create_code(user_id, email, &code_hash, expires_at)
             .await?;
 
         let (subject, html) = get_verify_email_email(&code);
@@ -122,44 +110,14 @@ where
     EC: EmailClient,
     TC: TokenClient,
 {
-    async fn add_email(
-        &self,
-        request: AddUserEmailRequest,
-    ) -> Result<UserEmailResponse, AccountError> {
+    async fn add_email(&self, request: AddUserEmailRequest) -> Result<(), AccountError> {
         let email = request.email.as_ref();
 
-        let row = match self.user_repo.create_email(request.user_id, email).await {
-            Ok(row) => row,
-            Err(DatabaseError::Other(e))
-                if e.as_database_error().and_then(|db| db.code()).as_deref() == Some("23505") =>
-            {
-                return Err(ConflictError::new("email", email).into());
-            }
-            Err(e) => return Err(e.into()),
-        };
-
-        self.issue_and_send_code(row.id, email).await?;
-
-        Ok(row.into())
-    }
-
-    async fn resend_code(
-        &self,
-        request: ResendVerificationCodeRequest,
-    ) -> Result<(), AccountError> {
-        let email = request.email.as_ref();
-
-        let row = self
-            .user_repo
-            .get_email_for_user(request.user_id, email)
-            .await?
-            .ok_or_else(|| NotFoundError::new("user_email", email))?;
-
-        if row.is_verified {
+        if self.user_repo.is_email_taken(email).await? {
             return Err(ConflictError::new("email", email).into());
         }
 
-        self.issue_and_send_code(row.id, email).await?;
+        self.issue_and_send_code(request.user_id, email).await?;
 
         Ok(())
     }
@@ -170,15 +128,6 @@ where
     ) -> Result<UserEmailResponse, AccountError> {
         let email = request.email.as_ref();
 
-        // Locate the caller's row for this email. Absence collapses to
-        // InvalidCode so we don't leak ownership information.
-        let user_email_id = self
-            .user_repo
-            .get_email_for_user(request.user_id, email)
-            .await?
-            .ok_or(AccountError::InvalidCode)?
-            .id;
-
         let code_hash = hash_string(request.code.as_ref());
         let code = self
             .email_verification_repo
@@ -186,24 +135,27 @@ where
             .await?
             .ok_or(AccountError::InvalidCode)?;
 
-        if code.user_email_id != user_email_id
+        if code.user_id != request.user_id
+            || code.email != email
             || code.used_at.is_some()
             || code.expires_at < Utc::now()
         {
             return Err(AccountError::InvalidCode);
         }
 
-        self.email_verification_repo
-            .mark_code_used_and_verify_email(code.id, user_email_id)
-            .await?;
-
-        let row = self
-            .user_repo
-            .list_emails(request.user_id)
-            .await?
-            .into_iter()
-            .find(|e| e.email == email)
-            .or_not_found("user_email", email)?;
+        let row = match self
+            .email_verification_repo
+            .mark_code_used_and_add_email(code.id, request.user_id, email)
+            .await
+        {
+            Ok(row) => row,
+            Err(DatabaseError::Other(e))
+                if e.as_database_error().and_then(|db| db.code()).as_deref() == Some("23505") =>
+            {
+                return Err(ConflictError::new("email", email).into());
+            }
+            Err(e) => return Err(e.into()),
+        };
 
         Ok(row.into())
     }
