@@ -11,6 +11,12 @@ pub enum DatabaseError {
     Other(sqlx::Error),
 }
 
+impl DatabaseError {
+    pub fn is_unique_violation(&self) -> bool {
+        matches!(self, Self::Other(e) if e.as_database_error().is_some_and(|d| d.is_unique_violation()))
+    }
+}
+
 impl From<sqlx::Error> for DatabaseError {
     fn from(e: sqlx::Error) -> Self {
         match e {

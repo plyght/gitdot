@@ -4,7 +4,7 @@ use chrono::{Duration, Utc};
 use crate::{
     client::{EmailClient, SmtpClient, TokenClient, TokenClientImpl},
     dto::{AddUserEmailRequest, UserEmailResponse, VerifyUserEmailRequest},
-    error::{AccountError, ConflictError, DatabaseError},
+    error::{AccountError, ConflictError},
     repository::{
         EmailVerificationRepository, PgEmailVerificationRepository, PgUserRepository,
         UserRepository,
@@ -149,9 +149,7 @@ where
             .await
         {
             Ok(row) => row,
-            Err(DatabaseError::Other(e))
-                if e.as_database_error().and_then(|db| db.code()).as_deref() == Some("23505") =>
-            {
+            Err(e) if e.is_unique_violation() => {
                 return Err(ConflictError::new("email", email).into());
             }
             Err(e) => return Err(e.into()),

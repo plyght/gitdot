@@ -310,6 +310,17 @@ where
                             "failed to revert owner directory rename after DB update failed"
                         );
                     }
+
+                    // A concurrent rename can claim the handle between the
+                    // is_name_taken check and this UPDATE; the unique index turns
+                    // that race into a clean conflict instead of a 500.
+                    if err.is_unique_violation() {
+                        return Err(ConflictError::new(
+                            "user name",
+                            format!("{new_name} is already taken"),
+                        )
+                        .into());
+                    }
                 }
                 return Err(err.into());
             }
