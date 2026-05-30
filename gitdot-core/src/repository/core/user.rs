@@ -187,15 +187,19 @@ impl UserRepository for PgUserRepository {
         is_email_verified: bool,
         provider: AuthProvider,
     ) -> Result<User, DatabaseError> {
-        let suffix: String = {
-            let mut rng = rand::rng();
-            let bytes: [u8; 4] = rng.random();
-            hex::encode(bytes)
-        };
-        let name = format!("user_{suffix}");
+        // The initial handle is random, so a collision against the unique idx_users_name
+        // is astronomically unlikely but not impossible. Retry with a fresh handle before
+        // surfacing the error.
+        const MAX_ATTEMPTS: usize = 3;
+        for attempt in 1..=MAX_ATTEMPTS {
+            let name = {
+                let mut rng = rand::rng();
+                let bytes: [u8; 4] = rng.random();
+                format!("user_{}", hex::encode(bytes))
+            };
 
-        let user = sqlx::query_as::<_, User>(
-            r#"
+            let result = sqlx::query_as::<_, User>(
+                r#"
             WITH new_user AS (
                 INSERT INTO core.users (name, provider, readme)
                 VALUES ($1, $2, $3)
@@ -222,16 +226,28 @@ impl UserRepository for PgUserRepository {
                 ) AS emails
             FROM new_user u
             "#,
-        )
-        .bind(name)
-        .bind(provider)
-        .bind(DEFAULT_USER_README)
-        .bind(email)
-        .bind(is_email_verified)
-        .fetch_one(&self.pool)
-        .await?;
+            )
+            .bind(name)
+            .bind(provider.clone())
+            .bind(DEFAULT_USER_README)
+            .bind(email)
+            .bind(is_email_verified)
+            .fetch_one(&self.pool)
+            .await;
 
-        Ok(user)
+            match result {
+                Ok(user) => return Ok(user),
+                Err(e) => {
+                    let err = DatabaseError::from(e);
+                    if err.is_unique_violation() && attempt < MAX_ATTEMPTS {
+                        continue;
+                    }
+                    return Err(err);
+                }
+            }
+        }
+
+        unreachable!("create loop returns within MAX_ATTEMPTS")
     }
 
     async fn get(&self, user_name: &str) -> Result<Option<User>, DatabaseError> {
