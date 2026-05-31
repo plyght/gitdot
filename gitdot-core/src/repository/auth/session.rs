@@ -13,21 +13,21 @@ use crate::{
 /// which back short-lived auth codes and long-lived refresh-token sessions.
 #[async_trait]
 pub trait SessionRepository: Send + Sync + Clone + 'static {
-    /// Inserts an auth code (`user_id`, `user_code`, expiry) into
+    /// Inserts an auth code (`user_id`, hashed code, expiry) into
     /// `auth.auth_codes` and returns the created row.
     async fn create_auth_code(
         &self,
         user_id: Uuid,
-        user_code: &str,
+        code_hash: &str,
         expires_at: DateTime<Utc>,
     ) -> Result<AuthCode, DatabaseError>;
 
-    /// Returns the auth code matching `user_id` and `user_code`, or `Ok(None)`
+    /// Returns the auth code matching `user_id` and `code_hash`, or `Ok(None)`
     /// if none exists. Does not check expiry or `used_at`.
     async fn get_auth_code(
         &self,
         user_id: Uuid,
-        user_code: &str,
+        code_hash: &str,
     ) -> Result<Option<AuthCode>, DatabaseError>;
 
     /// Sets `used_at = NOW()` on the auth code with the given id. No-op (and
@@ -81,18 +81,18 @@ impl SessionRepository for PgSessionRepository {
     async fn create_auth_code(
         &self,
         user_id: Uuid,
-        user_code: &str,
+        code_hash: &str,
         expires_at: DateTime<Utc>,
     ) -> Result<AuthCode, DatabaseError> {
         let auth_code = sqlx::query_as::<_, AuthCode>(
             r#"
-            INSERT INTO auth.auth_codes (user_id, user_code, expires_at)
+            INSERT INTO auth.auth_codes (user_id, code_hash, expires_at)
             VALUES ($1, $2, $3)
             RETURNING *
             "#,
         )
         .bind(user_id)
-        .bind(user_code)
+        .bind(code_hash)
         .bind(expires_at)
         .fetch_one(&self.pool)
         .await?;
@@ -103,15 +103,15 @@ impl SessionRepository for PgSessionRepository {
     async fn get_auth_code(
         &self,
         user_id: Uuid,
-        user_code: &str,
+        code_hash: &str,
     ) -> Result<Option<AuthCode>, DatabaseError> {
         let auth_code = sqlx::query_as::<_, AuthCode>(
             r#"
-            SELECT * FROM auth.auth_codes WHERE user_id = $1 AND user_code = $2
+            SELECT * FROM auth.auth_codes WHERE user_id = $1 AND code_hash = $2
             "#,
         )
         .bind(user_id)
-        .bind(user_code)
+        .bind(code_hash)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -220,14 +220,14 @@ mod tests {
         insert_user(&pool, user, "alice").await;
 
         let code = repo
-            .create_auth_code(user, "USER-CODE", Utc::now() + Duration::hours(1))
+            .create_auth_code(user, "code-hash", Utc::now() + Duration::hours(1))
             .await
             .unwrap();
         assert_eq!(code.user_id, user);
         assert!(code.used_at.is_none());
 
         let found = repo
-            .get_auth_code(user, "USER-CODE")
+            .get_auth_code(user, "code-hash")
             .await
             .unwrap()
             .expect("found");
@@ -235,7 +235,7 @@ mod tests {
 
         repo.mark_auth_code_used(code.id).await.unwrap();
         assert!(
-            repo.get_auth_code(user, "USER-CODE")
+            repo.get_auth_code(user, "code-hash")
                 .await
                 .unwrap()
                 .unwrap()
@@ -243,9 +243,14 @@ mod tests {
                 .is_some()
         );
 
-        assert!(repo.get_auth_code(user, "MISSING").await.unwrap().is_none());
         assert!(
-            repo.get_auth_code(Uuid::new_v4(), "USER-CODE")
+            repo.get_auth_code(user, "missing-hash")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            repo.get_auth_code(Uuid::new_v4(), "code-hash")
                 .await
                 .unwrap()
                 .is_none()

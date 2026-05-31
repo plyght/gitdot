@@ -7,7 +7,7 @@ use uuid::Uuid;
 pub struct AuthCode {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub user_code: String,
+    pub code_hash: String,
 
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,

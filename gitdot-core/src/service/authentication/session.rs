@@ -232,10 +232,11 @@ where
         };
 
         let code = self.token_client.generate_readable_code();
+        let code_hash = hash_string(&code);
         let expiry_secs = self.token_client.get_auth_code_expiry_in_seconds();
         let expires_at = Utc::now() + Duration::seconds(expiry_secs as i64);
         self.session_repo
-            .create_auth_code(user.id, &code, expires_at)
+            .create_auth_code(user.id, &code_hash, expires_at)
             .await?;
 
         let (subject, html) = get_code_email(&code);
@@ -257,12 +258,12 @@ where
             .await?
             .or_not_found("user", email)?;
 
-        let code = request.code.as_ref();
+        let code_hash = hash_string(request.code.as_ref());
         let auth_code = self
             .session_repo
-            .get_auth_code(user.id, code)
+            .get_auth_code(user.id, &code_hash)
             .await?
-            .or_not_found("auth_code", code)?;
+            .or_not_found("auth_code", &code_hash)?;
 
         if auth_code.used_at.is_some() {
             return Err(SessionError::TokenRevoked("auth_code".into()));
