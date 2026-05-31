@@ -9,6 +9,14 @@ use crate::{
     model::{AuthCode, Session},
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthCodeVerification {
+    Success,
+    Invalid,
+    AttemptsExhausted,
+    NoActiveCode,
+}
+
 /// sqlx data-access layer for the `auth.auth_codes` and `auth.sessions` tables,
 /// which back short-lived auth codes and long-lived refresh-token sessions.
 #[async_trait]
@@ -38,6 +46,22 @@ pub trait SessionRepository: Send + Sync + Clone + 'static {
     /// issued code is the only one that can verify. Called before inserting a
     /// new code on (re)send to keep exactly one active code per user.
     async fn invalidate_auth_codes(&self, user_id: Uuid) -> Result<(), DatabaseError>;
+
+    /// Atomically verifies a login code against the user's single active code
+    /// and consumes or penalizes it in one transaction.
+    ///
+    /// - correct code → marked used, returns [`AuthCodeVerification::Success`];
+    /// - wrong code with budget left → `attempt_count` incremented, returns
+    ///   [`AuthCodeVerification::Invalid`];
+    /// - wrong code that reaches `max_attempts` → code burned (`used_at =
+    ///   NOW()`), returns [`AuthCodeVerification::AttemptsExhausted`];
+    /// - no active/unexpired code → [`AuthCodeVerification::NoActiveCode`].
+    async fn verify_and_consume_auth_code(
+        &self,
+        user_id: Uuid,
+        code_hash: &str,
+        max_attempts: i16,
+    ) -> Result<AuthCodeVerification, DatabaseError>;
 
     /// Inserts a session into `auth.sessions` (`user_id`, hashed refresh token,
     /// `refresh_token_family`, optional user agent and IP, expiry) and returns
@@ -150,6 +174,65 @@ impl SessionRepository for PgSessionRepository {
         Ok(())
     }
 
+    async fn verify_and_consume_auth_code(
+        &self,
+        user_id: Uuid,
+        code_hash: &str,
+        max_attempts: i16,
+    ) -> Result<AuthCodeVerification, DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+
+        // lock the user's single active to prevent concurrent verification
+        let code = sqlx::query_as::<_, AuthCode>(
+            r#"
+            SELECT * FROM auth.auth_codes
+            WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()
+            ORDER BY created_at DESC
+            LIMIT 1
+            FOR UPDATE
+            "#,
+        )
+        .bind(user_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let Some(code) = code else {
+            tx.commit().await?;
+            return Ok(AuthCodeVerification::NoActiveCode);
+        };
+
+        if code.code_hash == code_hash {
+            sqlx::query("UPDATE auth.auth_codes SET used_at = NOW() WHERE id = $1")
+                .bind(code.id)
+                .execute(&mut *tx)
+                .await?;
+            tx.commit().await?;
+            return Ok(AuthCodeVerification::Success);
+        }
+
+        let next = code.attempt_count + 1;
+        if next >= max_attempts {
+            sqlx::query(
+                "UPDATE auth.auth_codes SET attempt_count = $2, used_at = NOW() WHERE id = $1",
+            )
+            .bind(code.id)
+            .bind(next)
+            .execute(&mut *tx)
+            .await?;
+            tx.commit().await?;
+            return Ok(AuthCodeVerification::AttemptsExhausted);
+        }
+
+        sqlx::query("UPDATE auth.auth_codes SET attempt_count = $2 WHERE id = $1")
+            .bind(code.id)
+            .bind(next)
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+
+        Ok(AuthCodeVerification::Invalid)
+    }
+
     async fn create_session(
         &self,
         user_id: Uuid,
@@ -229,7 +312,7 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{PgSessionRepository, SessionRepository};
+    use super::{AuthCodeVerification, PgSessionRepository, SessionRepository};
     use crate::repository::test_common::insert_user;
 
     #[sqlx::test]
@@ -337,6 +420,108 @@ mod tests {
                 .unwrap()
                 .used_at
                 .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn verify_consumes_correct_code_once(pool: PgPool) {
+        let repo = PgSessionRepository::new(pool.clone());
+        let user = Uuid::new_v4();
+        insert_user(&pool, user, "alice").await;
+        repo.create_auth_code(user, "good", Utc::now() + Duration::hours(1))
+            .await
+            .unwrap();
+
+        // Correct code succeeds, then can't be reused.
+        assert_eq!(
+            repo.verify_and_consume_auth_code(user, "good", 5)
+                .await
+                .unwrap(),
+            AuthCodeVerification::Success
+        );
+        assert_eq!(
+            repo.verify_and_consume_auth_code(user, "good", 5)
+                .await
+                .unwrap(),
+            AuthCodeVerification::NoActiveCode
+        );
+    }
+
+    #[sqlx::test]
+    async fn verify_locks_out_after_max_attempts(pool: PgPool) {
+        let repo = PgSessionRepository::new(pool.clone());
+        let user = Uuid::new_v4();
+        insert_user(&pool, user, "alice").await;
+        repo.create_auth_code(user, "good", Utc::now() + Duration::hours(1))
+            .await
+            .unwrap();
+
+        // Four wrong guesses are rejected but keep the code alive.
+        for _ in 0..4 {
+            assert_eq!(
+                repo.verify_and_consume_auth_code(user, "wrong", 5)
+                    .await
+                    .unwrap(),
+                AuthCodeVerification::Invalid
+            );
+        }
+        // The fifth wrong guess exhausts the budget and burns the code...
+        assert_eq!(
+            repo.verify_and_consume_auth_code(user, "wrong", 5)
+                .await
+                .unwrap(),
+            AuthCodeVerification::AttemptsExhausted
+        );
+        // ...so even the correct code no longer works.
+        assert_eq!(
+            repo.verify_and_consume_auth_code(user, "good", 5)
+                .await
+                .unwrap(),
+            AuthCodeVerification::NoActiveCode
+        );
+    }
+
+    #[sqlx::test]
+    async fn verify_rejects_expired_code(pool: PgPool) {
+        let repo = PgSessionRepository::new(pool.clone());
+        let user = Uuid::new_v4();
+        insert_user(&pool, user, "alice").await;
+        repo.create_auth_code(user, "good", Utc::now() - Duration::minutes(1))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            repo.verify_and_consume_auth_code(user, "good", 5)
+                .await
+                .unwrap(),
+            AuthCodeVerification::NoActiveCode
+        );
+    }
+
+    #[sqlx::test]
+    async fn invalidate_auth_codes_drops_prior_codes(pool: PgPool) {
+        let repo = PgSessionRepository::new(pool.clone());
+        let user = Uuid::new_v4();
+        insert_user(&pool, user, "alice").await;
+        let exp = Utc::now() + Duration::hours(1);
+
+        // Mimic a resend: old code invalidated, new code issued.
+        repo.create_auth_code(user, "old", exp).await.unwrap();
+        repo.invalidate_auth_codes(user).await.unwrap();
+        repo.create_auth_code(user, "new", exp).await.unwrap();
+
+        // Only the newest code verifies.
+        assert_eq!(
+            repo.verify_and_consume_auth_code(user, "old", 5)
+                .await
+                .unwrap(),
+            AuthCodeVerification::Invalid
+        );
+        assert_eq!(
+            repo.verify_and_consume_auth_code(user, "new", 5)
+                .await
+                .unwrap(),
+            AuthCodeVerification::Success
         );
     }
 

@@ -8,6 +8,7 @@ pub struct AuthCode {
     pub id: Uuid,
     pub user_id: Uuid,
     pub code_hash: String,
+    pub attempt_count: i16,
 
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,

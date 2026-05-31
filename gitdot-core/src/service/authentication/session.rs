@@ -13,7 +13,10 @@ use crate::{
     },
     error::{OptionNotFoundExt, SessionError},
     model::AuthProvider,
-    repository::{PgSessionRepository, PgUserRepository, SessionRepository, UserRepository},
+    repository::{
+        AuthCodeVerification, PgSessionRepository, PgUserRepository, SessionRepository,
+        UserRepository,
+    },
     util::{
         auth::{NOREPLY_EMAIL, get_code_email},
         crypto::hash_string,
@@ -22,6 +25,9 @@ use crate::{
 
 // standard 10 minutes for refresh token grace period
 const GRACE_WINDOW: std::time::Duration = std::time::Duration::from_secs(10 * 60);
+
+// number of wrong login attempts allowed before the active code is invalidated
+const MAX_AUTH_CODE_ATTEMPTS: i16 = 5;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct GraceEntry {
@@ -45,13 +51,14 @@ pub trait SessionService: Send + Sync + 'static {
 
     /// Verifies an emailed login code and, on success, marks the user's email
     /// verified and issues an access/refresh token pair on a fresh session
-    /// family. The code is single-use and marked consumed before tokens are
-    /// minted. `is_new` reflects whether the email was previously unverified.
+    /// family. The code is single-use and consumed before tokens are minted, and
+    /// is burned after [`MAX_AUTH_CODE_ATTEMPTS`] wrong guesses. `is_new`
+    /// reflects whether the email was previously unverified.
     ///
     /// # Errors
-    /// - [`SessionError::NotFound`] — no auth code matches
-    /// - [`SessionError::TokenRevoked`] — the code was already used
-    /// - [`SessionError::TokenExpired`] — the code lapsed before verification
+    /// - [`SessionError::Unauthorized`] — returned for every failure mode
+    ///   (unknown account, wrong code, expired, already used, or locked out),
+    ///   deliberately undifferentiated to avoid an enumeration/probing oracle.
     async fn verify_auth_code(
         &self,
         request: VerifyAuthCodeRequest,
@@ -254,30 +261,25 @@ where
         request: VerifyAuthCodeRequest,
     ) -> Result<AuthTokensResponse, SessionError> {
         let email = request.email.as_ref();
-        let user = self
-            .user_repo
-            .get_by_primary_email(email)
-            .await?
-            .or_not_found("user", email)?;
+        let Some(user) = self.user_repo.get_by_primary_email(email).await? else {
+            return Err(SessionError::Unauthorized);
+        };
 
         let code_hash = hash_string(request.code.as_ref());
-        let auth_code = self
+        match self
             .session_repo
-            .get_auth_code(user.id, &code_hash)
+            .verify_and_consume_auth_code(user.id, &code_hash, MAX_AUTH_CODE_ATTEMPTS)
             .await?
-            .or_not_found("auth_code", &code_hash)?;
-
-        if auth_code.used_at.is_some() {
-            return Err(SessionError::TokenRevoked("auth_code".into()));
+        {
+            AuthCodeVerification::Success => {}
+            AuthCodeVerification::Invalid
+            | AuthCodeVerification::AttemptsExhausted
+            | AuthCodeVerification::NoActiveCode => {
+                return Err(SessionError::Unauthorized);
+            }
         }
-        if auth_code.expires_at < Utc::now() {
-            return Err(SessionError::TokenExpired("auth_code".into()));
-        }
-
-        self.session_repo.mark_auth_code_used(auth_code.id).await?;
 
         self.user_repo.verify_email(user.id).await?;
-        let access_token = self.token_client.generate_gitdot_jwt(user.id, &user.name)?;
 
         let (refresh_token, refresh_token_hash) = self.token_client.generate_high_entropic_code();
         let refresh_expiry_secs = self.token_client.get_refresh_token_expiry_in_seconds();
@@ -293,6 +295,7 @@ where
             )
             .await?;
 
+        let access_token = self.token_client.generate_gitdot_jwt(user.id, &user.name)?;
         let is_new = !user.primary_email().is_some_and(|e| e.is_verified);
 
         Ok(AuthTokensResponse {
