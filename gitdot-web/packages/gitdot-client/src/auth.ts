@@ -17,6 +17,7 @@ import {
 import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 import {
+  apiErrorFromResponse,
   authFetch,
   authPost,
   handleEmptyResponse,
@@ -145,7 +146,7 @@ export async function sendAuthEmail(email: string) {
 export async function verifyAuthCode(
   email: string,
   code: string,
-): Promise<AuthSignInResult | null> {
+): Promise<AuthSignInResult> {
   const body: VerifyAuthCodeRequest = { email, code };
   const res = await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/verify`, {
     method: "POST",
@@ -153,7 +154,7 @@ export async function verifyAuthCode(
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) throw await apiErrorFromResponse(res);
 
   const tokens = AuthTokensResource.parse(await res.json());
   await setTokenCookies(tokens);

@@ -82,6 +82,20 @@ export class ApiError extends Error {
   }
 }
 
+export async function apiErrorFromResponse(
+  response: Response,
+): Promise<ApiError> {
+  let message = response.statusText;
+  try {
+    const body = await response.json();
+    if (typeof body?.message === "string") message = body.message;
+  } catch {
+    // ignore parse failure, keep statusText
+  }
+  console.error(`${response.url} failed:`, response.status, message);
+  return new ApiError(response.status, message);
+}
+
 export async function handleResponse<T>(
   response: Response,
   schema: ZodType<T>,
@@ -89,34 +103,14 @@ export async function handleResponse<T>(
   if (response.status === 404) return null;
   if (response.status === 304) return null;
 
-  if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = await response.json();
-      if (typeof body?.message === "string") message = body.message;
-    } catch {
-      // ignore parse failure, keep statusText
-    }
-    console.error(`${response.url} failed:`, response.status, message);
-    throw new ApiError(response.status, message);
-  }
+  if (!response.ok) throw await apiErrorFromResponse(response);
 
   const data = await response.json();
   return schema.parse(data);
 }
 
 export async function handleEmptyResponse(response: Response): Promise<void> {
-  if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = await response.json();
-      if (typeof body?.message === "string") message = body.message;
-    } catch {
-      // ignore parse failure, keep statusText
-    }
-    console.error(`${response.url} failed:`, response.status, message);
-    throw new ApiError(response.status, message);
-  }
+  if (!response.ok) throw await apiErrorFromResponse(response);
 }
 
 /**

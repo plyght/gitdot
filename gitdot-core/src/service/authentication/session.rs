@@ -272,9 +272,10 @@ where
             .await?
         {
             AuthCodeVerification::Success => {}
-            AuthCodeVerification::Invalid
-            | AuthCodeVerification::AttemptsExhausted
-            | AuthCodeVerification::NoActiveCode => {
+            AuthCodeVerification::AttemptsExhausted => {
+                return Err(SessionError::TooManyAttempts);
+            }
+            AuthCodeVerification::Invalid | AuthCodeVerification::NoActiveCode => {
                 return Err(SessionError::Unauthorized);
             }
         }

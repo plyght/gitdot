@@ -15,6 +15,9 @@ pub enum SessionError {
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[error("Too many incorrect attempts; request a new code")]
+    TooManyAttempts,
+
     #[error("Token expired: {0}")]
     TokenExpired(String),
 

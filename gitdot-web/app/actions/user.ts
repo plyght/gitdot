@@ -58,10 +58,14 @@ export async function verifyCode(
 ): Promise<VerifyCodeResult> {
   const email = formData.get("email") as string;
   const code = formData.get("code") as string;
-  const result = await verifyAuthCode(email, code);
-  if (!result) return { error: "Invalid or expired code" };
-
-  return result;
+  try {
+    return await verifyAuthCode(email, code);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 423) {
+      return { error: "Too many incorrect attempts. Request a new code." };
+    }
+    return { error: "Invalid or expired code" };
+  }
 }
 
 export type LoginWithGithubResult = { success: true } | { error: string };
