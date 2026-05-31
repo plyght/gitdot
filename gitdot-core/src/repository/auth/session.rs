@@ -34,6 +34,11 @@ pub trait SessionRepository: Send + Sync + Clone + 'static {
     /// still `Ok`) if no row matches.
     async fn mark_auth_code_used(&self, id: Uuid) -> Result<(), DatabaseError>;
 
+    /// Marks every active (unused) auth code for `user_id` as used, so a freshly
+    /// issued code is the only one that can verify. Called before inserting a
+    /// new code on (re)send to keep exactly one active code per user.
+    async fn invalidate_auth_codes(&self, user_id: Uuid) -> Result<(), DatabaseError>;
+
     /// Inserts a session into `auth.sessions` (`user_id`, hashed refresh token,
     /// `refresh_token_family`, optional user agent and IP, expiry) and returns
     /// the created row.
@@ -125,6 +130,20 @@ impl SessionRepository for PgSessionRepository {
             "#,
         )
         .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn invalidate_auth_codes(&self, user_id: Uuid) -> Result<(), DatabaseError> {
+        sqlx::query(
+            r#"
+            UPDATE auth.auth_codes SET used_at = NOW()
+            WHERE user_id = $1 AND used_at IS NULL
+            "#,
+        )
+        .bind(user_id)
         .execute(&self.pool)
         .await?;
 
@@ -253,6 +272,70 @@ mod tests {
             repo.get_auth_code(Uuid::new_v4(), "code-hash")
                 .await
                 .unwrap()
+                .is_none()
+        );
+    }
+
+    #[sqlx::test]
+    async fn invalidate_auth_codes_marks_active_used(pool: PgPool) {
+        let repo = PgSessionRepository::new(pool.clone());
+        let user = Uuid::new_v4();
+        let other_user = Uuid::new_v4();
+        insert_user(&pool, user, "alice").await;
+        insert_user(&pool, other_user, "bob").await;
+        let exp = Utc::now() + Duration::hours(1);
+
+        repo.create_auth_code(user, "active-1", exp).await.unwrap();
+        repo.create_auth_code(user, "active-2", exp).await.unwrap();
+        let already_used = repo.create_auth_code(user, "used", exp).await.unwrap();
+        repo.mark_auth_code_used(already_used.id).await.unwrap();
+        let used_at = repo
+            .get_auth_code(user, "used")
+            .await
+            .unwrap()
+            .unwrap()
+            .used_at
+            .expect("already used");
+        // A code belonging to a different user must not be touched.
+        repo.create_auth_code(other_user, "other", exp)
+            .await
+            .unwrap();
+
+        repo.invalidate_auth_codes(user).await.unwrap();
+
+        // Both active codes are now marked used.
+        assert!(
+            repo.get_auth_code(user, "active-1")
+                .await
+                .unwrap()
+                .unwrap()
+                .used_at
+                .is_some()
+        );
+        assert!(
+            repo.get_auth_code(user, "active-2")
+                .await
+                .unwrap()
+                .unwrap()
+                .used_at
+                .is_some()
+        );
+        // An already-used code keeps its original timestamp (untouched).
+        assert_eq!(
+            repo.get_auth_code(user, "used")
+                .await
+                .unwrap()
+                .unwrap()
+                .used_at,
+            Some(used_at)
+        );
+        // Another user's code stays active.
+        assert!(
+            repo.get_auth_code(other_user, "other")
+                .await
+                .unwrap()
+                .unwrap()
+                .used_at
                 .is_none()
         );
     }

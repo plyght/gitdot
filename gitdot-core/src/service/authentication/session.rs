@@ -234,6 +234,9 @@ where
         let (code, code_hash) = self.token_client.generate_readable_code();
         let expiry_secs = self.token_client.get_auth_code_expiry_in_seconds();
         let expires_at = Utc::now() + Duration::seconds(expiry_secs as i64);
+
+        // invalidate any prior active code so exactly one code is verifiable at a time
+        self.session_repo.invalidate_auth_codes(user.id).await?;
         self.session_repo
             .create_auth_code(user.id, &code_hash, expires_at)
             .await?;
