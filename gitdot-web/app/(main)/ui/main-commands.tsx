@@ -32,6 +32,7 @@ export function MainCommands() {
 
   const pathname = usePathname();
   const params = useParams();
+  const inRepo = "owner" in params && "repo" in params;
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -109,6 +110,15 @@ export function MainCommands() {
         label: "repos",
         execute: () => window.dispatchEvent(new CustomEvent("openRepos")),
       },
+      ...(inRepo
+        ? [
+            {
+              type: "cmd" as const,
+              label: "files",
+              execute: () => window.dispatchEvent(new Event("openFileSearch")),
+            },
+          ]
+        : []),
       {
         type: "cmd",
         label: "settings",
@@ -149,7 +159,7 @@ export function MainCommands() {
         },
       },
     ];
-  }, [user, router, refreshUser, resolvedTheme, setTheme]);
+  }, [user, router, refreshUser, resolvedTheme, setTheme, inRepo]);
 
   const filteredCommands = useMemo(() => {
     const q = input.trim().toLowerCase();
