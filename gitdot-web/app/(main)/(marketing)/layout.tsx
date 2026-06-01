@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Link from "@/ui/link";
 import { cn } from "@/util";
@@ -49,6 +50,28 @@ export default function MarketingLayout({
       </div>
 
       {children}
+
+      {pathname === "/" && (
+        <div className="hidden md:flex md:col-start-3 md:row-start-1 justify-self-end pr-4 pt-2 flex-col items-start">
+          <Image
+            className="dark:invert"
+            src="/gitdot-long-black.svg"
+            alt="gitdot logo"
+            width={120}
+            height={57}
+          />
+          <span className="mt-1 text-xs font-mono text-muted-foreground">
+            Build something great.
+          </span>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event("toggleAuthDialog"))}
+            className="text-xs font-mono underline text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            sign up
+          </button>
+        </div>
+      )}
     </div>
   );
 }
