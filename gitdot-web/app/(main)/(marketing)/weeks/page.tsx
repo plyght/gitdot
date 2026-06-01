@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
-import { League_Spartan } from "next/font/google";
 import Link from "@/ui/link";
+import { leagueSpartan } from "../fonts";
 import { getAllPosts } from "./lib/posts";
-
-const league_spartan = League_Spartan({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
 
 export const metadata: Metadata = {
   title: "gitdot | dev log",
@@ -18,7 +13,7 @@ export default function Page() {
 
   return (
     <div
-      className={`${league_spartan.className} blog-root px-3 pt-4 pb-2 h-full overflow-y-auto scrollbar-none`}
+      className={`${leagueSpartan.className} px-3 pt-3.5 pb-2 h-full overflow-y-auto scrollbar-none`}
     >
       {posts.length === 0 ? (
         <p>No posts yet.</p>

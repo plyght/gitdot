@@ -1,14 +1,9 @@
-import { League_Spartan } from "next/font/google";
-
-const league_spartan = League_Spartan({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
+import { leagueSpartan } from "../fonts";
 
 export default function FAQ() {
   return (
     <div
-      className={`${league_spartan.className} blog-root flex flex-col gap-4 px-3 py-2 h-full overflow-y-auto scrollbar-none select-none outline-none`}
+      className={`${leagueSpartan.className} flex flex-col gap-4 px-3 py-3.5 h-full overflow-y-auto scrollbar-none select-none outline-none`}
     >
       <div>
         <p className="font-semibold text-lg">1. What is gitdot?</p>

@@ -130,7 +130,6 @@ export function LayoutClient({
         {!user && (
           <button
             type="button"
-            data-nav-item
             onClick={() => window.dispatchEvent(new Event("toggleAuthDialog"))}
             className={cn(navClassName(false), "cursor-pointer text-right")}
           >
@@ -140,40 +139,6 @@ export function LayoutClient({
       </div>
 
       {children}
-
-      {pathname === "/" && (
-        <aside className="hidden lg:flex pt-4 pl-8 pr-4 flex-col gap-8">
-          <section className="flex flex-col gap-1">
-            <span className="text-sm font-mono text-muted-foreground">
-              # this week
-            </span>
-            <Link
-              href="/weeks/20"
-              className="text-sm font-medium text-foreground hover:underline"
-            >
-              Week 20: Build something great.
-            </Link>
-            <span className="text-xs text-muted-foreground">
-              May 24 – May 31, 2026
-            </span>
-          </section>
-
-          <section className="flex flex-col gap-1">
-            <span className="text-sm font-mono text-muted-foreground">
-              # next release
-            </span>
-            <Link
-              href="/releases"
-              className="text-sm font-medium text-foreground hover:underline"
-            >
-              v0.4: Reviews, finally.
-            </Link>
-            <span className="text-xs text-muted-foreground">
-              Est. mid-June 2026
-            </span>
-          </section>
-        </aside>
-      )}
     </div>
   );
 }

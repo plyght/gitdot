@@ -141,11 +141,6 @@
   --commit-grid-max: oklch(68% 0.18 151.711);
 }
 
-.blog-root {
-  background-color: var(--background);
-  color: var(--foreground);
-}
-
 /* OverlayScrollbars custom theme — thin dark handle */
 .os-theme-gitdot.os-scrollbar {
   box-sizing: border-box;

@@ -21,54 +21,87 @@ export function PageClient({
   };
 
   return (
-    <div className="flex flex-col gap-2 px-3 pt-4 pb-2 h-full overflow-y-auto scrollbar-none">
-      <div className="flex items-baseline gap-4">
-        {(Object.keys(feeds) as FeedTab[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={cn(
-              "text-sm font-mono cursor-pointer transition-colors",
-              key === tab
-                ? "font-semibold text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {key}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col">
-        {feeds[tab].map((repo) => (
-          <Link
-            key={repo.id}
-            href={`/${repo.owner}/${repo.name}`}
-            data-page-item
-            className="group flex flex-col py-1 cursor-pointer outline-none"
-          >
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus:decoration-current transition-colors duration-200 truncate">
-                <span className="font-normal text-muted-foreground">
-                  {repo.owner}/
-                </span>
-                {repo.name}
-              </span>
-              {repo.stars > 0 && (
-                <span className="text-xs text-muted-foreground font-mono">
-                  ({repo.stars})
-                </span>
+    <>
+      <div className="flex flex-col gap-2 px-3 pt-4 pb-2 h-full overflow-y-auto scrollbar-none">
+        <div className="flex items-baseline gap-4">
+          {(Object.keys(feeds) as FeedTab[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={cn(
+                "text-sm font-mono cursor-pointer transition-colors",
+                key === tab
+                  ? "font-semibold text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
-            </div>
-            {repo.description && (
-              <div className="text-xs text-foreground truncate pb-1">
-                {repo.description}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-col">
+          {feeds[tab].map((repo) => (
+            <Link
+              key={repo.id}
+              href={`/${repo.owner}/${repo.name}`}
+              data-page-item
+              className="group flex flex-col py-1 cursor-pointer outline-none"
+            >
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus:decoration-current transition-colors duration-200 truncate">
+                  <span className="font-normal text-muted-foreground">
+                    {repo.owner}/
+                  </span>
+                  {repo.name}
+                </span>
+                {repo.stars > 0 && (
+                  <span className="text-xs text-muted-foreground font-mono">
+                    ({repo.stars})
+                  </span>
+                )}
               </div>
-            )}
-          </Link>
-        ))}
+              {repo.description && (
+                <div className="text-xs text-foreground truncate pb-1">
+                  {repo.description}
+                </div>
+              )}
+            </Link>
+          ))}
+        </div>
       </div>
-    </div>
+      <aside className="hidden lg:flex pt-4 pl-8 pr-4 flex-col gap-8">
+        <section className="flex flex-col gap-1">
+          <span className="text-sm font-mono text-muted-foreground">
+            # this week
+          </span>
+          <Link
+            href="/weeks/20"
+            className="text-sm font-medium text-foreground hover:underline"
+          >
+            Week 20: Build something great.
+          </Link>
+          <span className="text-xs text-muted-foreground">
+            May 24 – May 31, 2026
+          </span>
+        </section>
+
+        <section className="flex flex-col gap-1">
+          <span className="text-sm font-mono text-muted-foreground">
+            # next release
+          </span>
+          <Link
+            href="/releases"
+            className="text-sm font-medium text-foreground hover:underline"
+          >
+            v0.4: Reviews, finally.
+          </Link>
+          <span className="text-xs text-muted-foreground">
+            Est. mid-June 2026
+          </span>
+        </section>
+      </aside>
+    </>
   );
 }

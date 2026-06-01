@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { League_Spartan } from "next/font/google";
 import { notFound } from "next/navigation";
 import { SubscribeButton } from "@/(main)/ui/subscribe-button";
 import Link from "@/ui/link";
+import { leagueSpartan } from "../../fonts";
 import { getAllWeeks, getPostByWeek } from "../lib/posts";
 import MarkdownContent from "../ui/markdown-content";
-
-const league_spartan = League_Spartan({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
 
 export async function generateStaticParams() {
   const weeks = getAllWeeks();
@@ -46,10 +41,10 @@ export default async function Page({
   }
 
   return (
-    <div className="px-3 pt-4 pb-2 h-full overflow-y-auto scrollbar-none">
-      <article
-        className={`${league_spartan.className} blog-root w-full overflow-hidden md:overflow-visible`}
-      >
+    <div
+      className={`${leagueSpartan.className} px-3 pt-3 pb-2 h-full overflow-y-auto scrollbar-none`}
+    >
+      <article className="w-full overflow-hidden md:overflow-visible">
         <h1 className="text-2xl">{post.metadata.title}</h1>
         <Link href="/weeks" className="text-sm hover:underline">
           Week {post.metadata.week}: {post.metadata.date}
