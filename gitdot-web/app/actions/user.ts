@@ -25,7 +25,7 @@ import {
   verifyAuthCode,
   verifyUserEmail,
 } from "gitdot-client";
-import { refresh } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { delay, validateEmail } from "../util";
 
@@ -298,6 +298,8 @@ export async function uploadUserImageAction(
     }
     console.log("[uploadUserImageAction] success");
     refresh();
+
+    revalidatePath("/", "layout"); // invalidate the whole client cache
     return { success: true };
   } catch (e) {
     console.error("[uploadUserImageAction] threw:", e, {

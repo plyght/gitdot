@@ -103,7 +103,7 @@ function CommitLogRow({ c }: { c: UserCommitResource }) {
           window.open(url, "_blank", "noopener,noreferrer");
         }
       }}
-      className="group flex items-center gap-2 cursor-default select-none"
+      className="group flex items-center gap-2 cursor-pointer select-none"
     >
       <span className="text-xs font-mono text-muted-foreground shrink-0">
         {repo_name}
