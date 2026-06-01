@@ -139,8 +139,8 @@ impl HttpStatus for OrganizationError {
 impl HttpStatus for RepositoryError {
     fn status_code(&self) -> StatusCode {
         match self {
-            Self::Input(_) | Self::TooManyPaths | Self::NotAFile(_) => StatusCode::BAD_REQUEST,
-            Self::NotFound(_) => StatusCode::NOT_FOUND,
+            Self::Input(_) | Self::TooManyPaths => StatusCode::BAD_REQUEST,
+            Self::NotFound(_) | Self::NotAFile(_) => StatusCode::NOT_FOUND,
             Self::Conflict(_) => StatusCode::CONFLICT,
             Self::GitError(_) | Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
