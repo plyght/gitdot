@@ -92,7 +92,7 @@ export function RepoShortcuts() {
       {
         name: "NavDown",
         description: "Next sidebar item",
-        keys: ["J", "Tab"],
+        keys: ["Tab"],
         execute: () => {
           const items = Array.from(
             document.querySelectorAll<HTMLElement>("[data-sidebar-item]"),
@@ -108,7 +108,7 @@ export function RepoShortcuts() {
       {
         name: "NavUp",
         description: "Previous sidebar item",
-        keys: ["K", "Shift+Tab"],
+        keys: ["Shift+Tab"],
         execute: () => {
           const items = Array.from(
             document.querySelectorAll<HTMLElement>("[data-sidebar-item]"),

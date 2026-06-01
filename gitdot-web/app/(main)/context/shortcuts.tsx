@@ -149,30 +149,30 @@ export function ShortcutsProvider({ children }: { children: React.ReactNode }) {
       {children}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
-          className="max-w-lg! w-full p-0! top-[45vh]! border-black rounded-xs shadow-2xl"
+          className="max-w-md! w-full p-0! top-[45vh]! border-black rounded-xs shadow-2xl"
           aria-describedby={undefined}
-          showOverlay={false}
+          animations
         >
           <DialogTitle className="absolute -top-2 left-2 bg-background px-1 font-mono text-xs">
             shortcuts
           </DialogTitle>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4 font-mono p-4">
+          <div className="flex flex-col gap-y-1.5 p-4 font-mono">
             {allShortcuts.map((s) => (
-              <div key={s.name} className="flex flex-col">
-                <div className="flex flex-row justify-between">
-                  <span className="text-sm">{s.name}</span>
-                  <div className="flex items-baseline gap-1 shrink-0">
-                    {s.keys.map((k, i) => (
-                      <span key={k}>
-                        <kbd className="text-sm bg-muted px-1 rounded-xs">
-                          {displayKey(k)}
-                        </kbd>
-                        {i < s.keys.length - 1 ? "," : ""}
-                      </span>
-                    ))}
-                  </div>
+              <div
+                key={s.name}
+                className="flex flex-row items-baseline justify-between"
+              >
+                <span className="text-sm">{s.description}</span>
+                <div className="flex items-baseline gap-1 shrink-0">
+                  {s.keys.map((k, i) => (
+                    <span key={k}>
+                      <kbd className="text-sm bg-muted px-1 rounded-xs">
+                        {displayKey(k)}
+                      </kbd>
+                      {i < s.keys.length - 1 ? "," : ""}
+                    </span>
+                  ))}
                 </div>
-                <p className="text-xs -mt-1.5">{s.description}</p>
               </div>
             ))}
           </div>

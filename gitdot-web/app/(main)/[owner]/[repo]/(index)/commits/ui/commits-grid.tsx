@@ -2,7 +2,7 @@
 
 import type { RepositoryCommitResource, RepositoryResource } from "gitdot-api";
 import { ChevronDownIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTimezone } from "@/(main)/context/timezone";
 import {
   DropdownMenu,
@@ -64,14 +64,13 @@ export function CommitsGrid({
   );
 
   const tz = useTimezone();
-  const { weeks, months, numWeeks } = buildGrid(
-    commits,
-    windowStart,
-    windowEnd,
-    tz,
+  const { weeks, months, numWeeks } = useMemo(
+    () => buildGrid(commits, windowStart, windowEnd, tz),
+    [commits, windowStart, windowEnd, tz],
   );
-  const thresholds = computeThresholds(
-    weeks.flatMap((w) => w.map((d) => d.commitCount)),
+  const thresholds = useMemo(
+    () => computeThresholds(weeks.flatMap((w) => w.map((d) => d.commitCount))),
+    [weeks],
   );
   const dayOfWeek = new Date().getDay();
   const dimmed = hoverActive || !!(selectedStart && selectedEnd);

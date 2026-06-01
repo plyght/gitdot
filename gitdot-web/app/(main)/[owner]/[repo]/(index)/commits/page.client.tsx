@@ -9,7 +9,7 @@ import {
   type ResourceResultType,
   useResources,
 } from "gitdot-dal/client";
-import { Suspense, use, useState } from "react";
+import { Suspense, use, useMemo, useState } from "react";
 import { useTimezone } from "@/(main)/context/timezone";
 import { Loading } from "@/ui/loading";
 import { dateInRange, formatDateIso } from "@/util/date";
@@ -81,10 +81,13 @@ function PageContent({
   const filters = [ALL_COMMITS_FILTER, ...(commitFilters ?? [])];
   const [activeFilter, setActiveFilter] =
     useState<RepositoryCommitFilterResource>(ALL_COMMITS_FILTER);
+  const filteredCommits = useMemo(
+    () => (commits ? filterCommits(activeFilter, commits) : []),
+    [activeFilter, commits],
+  );
 
   if (!commits) return null;
 
-  const filteredCommits = filterCommits(activeFilter, commits);
   const filterStart = selectedStart ?? windowStart;
   const filterEnd = selectedEnd ?? windowEnd;
   const commitsInRange = filteredCommits.filter((commit) =>

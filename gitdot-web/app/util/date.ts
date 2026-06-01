@@ -3,9 +3,24 @@
 // use useTimezone to avoid date flicker and keep locality
 // ==================================
 
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function getFormatter(
+  locale: string,
+  tz: string,
+  options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  const key = `${locale}|${tz}|${JSON.stringify(options)}`;
+  let formatter = formatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { timeZone: tz, ...options });
+    formatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 export function formatDateIso(date: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
+  return getFormatter("en-CA", tz, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -13,8 +28,7 @@ export function formatDateIso(date: Date, tz: string): string {
 }
 
 export function formatDate(date: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
+  return getFormatter("en-US", tz, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -22,8 +36,7 @@ export function formatDate(date: Date, tz: string): string {
 }
 
 export function formatTime(date: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
+  return getFormatter("en-US", tz, {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -31,8 +44,7 @@ export function formatTime(date: Date, tz: string): string {
 }
 
 export function formatDateTime(date: Date, tz: string): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
+  const parts = getFormatter("en-US", tz, {
     month: "short",
     day: "numeric",
     year: "numeric",
