@@ -92,11 +92,10 @@ impl IntoApi for UserCommitResponse {
     type ApiType = api::UserCommitResource;
     fn into_api(self) -> Self::ApiType {
         let author = match (self.git_author_name, self.git_author_email, self.author_id) {
-            (Some(git_name), Some(email), id) => Some(repo_api::CommitAuthorResource {
+            (Some(git_name), Some(_), id) => Some(repo_api::CommitAuthorResource {
                 id,
                 name: self.author_name,
                 git_name,
-                email,
                 image_updated_at: self.author_image_updated_at,
             }),
             _ => None,

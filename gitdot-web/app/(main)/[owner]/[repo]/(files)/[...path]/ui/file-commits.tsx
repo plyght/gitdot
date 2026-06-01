@@ -65,7 +65,6 @@ function FileCommit({
       id?: string;
       name?: string;
       git_name: string;
-      email: string;
       image_updated_at?: string | null;
     };
     date: string;

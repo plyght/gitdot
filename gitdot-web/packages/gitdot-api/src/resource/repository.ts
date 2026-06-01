@@ -15,7 +15,6 @@ export const CommitAuthorResource = z.object({
   id: z.uuid().optional(),
   name: z.string().optional(),
   git_name: z.string(),
-  email: z.string(),
   image_updated_at: z.iso.datetime().nullable().optional(),
 });
 export type CommitAuthorResource = z.infer<typeof CommitAuthorResource>;

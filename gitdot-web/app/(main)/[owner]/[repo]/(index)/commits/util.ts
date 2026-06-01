@@ -80,9 +80,7 @@ function filterCommit(
 ): boolean {
   if (filter.authors && filter.authors.length > 0) {
     const displayName = commit.author.name ?? commit.author.git_name;
-    const match = filter.authors.some(
-      (a) => displayName === a || commit.author.email === a,
-    );
+    const match = filter.authors.some((a) => displayName === a);
     if (!match) return false;
   }
 
