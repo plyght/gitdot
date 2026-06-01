@@ -32,13 +32,6 @@ const COMMIT_JOINS_QUERY: &str = "
     LEFT JOIN core.users au ON au.id = c.author_id
 ";
 
-#[derive(FromRow)]
-struct UserCommitRow {
-    #[sqlx(flatten)]
-    commit: Commit,
-    viewer_has_access: bool,
-}
-
 /// sqlx data-access layer for the `core.commits` table. Reads join to
 /// `core.repositories` (and `core.users`/`core.organizations` for owner name,
 /// `core.users` for the author) to hydrate each `Commit` with its embedded
@@ -197,6 +190,13 @@ impl CommitRepository for PgCommitRepository {
         cursor: Option<Cursor>,
         limit: i64,
     ) -> Result<(Vec<(Commit, bool)>, Option<Cursor>), DatabaseError> {
+        #[derive(FromRow)]
+        struct UserCommitRow {
+            #[sqlx(flatten)]
+            commit: Commit,
+            viewer_has_access: bool,
+        }
+
         let query = format!(
             "WITH viewer_orgs AS (
                 SELECT organization_id FROM core.organization_members WHERE user_id = $7
