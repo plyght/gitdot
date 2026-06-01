@@ -11,12 +11,13 @@ import {
 import { formatDateIso, subtractMonths } from "@/util/date";
 
 export function UserCommitsHeader({
+  years,
   endDate,
   setStartDate,
   setEndDate,
   setSelectedMonth,
 }: {
-  startDate: string;
+  years: number[];
   endDate: string;
   setStartDate: (d: string) => void;
   setEndDate: (d: string) => void;
@@ -25,13 +26,6 @@ export function UserCommitsHeader({
   const tz = useTimezone();
   const currentYear = new Date().getFullYear();
   const displayYear = endDate.slice(0, 4);
-  const years = [
-    currentYear,
-    currentYear - 1,
-    currentYear - 2,
-    currentYear - 3,
-    currentYear - 4,
-  ];
 
   function selectYear(y: number) {
     setSelectedMonth(null);

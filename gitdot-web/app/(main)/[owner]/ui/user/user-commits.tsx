@@ -25,10 +25,12 @@ export function UserCommits({ commits }: { commits: UserCommitResource[] }) {
     commitMap.get(day)?.push(c);
   }
 
+  const years = getCommitYears(commitMap);
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <UserCommitsHeader
-        startDate={startDate}
+        years={years}
         endDate={endDate}
         setStartDate={setStartDate}
         setEndDate={setEndDate}
@@ -57,4 +59,20 @@ export function UserCommits({ commits }: { commits: UserCommitResource[] }) {
       </div>
     </div>
   );
+}
+
+// Years span from the user's earliest commit through the current year, filling
+// any gaps so the dropdown stays consecutive (newest first).
+function getCommitYears(
+  commitMap: Map<string, UserCommitResource[]>,
+): number[] {
+  const currentYear = new Date().getFullYear();
+  let earliestYear = currentYear;
+  for (const day of commitMap.keys()) {
+    const year = Number(day.slice(0, 4));
+    if (year < earliestYear) earliestYear = year;
+  }
+  const years: number[] = [];
+  for (let y = currentYear; y >= earliestYear; y--) years.push(y);
+  return years;
 }
