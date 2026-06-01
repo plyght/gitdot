@@ -2,6 +2,7 @@
 
 import type { CommitAuthorResource } from "gitdot-api";
 import { ClientProvider, type DiffData } from "gitdot-dal/client";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CommitBody } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-body";
 import { CommitHeader } from "@/(main)/[owner]/[repo]/commits/[sha]/ui/commit-header";
@@ -25,6 +26,13 @@ export function CommitDialog() {
     null,
   );
   const [diffEntries, setDiffEntries] = useState<DiffData | null>(null);
+
+  const pathname = usePathname();
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navigating away closes dialog
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const handler = (e: Event) => {

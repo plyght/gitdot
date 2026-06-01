@@ -1,53 +1,28 @@
 "use client";
 
-import {
-  type ResourcePromisesType,
-  type ResourceResultType,
-  useResources,
-} from "gitdot-dal/client";
-import { notFound } from "next/navigation";
+import type { RepositoryCommitResource } from "gitdot-api";
+import type { DiffData } from "gitdot-dal/client";
 import { Suspense, use, useCallback, useEffect, useRef, useState } from "react";
 import { Loading } from "@/ui/loading";
 import { OverlayScroll } from "@/ui/scroll";
-import type { Resources } from "./page";
 import { CommitBody } from "./ui/commit-body";
 import { CommitHeader } from "./ui/commit-header";
 import { CommitShortcuts } from "./ui/commit-shortcuts";
 import { CommitSidebar } from "./ui/commit-sidebar";
 
-type ResourcePromises = ResourcePromisesType<Resources>;
 type ScrollDirection = "up" | "down";
 
 export function PageClient({
   owner,
   repo,
-  resources,
+  commit,
+  diffEntriesPromise,
 }: {
   owner: string;
   repo: string;
-  resources: ResourceResultType<Resources>;
+  commit: RepositoryCommitResource;
+  diffEntriesPromise: Promise<DiffData>;
 }) {
-  const promises = useResources(resources);
-  return (
-    <Suspense fallback={<Loading />}>
-      <PageContent owner={owner} repo={repo} promises={promises} />
-    </Suspense>
-  );
-}
-
-function PageContent({
-  owner,
-  repo,
-  promises,
-}: {
-  owner: string;
-  repo: string;
-  promises: ResourcePromises;
-}) {
-  const commit = use(promises.commit);
-  const diffEntries = use(promises.diff);
-  if (!commit) notFound();
-
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // we keep track of what direction the user is "scrolling in" to determine how to compute which sidebar element is active
@@ -61,56 +36,53 @@ function PageContent({
   const lastProxyRef = useRef<number | null>(null);
   const suppressUntilRef = useRef(0);
 
-  useEffect(() => {
-    if (diffEntries.length === 0) return;
+  const update = useCallback(() => {
+    const files = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-diff-file]"),
+    );
+    if (files.length === 0) return;
 
-    const update = () => {
-      const files = Array.from(
-        document.querySelectorAll<HTMLElement>("[data-diff-file]"),
-      );
-      if (files.length === 0) return;
+    const viewportHeight = window.innerHeight;
+    const proxy = files[0].getBoundingClientRect().top;
+    const delta =
+      lastProxyRef.current === null ? 0 : lastProxyRef.current - proxy;
+    lastProxyRef.current = proxy;
 
-      const viewportHeight = window.innerHeight;
-      const proxy = files[0].getBoundingClientRect().top;
-      const delta =
-        lastProxyRef.current === null ? 0 : lastProxyRef.current - proxy;
-      lastProxyRef.current = proxy;
+    if (Date.now() < suppressUntilRef.current) return;
 
-      if (Date.now() < suppressUntilRef.current) return;
-
-      const threshold = viewportHeight / 2;
-      if (directionRef.current === "up" && delta > 0) {
-        bufferRef.current += delta;
-        if (bufferRef.current >= threshold) {
-          directionRef.current = "down";
-          bufferRef.current = 0;
-        }
-      } else if (directionRef.current === "down" && delta < 0) {
-        bufferRef.current -= delta;
-        if (bufferRef.current >= threshold) {
-          directionRef.current = "up";
-          bufferRef.current = 0;
-        }
-      } else if (delta !== 0) {
+    const threshold = viewportHeight / 2;
+    if (directionRef.current === "up" && delta > 0) {
+      bufferRef.current += delta;
+      if (bufferRef.current >= threshold) {
+        directionRef.current = "down";
         bufferRef.current = 0;
       }
+    } else if (directionRef.current === "down" && delta < 0) {
+      bufferRef.current -= delta;
+      if (bufferRef.current >= threshold) {
+        directionRef.current = "up";
+        bufferRef.current = 0;
+      }
+    } else if (delta !== 0) {
+      bufferRef.current = 0;
+    }
 
-      const next = computeActiveIndex(
-        files,
-        directionRef.current,
-        viewportHeight,
-      );
-      setSelectedIndex((prev) => (prev === next ? prev : next));
-    };
+    const next = computeActiveIndex(
+      files,
+      directionRef.current,
+      viewportHeight,
+    );
+    setSelectedIndex((prev) => (prev === next ? prev : next));
+  }, []);
 
-    update();
+  useEffect(() => {
     window.addEventListener("scroll", update, { capture: true, passive: true });
     window.addEventListener("wheel", update, { capture: true, passive: true });
     return () => {
       window.removeEventListener("scroll", update, { capture: true });
       window.removeEventListener("wheel", update, { capture: true });
     };
-  }, [diffEntries.length]);
+  }, [update]);
 
   // user jumps to a file (j, k) pin the highlight and suppress scroll updates for a bit to avoid jitter.
   const handleSelect = useCallback((index: number) => {
@@ -136,13 +108,15 @@ function PageContent({
             author={commit.author}
           />
           <CommitSidebar
-            entries={diffEntries}
+            diffs={commit.diffs}
             selectedIndex={selectedIndex}
             onSelect={handleSelect}
           />
         </aside>
         <div className="w-full px-4 py-4 flex flex-col gap-6 min-w-0">
-          <CommitBody entries={diffEntries} />
+          <Suspense fallback={<Loading />}>
+            <DiffContent diffEntriesPromise={diffEntriesPromise} />
+          </Suspense>
         </div>
         <div />
         <CommitShortcuts
@@ -152,6 +126,15 @@ function PageContent({
       </div>
     </OverlayScroll>
   );
+}
+
+function DiffContent({
+  diffEntriesPromise,
+}: {
+  diffEntriesPromise: Promise<DiffData>;
+}) {
+  const entries = use(diffEntriesPromise);
+  return <CommitBody entries={entries} />;
 }
 
 function computeActiveIndex(

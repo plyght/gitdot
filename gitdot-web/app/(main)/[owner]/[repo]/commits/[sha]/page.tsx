@@ -1,12 +1,8 @@
-import type { RepositoryCommitResource } from "gitdot-api";
+import { getRepositoryCommit } from "gitdot-client";
 import type { DiffData } from "gitdot-dal/client";
-import { fetchResources } from "gitdot-dal/server";
+import { renderCommitDiff } from "gitdot-dal/server";
+import { notFound } from "next/navigation";
 import { PageClient } from "./page.client";
-
-export type Resources = {
-  commit: RepositoryCommitResource | null;
-  diff: DiffData;
-};
 
 export default async function Page({
   params,
@@ -15,10 +11,21 @@ export default async function Page({
 }) {
   const { owner, repo, sha } = await params;
 
-  const resources = fetchResources({
-    commit: (p) => p.getCommit(owner, repo, sha),
-    diff: (p) => p.getCommitDiff(owner, repo, sha),
-  });
+  const commit = await getRepositoryCommit(owner, repo, sha);
+  if (!commit) notFound();
 
-  return <PageClient owner={owner} repo={repo} resources={resources} />;
+  const diffEntriesPromise: Promise<DiffData> = renderCommitDiff(
+    owner,
+    repo,
+    sha,
+  );
+
+  return (
+    <PageClient
+      owner={owner}
+      repo={repo}
+      commit={commit}
+      diffEntriesPromise={diffEntriesPromise}
+    />
+  );
 }

@@ -196,7 +196,7 @@
 }
 
 [data-diff-path-flash] {
-  animation: diff-path-underline 0.3s ease-out;
+  animation: diff-path-underline 0.8s ease-out;
 }
 
 /* biome-ignore-start lint/complexity/noImportantStyles: shiki emits inline colors per span, need to override */

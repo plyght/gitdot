@@ -65,7 +65,7 @@ function CommitLogRow({ c }: { c: UserCommitResource }) {
           private
         </span>
         <span className="text-sm flex-1 truncate text-muted-foreground/50 italic">
-          commit in a private repository
+          commit redacted
         </span>
       </div>
     );
