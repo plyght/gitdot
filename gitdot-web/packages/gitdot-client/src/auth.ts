@@ -194,6 +194,13 @@ export async function verifyUserEmail(email: string, code: string) {
   return await handleResponse(res, UserEmailResource);
 }
 
+export async function deleteAccount(): Promise<void> {
+  const res = await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/account`, {
+    method: "DELETE",
+  });
+  await handleEmptyResponse(res);
+}
+
 // --- GitHub OAuth ---
 
 export async function getGitHubRedirectUrl(): Promise<string | null> {

@@ -11,6 +11,7 @@ import {
   ApiError,
   type AuthSignInResult,
   addUserEmail,
+  deleteAccount,
   getCurrentUser,
   getGitHubRedirectUrl,
   hasUser,
@@ -231,6 +232,20 @@ export async function verifyUserEmailAction(
     }
     return { error: "Could not verify email" };
   }
+}
+
+export type DeleteAccountActionResult = { success: true } | { error: string };
+
+export async function deleteAccountAction(): Promise<DeleteAccountActionResult> {
+  try {
+    await deleteAccount();
+  } catch (e) {
+    return { error: "Could not delete your account" };
+  }
+
+  await logout();
+  revalidatePath("/", "layout");
+  return { success: true };
 }
 
 export async function validateUsername(

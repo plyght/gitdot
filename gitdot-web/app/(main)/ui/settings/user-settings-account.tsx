@@ -5,14 +5,17 @@ import { useUserContext } from "@/(main)/context/user";
 import { cn } from "@/util";
 import { UserAddEmailDialog } from "./user-add-email-dialog";
 import { UserChangeNameDialog } from "./user-change-name-dialog";
+import { UserDeleteAccountDialog } from "./user-delete-account-dialog";
 
 export function UserSettingsAccount({
   setUserSettingsOpen,
 }: {
   setUserSettingsOpen: (open: boolean) => void;
 }) {
+  const { user } = useUserContext();
   const [changeOpen, setChangeOpen] = useState(false);
   const [addEmailOpen, setAddEmailOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
     <>
@@ -26,10 +29,10 @@ export function UserSettingsAccount({
         <EmailsSection onAddEmail={() => setAddEmailOpen(true)} />
         <AccountAction
           title="Delete account"
-          description="Permanently remove your account, repositories, and personal data. This cannot be undone."
+          description="Permanently remove your account, repositories, organizations where you're the only member, and personal data. This cannot be undone."
           actionLabel="Delete"
           destructive
-          onAction={() => {}}
+          onAction={() => setDeleteOpen(true)}
         />
       </div>
       <UserChangeNameDialog
@@ -38,6 +41,12 @@ export function UserSettingsAccount({
         setUserSettingsOpen={setUserSettingsOpen}
       />
       <UserAddEmailDialog open={addEmailOpen} setOpen={setAddEmailOpen} />
+      <UserDeleteAccountDialog
+        open={deleteOpen}
+        setOpen={setDeleteOpen}
+        setUserSettingsOpen={setUserSettingsOpen}
+        username={user?.name ?? ""}
+      />
     </>
   );
 }
