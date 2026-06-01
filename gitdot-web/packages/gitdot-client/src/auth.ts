@@ -136,11 +136,12 @@ export type AuthSignInResult = {
 
 export async function sendAuthEmail(email: string) {
   const body: SendAuthEmailRequest = { email };
-  await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/send`, {
+  const res = await authFetch(`${GITDOT_AUTH_SERVER_URL}/auth/email/send`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  if (!res.ok) throw await apiErrorFromResponse(res);
 }
 
 export async function verifyAuthCode(

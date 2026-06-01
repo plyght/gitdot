@@ -66,7 +66,7 @@ impl HttpStatus for SessionError {
             Self::Unauthorized | Self::TokenExpired(_) | Self::TokenRevoked(_) => {
                 StatusCode::UNAUTHORIZED
             }
-            Self::TooManyAttempts => StatusCode::LOCKED,
+            Self::TooManyAttempts => StatusCode::TOO_MANY_REQUESTS,
             Self::EmailError(_)
             | Self::GitHubError(_)
             | Self::TokenError(_)

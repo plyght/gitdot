@@ -45,7 +45,14 @@ export async function sendCode(
     return await delay(300, { error: "Invalid email" });
   }
 
-  await sendAuthEmail(email);
+  try {
+    await sendAuthEmail(email);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 429) {
+      return { error: "Too many requests. Please try again in 30 seconds." };
+    }
+    return { error: "Couldn't send a code. Please try again." };
+  }
   if (redirectTo) redirect(redirectTo);
   return { success: true };
 }
@@ -61,7 +68,7 @@ export async function verifyCode(
   try {
     return await verifyAuthCode(email, code);
   } catch (e) {
-    if (e instanceof ApiError && e.status === 423) {
+    if (e instanceof ApiError && e.status === 429) {
       return { error: "Too many incorrect attempts. Request a new code." };
     }
     return { error: "Invalid or expired code" };
