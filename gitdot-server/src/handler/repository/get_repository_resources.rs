@@ -7,9 +7,8 @@ use chrono::Utc;
 
 use gitdot_api::endpoint::repository::get_repository_resources as api;
 use gitdot_core::dto::{
-    GetRepositoryBlobsRequest, GetRepositoryPathsRequest, ListBuildsRequest, ListQuestionsRequest,
-    ListRepositoryCommitsRequest, ListReviewsRequest, RepositoryAuthorizationRequest,
-    RepositoryPermission,
+    GetRepositoryBlobsRequest, GetRepositoryPathsRequest, ListRepositoryCommitsRequest,
+    RepositoryAuthorizationRequest, RepositoryPermission,
 };
 
 use crate::{
@@ -39,116 +38,75 @@ pub async fn get_repository_resources(
         .resolve_ref_sha(&owner, &repo, "HEAD")
         .await
         .map_err(AppError::from)?;
-
-    if params.last_commit.as_deref() == Some(head_sha.as_str()) {
-        return Ok(AppResponse::new(
-            StatusCode::OK,
-            api::GetRepositoryResourcesResponse {
-                last_commit: head_sha,
-                last_updated: params.last_updated,
-                paths: None,
-                commits: None,
-                blobs: None,
-                questions: None,
-                reviews: None,
-                builds: None,
-            },
-        ));
-    }
-
-    let paths_request = GetRepositoryPathsRequest::new(&repo, &owner, "HEAD".to_string())?;
-    let paths = state
-        .repo_service
-        .get_repository_paths(paths_request)
-        .await
-        .map_err(AppError::from)?;
-
-    let blob_paths: Vec<String> = paths.entries.iter().map(|e| e.path.clone()).collect();
-    let blobs_request =
-        GetRepositoryBlobsRequest::new(&repo, &owner, vec!["HEAD".to_string()], blob_paths)?;
-
     let now = Utc::now();
-    let commits_from = params
-        .last_updated
-        .unwrap_or_else(|| now - chrono::Duration::days(365));
 
-    let commits_request = ListRepositoryCommitsRequest::new(
-        &owner,
-        &repo,
-        "HEAD".to_string(),
-        Some(commits_from),
-        Some(now),
-        None,
-        None,
-    )?;
+    let contents = async {
+        if params.last_commit.as_deref() != Some(head_sha.as_str()) {
+            return Ok::<_, AppError>(None);
+        }
+        let paths = state
+            .repo_service
+            .get_repository_paths(GetRepositoryPathsRequest::new(
+                &repo,
+                &owner,
+                head_sha.clone(),
+            )?)
+            .await
+            .map_err(AppError::from)?;
+        let blob_paths: Vec<String> = paths.entries.iter().map(|e| e.path.clone()).collect();
+        let blobs = state
+            .repo_service
+            .get_repository_blobs(GetRepositoryBlobsRequest::new(
+                &repo,
+                &owner,
+                vec![head_sha.clone()],
+                blob_paths,
+            )?)
+            .await
+            .map_err(AppError::from)?;
+        Ok(Some((paths, blobs)))
+    };
+    let commits = async {
+        let fetch_all = params.force_refresh
+            || params
+                .last_updated
+                .is_none_or(|lu| now - lu > chrono::Duration::hours(1));
+        let (from, to) = if fetch_all {
+            (None, None)
+        } else {
+            (params.last_updated, Some(now))
+        };
+        state
+            .repo_service
+            .list_repository_commits(ListRepositoryCommitsRequest::new(
+                &owner,
+                &repo,
+                head_sha.clone(),
+                from,
+                to,
+                None,
+                None,
+            )?)
+            .await
+            .map_err(AppError::from)
+    };
 
-    let questions_request = ListQuestionsRequest::new(&owner, &repo, user_id, None, None)?;
-
-    let reviews_request = ListReviewsRequest::new(&owner, &repo, user_id, None, None)?;
-
-    let builds_request = ListBuildsRequest::new(&owner, &repo, None, None)?;
-
-    let (blobs, commits, questions, reviews, builds) = tokio::try_join!(
-        async {
-            state
-                .repo_service
-                .get_repository_blobs(blobs_request)
-                .await
-                .map_err(AppError::from)
-        },
-        async {
-            state
-                .repo_service
-                .list_repository_commits(commits_request)
-                .await
-                .map_err(AppError::from)
-        },
-        async {
-            state
-                .question_service
-                .list_questions(questions_request)
-                .await
-                .map_err(AppError::from)
-        },
-        async {
-            state
-                .review_service
-                .list_reviews(reviews_request)
-                .await
-                .map_err(AppError::from)
-        },
-        async {
-            state
-                .build_service
-                .list_builds(builds_request)
-                .await
-                .map_err(AppError::from)
-        },
-    )?;
+    let (contents, commits) = tokio::try_join!(contents, commits)?;
+    let (paths, blobs) = match contents {
+        Some((paths, blobs)) => (Some(paths.into_api()), Some(blobs.into_api())),
+        None => (None, None),
+    };
 
     let resource = api::GetRepositoryResourcesResponse {
         last_commit: head_sha,
         last_updated: Some(now),
-        paths: Some(paths.into_api()),
+        paths,
+        blobs,
         commits: Some(
             gitdot_api::resource::repository::RepositoryCommitsResource {
                 commits: commits.into_api().data,
             },
         ),
-        blobs: Some(blobs.into_api()),
-        questions: Some(
-            gitdot_api::resource::repository::RepositoryQuestionsResource {
-                questions: questions.into_api().data,
-            },
-        ),
-        reviews: Some(
-            gitdot_api::resource::repository::RepositoryReviewsResource {
-                reviews: reviews.into_api().data,
-            },
-        ),
-        builds: Some(gitdot_api::resource::repository::RepositoryBuildsResource {
-            builds: builds.into_api().data,
-        }),
     };
     Ok(AppResponse::new(StatusCode::OK, resource))
 }

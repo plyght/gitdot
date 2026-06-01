@@ -2,9 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::resource::{
-    build::BuildResource, question::QuestionResource, review::ReviewResource, user::UserResource,
-};
+use crate::resource::user::UserResource;
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RepositoryResource {
@@ -108,21 +106,6 @@ pub struct RepositoryBlobPairResource {
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepositoryQuestionsResource {
-    pub questions: Vec<QuestionResource>,
-}
-
-#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepositoryReviewsResource {
-    pub reviews: Vec<ReviewResource>,
-}
-
-#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RepositoryBuildsResource {
-    pub builds: Vec<BuildResource>,
-}
-
-#[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RepositoryResourcesResource {
     pub last_commit: String,
     pub last_updated: Option<DateTime<Utc>>,
@@ -132,12 +115,6 @@ pub struct RepositoryResourcesResource {
     pub commits: Option<RepositoryCommitsResource>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub blobs: Option<RepositoryBlobsResource>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub questions: Option<RepositoryQuestionsResource>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub reviews: Option<RepositoryReviewsResource>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub builds: Option<RepositoryBuildsResource>,
 }
 
 #[derive(ApiResource, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
