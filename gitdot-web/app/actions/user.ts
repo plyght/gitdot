@@ -195,6 +195,9 @@ export async function addUserEmailAction(
     refresh();
     return { success: true };
   } catch (e) {
+    if (e instanceof ApiError && e.status === 429) {
+      return { error: "Too many requests. Please try again in 30 seconds." };
+    }
     if (e instanceof ApiError && e.status === 409) {
       return { error: "This email is already in use" };
     }
@@ -219,6 +222,9 @@ export async function verifyUserEmailAction(
     refresh();
     return { email: result };
   } catch (e) {
+    if (e instanceof ApiError && e.status === 429) {
+      return { error: "Too many incorrect attempts. Request a new code." };
+    }
     if (e instanceof ApiError && e.status === 400) {
       return { error: "Invalid or expired code" };
     }
