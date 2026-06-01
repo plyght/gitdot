@@ -153,9 +153,7 @@ export function ShortcutsProvider({ children }: { children: React.ReactNode }) {
           aria-describedby={undefined}
           animations
         >
-          <DialogTitle className="absolute -top-2 left-2 bg-background px-1 font-mono text-xs">
-            shortcuts
-          </DialogTitle>
+          <DialogTitle className="sr-only">shortcuts</DialogTitle>
           <div className="flex flex-col gap-y-1.5 p-4 font-mono">
             {allShortcuts.map((s) => (
               <div
