@@ -104,13 +104,13 @@ export function LayoutClient({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[1fr_min(100%,48rem)_1fr] h-full overflow-hidden">
-      <div className="hidden md:flex pl-4 pt-3 flex-col gap-1 items-start">
+      <div className="hidden md:flex pr-4 pt-3 flex-col gap-1 items-end text-right">
         <Image
           className="dark:invert"
           src="/gitdot-long-black.svg"
           alt="gitdot logo"
-          width={80}
-          height={38}
+          width={64}
+          height={30}
           priority
         />
         {NAV_LINKS.map((link) => {
@@ -132,7 +132,7 @@ export function LayoutClient({
             type="button"
             data-nav-item
             onClick={() => window.dispatchEvent(new Event("toggleAuthDialog"))}
-            className={cn(navClassName(false), "cursor-pointer text-left")}
+            className={cn(navClassName(false), "cursor-pointer text-right")}
           >
             /signup
           </button>
