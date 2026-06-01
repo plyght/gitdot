@@ -93,6 +93,15 @@ export class ClientProvider extends GitdotProvider {
     );
   }
 
+  async invalidate(): Promise<void> {
+    this.metadatas.clear();
+    this.paths.clear();
+    this.commits.clear();
+    this.hasts.clear();
+    this.diffs.clear();
+    await this.db.clear();
+  }
+
   async getPaths(
     owner: string,
     repo: string,

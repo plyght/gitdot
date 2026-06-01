@@ -1,8 +1,9 @@
 "use client";
 
 import type { UserResource } from "gitdot-api";
+import { ClientProvider } from "gitdot-dal/client";
 import { Save } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { UserImage } from "@/(main)/[owner]/ui/user/user-image";
 import { useTimezone } from "@/(main)/context/timezone";
@@ -82,8 +83,9 @@ export function UserSettingsProfile({ user }: { user: UserResource }) {
 }
 
 function ProfilePrimary({ user }: { user: UserResource }) {
-  const tz = useTimezone();
+  const { owner, repo } = useParams<{ owner?: string; repo?: string }>();
   const { emails, refreshUser } = useUserContext();
+  const tz = useTimezone();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -101,6 +103,8 @@ function ProfilePrimary({ user }: { user: UserResource }) {
     if ("error" in result) {
       setUploadError(result.error);
     } else {
+      await ClientProvider.instance.invalidate();
+      if (owner && repo) ClientProvider.instance.syncRepo(owner, repo);
       refreshUser();
     }
   }

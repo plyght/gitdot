@@ -1,7 +1,8 @@
 "use client";
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useRouter } from "next/navigation";
+import { ClientProvider } from "gitdot-dal/client";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "@/(main)/context/toaster";
 import { useUserContext } from "@/(main)/context/user";
@@ -18,8 +19,9 @@ export function UserChangeNameDialog({
   setOpen: (open: boolean) => void;
   setUserSettingsOpen: (open: boolean) => void;
 }) {
-  const { refreshUser } = useUserContext();
   const router = useRouter();
+  const { refreshUser } = useUserContext();
+  const { owner, repo } = useParams<{ owner?: string; repo?: string }>();
   const [username, setUsername] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -77,6 +79,8 @@ export function UserChangeNameDialog({
         setSubmitError(result.error);
         return;
       }
+      await ClientProvider.instance.invalidate();
+      if (owner && repo) ClientProvider.instance.syncRepo(owner, repo);
       await refreshUser();
       setOpen(false);
       setUserSettingsOpen(false);

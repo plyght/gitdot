@@ -120,6 +120,16 @@ export function openIdb(): GitdotDatabase {
       ]);
     },
 
+    async clear() {
+      const db = await getDb();
+      const stores = Array.from(db.objectStoreNames);
+      const tx = db.transaction(stores, "readwrite");
+      await Promise.all([
+        ...stores.map((s) => tx.objectStore(s).clear()),
+        tx.done,
+      ]);
+    },
+
     async getBlob(owner: string, repo: string, path: string) {
       const db = await getDb();
       return (await db.get("blobs", pathKey(owner, repo, path))) ?? null;

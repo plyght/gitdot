@@ -42,6 +42,8 @@ export interface GitdotDatabase {
     commits: RepositoryCommitResource[],
   ): Promise<void>;
 
+  clear(): Promise<void>;
+
   putBlob(
     owner: string,
     repo: string,
