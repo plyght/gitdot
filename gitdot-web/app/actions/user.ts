@@ -104,6 +104,7 @@ export async function connectSlack(
 
 export async function signout() {
   await logout();
+  revalidatePath("/", "layout"); // invalidate the whole client cache
 }
 
 // ===========

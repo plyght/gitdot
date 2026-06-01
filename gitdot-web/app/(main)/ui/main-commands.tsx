@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientProvider } from "gitdot-dal/client";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -155,6 +156,7 @@ export function MainCommands() {
         label: "logout",
         execute: async () => {
           await signout();
+          await ClientProvider.instance.invalidate();
           refreshUser();
         },
       },
