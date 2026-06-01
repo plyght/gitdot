@@ -25,10 +25,10 @@ function isActive(pathname: string, href: string) {
 
 function navClassName(active: boolean) {
   return cn(
-    "text-sm font-mono transition-colors",
+    "w-full py-0.5 text-sm font-mono cursor-pointer underline decoration-transparent transition-colors duration-200",
     active
-      ? "text-foreground underline"
-      : "text-muted-foreground hover:text-foreground",
+      ? "text-foreground decoration-current"
+      : "text-muted-foreground hover:text-foreground hover:decoration-current",
   );
 }
 
@@ -104,7 +104,7 @@ export function LayoutClient({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[1fr_min(100%,48rem)_1fr] h-full overflow-hidden">
-      <div className="hidden md:flex pr-4 pt-3 flex-col gap-1 items-end text-right">
+      <div className="hidden md:flex pr-4 pt-3 flex-col items-end text-right">
         <Image
           className="dark:invert"
           src="/gitdot-long-black.svg"

@@ -40,20 +40,21 @@ export function PageClient({
         ))}
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col">
         {feeds[tab].map((repo) => (
-          <div key={repo.id} className="flex flex-col">
+          <Link
+            key={repo.id}
+            href={`/${repo.owner}/${repo.name}`}
+            data-page-item
+            className="group flex flex-col py-1 cursor-pointer outline-none"
+          >
             <div className="flex items-baseline justify-between gap-4">
-              <Link
-                href={`/${repo.owner}/${repo.name}`}
-                data-page-item
-                className="text-sm font-medium dark:font-normal underline decoration-transparent outline-none hover:decoration-current focus:decoration-current transition-colors duration-200 truncate"
-              >
+              <span className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus:decoration-current transition-colors duration-200 truncate">
                 <span className="font-normal text-muted-foreground">
                   {repo.owner}/
                 </span>
                 {repo.name}
-              </Link>
+              </span>
               {repo.stars > 0 && (
                 <span className="text-xs text-muted-foreground font-mono">
                   ({repo.stars})
@@ -65,7 +66,7 @@ export function PageClient({
                 {repo.description}
               </div>
             )}
-          </div>
+          </Link>
         ))}
       </div>
     </div>
