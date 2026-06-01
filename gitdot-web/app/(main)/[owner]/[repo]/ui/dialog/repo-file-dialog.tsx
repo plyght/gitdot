@@ -153,7 +153,7 @@ export function RepoFileDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         // replicate fzf-lua's offset & positioning
-        className="max-w-[80vw]! max-h-[85vh]! top-[47.75vh]! left-[51vw]! w-full h-full p-0 gap-0 flex flex-col"
+        className="max-w-[80vw]! max-h-[85vh]! top-[47.75vh]! left-[51vw]! w-full h-full p-0 gap-0 flex flex-col border-black rounded-xs shadow-2xl"
         aria-describedby={undefined}
         showOverlay={false}
       >
