@@ -1,9 +1,9 @@
 import type { RepositoryPathsResource } from "gitdot-api";
 import { getRepository } from "gitdot-client";
 import { fetchResources } from "gitdot-dal/server";
-import { RepoResources } from "./resources/context";
 import { RepoDialogs } from "./ui/dialog/repo-dialogs";
 import { RepoNotFound } from "./ui/repo-not-found";
+import { RepoResources } from "./ui/repo-resources";
 import { RepoTracker } from "./ui/repo-tracker";
 import { RepoShortcuts } from "./ui/shortcuts";
 

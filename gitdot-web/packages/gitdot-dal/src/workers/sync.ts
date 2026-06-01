@@ -31,7 +31,9 @@ async function process({ id, owner, repo }: SyncRequest, port: MessagePort) {
   const db = openIdb();
   const metadata = await db.getMetadata(owner, repo);
 
-  const url = new URL(`/${owner}/${repo}/resources`, self.location.origin);
+  const url = new URL("/api/repository/resources", self.location.origin);
+  url.searchParams.set("owner", owner);
+  url.searchParams.set("repo", repo);
   if (metadata) {
     url.searchParams.set("last_commit", metadata.last_commit);
     url.searchParams.set("last_updated", metadata.last_updated);

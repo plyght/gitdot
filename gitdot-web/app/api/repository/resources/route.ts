@@ -11,12 +11,10 @@ const gzipAsync = promisify(gzip);
 // Origin set to Lax (i.e., gitdot.io -> api.gitdot.io), we do not have the logic to decode the Supabase JWT key on our backend
 //
 // TODO: should block users from hitting this too, only the worker ever should as it is indeed expensive.
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ owner: string; repo: string }> },
-) {
-  const { owner, repo } = await params;
+export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
+  const owner = searchParams.get("owner") ?? "";
+  const repo = searchParams.get("repo") ?? "";
 
   const parsed = GetRepositoryResourcesRequest.safeParse({
     last_commit: searchParams.get("last_commit") ?? undefined,
