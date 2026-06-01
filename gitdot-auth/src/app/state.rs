@@ -91,7 +91,7 @@ impl AppState {
             token_client.clone(),
             image_client,
             r2_client,
-            redis_client,
+            redis_client.clone(),
         ));
         let device_service = Arc::new(DeviceServiceImpl::new(
             device_repo,
@@ -105,6 +105,7 @@ impl AppState {
             email_verification_repo,
             email_client,
             token_client,
+            redis_client,
         ));
 
         let vercel_jwks = {

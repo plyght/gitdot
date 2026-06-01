@@ -16,6 +16,9 @@ pub enum AccountError {
     #[error("Invalid or expired code")]
     InvalidCode,
 
+    #[error("Too many incorrect attempts; request a new code")]
+    TooManyAttempts,
+
     #[error(transparent)]
     EmailError(#[from] EmailError),
 

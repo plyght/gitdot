@@ -8,6 +8,14 @@ use crate::{
     model::{EmailVerificationCode, UserEmail},
 };
 
+#[derive(Debug)]
+pub enum EmailCodeVerification {
+    Success(UserEmail),
+    Invalid,
+    AttemptsExhausted,
+    NoActiveCode,
+}
+
 /// sqlx data-access layer for the `auth.email_verification_codes` table, with
 /// writes against `core.user_emails` when consuming a code.
 #[async_trait]
@@ -37,17 +45,21 @@ pub trait EmailVerificationRepository: Send + Sync + Clone + 'static {
         email: &str,
     ) -> Result<(), DatabaseError>;
 
-    /// In a single transaction: marks the code `used_at = NOW()`, then inserts
-    /// the verified `core.user_emails` row for `(user_id, email)` and returns it.
-    /// If the user already has a row for this email it is flipped to verified
-    /// instead. A `23505` surfaces when a *different* user has already verified
-    /// the address.
-    async fn mark_code_used_and_add_email(
+    /// Verifies `code_hash` against the latest active (unused, unexpired) code
+    /// for `(user_id, email)`, enforcing an attempt budget. In one transaction:
+    /// a matching hash marks the code used and creates/flips the verified
+    /// `core.user_emails` row, returning [`EmailCodeVerification::Success`]; a
+    /// wrong hash increments `attempt_count` and burns the code once it reaches
+    /// `max_attempts` ([`EmailCodeVerification::AttemptsExhausted`]). A `23505`
+    /// from the email insert (a *different* user already verified the address)
+    /// is propagated as a `DatabaseError` for the caller to map to a conflict.
+    async fn verify_and_consume_email_code(
         &self,
-        code_id: Uuid,
         user_id: Uuid,
         email: &str,
-    ) -> Result<UserEmail, DatabaseError>;
+        code_hash: &str,
+        max_attempts: i16,
+    ) -> Result<EmailCodeVerification, DatabaseError>;
 }
 
 #[derive(Debug, Clone)]
@@ -124,22 +136,65 @@ impl EmailVerificationRepository for PgEmailVerificationRepository {
         Ok(())
     }
 
-    async fn mark_code_used_and_add_email(
+    async fn verify_and_consume_email_code(
         &self,
-        code_id: Uuid,
         user_id: Uuid,
         email: &str,
-    ) -> Result<UserEmail, DatabaseError> {
+        code_hash: &str,
+        max_attempts: i16,
+    ) -> Result<EmailCodeVerification, DatabaseError> {
         let mut tx = self.pool.begin().await?;
 
-        sqlx::query(
+        // lock the latest active code for this (user, email) to prevent
+        // concurrent verifications
+        let code = sqlx::query_as::<_, EmailVerificationCode>(
             r#"
-            UPDATE auth.email_verification_codes SET used_at = NOW() WHERE id = $1
+            SELECT * FROM auth.email_verification_codes
+            WHERE user_id = $1 AND email = $2 AND used_at IS NULL AND expires_at > NOW()
+            ORDER BY created_at DESC
+            LIMIT 1
+            FOR UPDATE
             "#,
         )
-        .bind(code_id)
-        .execute(&mut *tx)
+        .bind(user_id)
+        .bind(email)
+        .fetch_optional(&mut *tx)
         .await?;
+
+        let Some(code) = code else {
+            tx.commit().await?;
+            return Ok(EmailCodeVerification::NoActiveCode);
+        };
+
+        if code.code_hash != code_hash {
+            let next = code.attempt_count + 1;
+            if next >= max_attempts {
+                sqlx::query(
+                    "UPDATE auth.email_verification_codes SET attempt_count = $2, used_at = NOW() WHERE id = $1",
+                )
+                .bind(code.id)
+                .bind(next)
+                .execute(&mut *tx)
+                .await?;
+                tx.commit().await?;
+                return Ok(EmailCodeVerification::AttemptsExhausted);
+            }
+
+            sqlx::query(
+                "UPDATE auth.email_verification_codes SET attempt_count = $2 WHERE id = $1",
+            )
+            .bind(code.id)
+            .bind(next)
+            .execute(&mut *tx)
+            .await?;
+            tx.commit().await?;
+            return Ok(EmailCodeVerification::Invalid);
+        }
+
+        sqlx::query("UPDATE auth.email_verification_codes SET used_at = NOW() WHERE id = $1")
+            .bind(code.id)
+            .execute(&mut *tx)
+            .await?;
 
         let row = sqlx::query_as::<_, UserEmail>(
             r#"
@@ -158,7 +213,7 @@ impl EmailVerificationRepository for PgEmailVerificationRepository {
 
         tx.commit().await?;
 
-        Ok(row)
+        Ok(EmailCodeVerification::Success(row))
     }
 }
 
@@ -168,8 +223,12 @@ mod tests {
     use sqlx::PgPool;
     use uuid::Uuid;
 
-    use super::{EmailVerificationRepository, PgEmailVerificationRepository};
+    use super::{
+        EmailCodeVerification, EmailVerificationRepository, PgEmailVerificationRepository,
+    };
     use crate::repository::test_common::insert_user;
+
+    const MAX: i16 = 5;
 
     #[sqlx::test]
     async fn create_and_get_code(pool: PgPool) {
@@ -227,27 +286,33 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn mark_code_used_consumes_code_and_creates_verified_email(pool: PgPool) {
+    async fn correct_code_consumes_and_creates_verified_email(pool: PgPool) {
         let repo = PgEmailVerificationRepository::new(pool.clone());
         let alice = Uuid::new_v4();
         insert_user(&pool, alice, "alice").await;
 
-        let code = repo
-            .create_code(
-                alice,
-                "alice2@x.com",
-                "hash",
-                Utc::now() + Duration::hours(1),
-            )
+        repo.create_code(
+            alice,
+            "alice2@x.com",
+            "hash",
+            Utc::now() + Duration::hours(1),
+        )
+        .await
+        .unwrap();
+
+        let outcome = repo
+            .verify_and_consume_email_code(alice, "alice2@x.com", "hash", MAX)
             .await
             .unwrap();
 
-        let row = repo
-            .mark_code_used_and_add_email(code.id, alice, "alice2@x.com")
-            .await
-            .unwrap();
+        let EmailCodeVerification::Success(row) = outcome else {
+            panic!("expected success, got {outcome:?}");
+        };
+        assert_eq!(row.user_id, alice);
+        assert_eq!(row.email, "alice2@x.com");
+        assert!(row.is_verified);
 
-        // The code is consumed and alice's verified row is created.
+        // The code is consumed.
         assert!(
             repo.get_code_by_hash("hash")
                 .await
@@ -256,8 +321,73 @@ mod tests {
                 .used_at
                 .is_some()
         );
-        assert_eq!(row.user_id, alice);
-        assert_eq!(row.email, "alice2@x.com");
-        assert!(row.is_verified);
+    }
+
+    #[sqlx::test]
+    async fn no_active_code_returns_no_active_code(pool: PgPool) {
+        let repo = PgEmailVerificationRepository::new(pool.clone());
+        let alice = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+
+        let outcome = repo
+            .verify_and_consume_email_code(alice, "alice2@x.com", "hash", MAX)
+            .await
+            .unwrap();
+        assert!(matches!(outcome, EmailCodeVerification::NoActiveCode));
+    }
+
+    #[sqlx::test]
+    async fn wrong_code_increments_then_locks_out(pool: PgPool) {
+        let repo = PgEmailVerificationRepository::new(pool.clone());
+        let alice = Uuid::new_v4();
+        insert_user(&pool, alice, "alice").await;
+
+        repo.create_code(
+            alice,
+            "alice2@x.com",
+            "hash",
+            Utc::now() + Duration::hours(1),
+        )
+        .await
+        .unwrap();
+
+        // The first MAX-1 wrong guesses are Invalid and increment the counter.
+        for n in 1..MAX {
+            let outcome = repo
+                .verify_and_consume_email_code(alice, "alice2@x.com", "wrong", MAX)
+                .await
+                .unwrap();
+            assert!(matches!(outcome, EmailCodeVerification::Invalid));
+            assert_eq!(
+                repo.get_code_by_hash("hash")
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .attempt_count,
+                n
+            );
+        }
+
+        // The MAX-th wrong guess burns the code.
+        let outcome = repo
+            .verify_and_consume_email_code(alice, "alice2@x.com", "wrong", MAX)
+            .await
+            .unwrap();
+        assert!(matches!(outcome, EmailCodeVerification::AttemptsExhausted));
+        assert!(
+            repo.get_code_by_hash("hash")
+                .await
+                .unwrap()
+                .unwrap()
+                .used_at
+                .is_some()
+        );
+
+        // Even the correct code no longer verifies once the code is burned.
+        let outcome = repo
+            .verify_and_consume_email_code(alice, "alice2@x.com", "hash", MAX)
+            .await
+            .unwrap();
+        assert!(matches!(outcome, EmailCodeVerification::NoActiveCode));
     }
 }

@@ -8,6 +8,7 @@ pub struct EmailVerificationCode {
     pub user_id: Uuid,
     pub email: String,
     pub code_hash: String,
+    pub attempt_count: i16,
 
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,

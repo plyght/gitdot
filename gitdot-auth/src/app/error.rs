@@ -42,6 +42,7 @@ impl HttpStatus for AccountError {
             Self::Input(_) | Self::InvalidCode => StatusCode::BAD_REQUEST,
             Self::NotFound(_) => StatusCode::NOT_FOUND,
             Self::Conflict(_) => StatusCode::CONFLICT,
+            Self::TooManyAttempts => StatusCode::TOO_MANY_REQUESTS,
             Self::EmailError(_) | Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

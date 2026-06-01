@@ -2,18 +2,24 @@ use async_trait::async_trait;
 use chrono::{Duration, Utc};
 
 use crate::{
-    client::{EmailClient, SmtpClient, TokenClient, TokenClientImpl},
+    client::{EmailClient, RedisClient, RedisClientImpl, SmtpClient, TokenClient, TokenClientImpl},
     dto::{AddUserEmailRequest, UserEmailResponse, VerifyUserEmailRequest},
     error::{AccountError, ConflictError},
     repository::{
-        EmailVerificationRepository, PgEmailVerificationRepository, PgUserRepository,
-        UserRepository,
+        EmailCodeVerification, EmailVerificationRepository, PgEmailVerificationRepository,
+        PgUserRepository, UserRepository,
     },
     util::{
         auth::{NOREPLY_EMAIL, get_code_email},
         crypto::hash_string,
     },
 };
+
+/// wrong-guess budget for an email verification code before it is burned
+const MAX_EMAIL_CODE_ATTEMPTS: i16 = 5;
+
+/// minimum delay between verification-code sends for the same `(user, email)`
+const EMAIL_VERIFY_SEND_COOLDOWN: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Manages a user's account emails: adding secondary emails, issuing
 /// emailed verification codes, and verifying them. Each code is single-use,
@@ -37,49 +43,81 @@ pub trait AccountService: Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct AccountServiceImpl<UR, ER, EC, TC>
+pub struct AccountServiceImpl<UR, ER, EC, TC, RD>
 where
     UR: UserRepository,
     ER: EmailVerificationRepository,
     EC: EmailClient,
     TC: TokenClient,
+    RD: RedisClient,
 {
     user_repo: UR,
     email_verification_repo: ER,
     email_client: EC,
     token_client: TC,
+    redis_client: RD,
 }
 
 impl
-    AccountServiceImpl<PgUserRepository, PgEmailVerificationRepository, SmtpClient, TokenClientImpl>
+    AccountServiceImpl<
+        PgUserRepository,
+        PgEmailVerificationRepository,
+        SmtpClient,
+        TokenClientImpl,
+        RedisClientImpl,
+    >
 {
     pub fn new(
         user_repo: PgUserRepository,
         email_verification_repo: PgEmailVerificationRepository,
         email_client: SmtpClient,
         token_client: TokenClientImpl,
+        redis_client: RedisClientImpl,
     ) -> Self {
         Self {
             user_repo,
             email_verification_repo,
             email_client,
             token_client,
+            redis_client,
         }
     }
 }
 
-impl<UR, ER, EC, TC> AccountServiceImpl<UR, ER, EC, TC>
+impl<UR, ER, EC, TC, RD> AccountServiceImpl<UR, ER, EC, TC, RD>
 where
     UR: UserRepository,
     ER: EmailVerificationRepository,
     EC: EmailClient,
     TC: TokenClient,
+    RD: RedisClient,
 {
+    fn get_rate_limit_key(&self, user_id: uuid::Uuid, email: &str) -> String {
+        format!(
+            "email_verify_send:{}",
+            hash_string(&format!("{user_id}:{email}"))
+        )
+    }
+
     async fn issue_and_send_code(
         &self,
         user_id: uuid::Uuid,
         email: &str,
     ) -> Result<(), AccountError> {
+        // rate-limit code sends per (user, email)
+        let rate_limit_key = self.get_rate_limit_key(user_id, email);
+        match self
+            .redis_client
+            .set_nx_with_ttl(&rate_limit_key, &true, EMAIL_VERIFY_SEND_COOLDOWN)
+            .await
+        {
+            Ok(true) => {}
+            Ok(false) => return Err(AccountError::TooManyAttempts),
+            Err(e) => {
+                tracing::warn!(error = %e, "email code send rate-limit check failed; allowing send")
+            }
+        }
+
         self.email_verification_repo
             .invalidate_codes_for_email(user_id, email)
             .await?;
@@ -102,12 +140,13 @@ where
 
 #[crate::instrument_all(level = "debug")]
 #[async_trait]
-impl<UR, ER, EC, TC> AccountService for AccountServiceImpl<UR, ER, EC, TC>
+impl<UR, ER, EC, TC, RD> AccountService for AccountServiceImpl<UR, ER, EC, TC, RD>
 where
     UR: UserRepository,
     ER: EmailVerificationRepository,
     EC: EmailClient,
     TC: TokenClient,
+    RD: RedisClient,
 {
     async fn add_email(&self, request: AddUserEmailRequest) -> Result<(), AccountError> {
         let email = request.email.as_ref();
@@ -126,34 +165,31 @@ where
         request: VerifyUserEmailRequest,
     ) -> Result<UserEmailResponse, AccountError> {
         let email = request.email.as_ref();
-
         let code_hash = hash_string(request.code.as_ref());
-        let code = self
-            .email_verification_repo
-            .get_code_by_hash(&code_hash)
-            .await?
-            .ok_or(AccountError::InvalidCode)?;
 
-        if code.user_id != request.user_id
-            || code.email != email
-            || code.used_at.is_some()
-            || code.expires_at < Utc::now()
-        {
-            return Err(AccountError::InvalidCode);
-        }
-
-        let row = match self
+        let outcome = match self
             .email_verification_repo
-            .mark_code_used_and_add_email(code.id, request.user_id, email)
+            .verify_and_consume_email_code(
+                request.user_id,
+                email,
+                &code_hash,
+                MAX_EMAIL_CODE_ATTEMPTS,
+            )
             .await
         {
-            Ok(row) => row,
+            Ok(outcome) => outcome,
             Err(e) if e.is_unique_violation() => {
                 return Err(ConflictError::new("email", email).into());
             }
             Err(e) => return Err(e.into()),
         };
 
-        Ok(row.into())
+        match outcome {
+            EmailCodeVerification::Success(row) => Ok(row.into()),
+            EmailCodeVerification::AttemptsExhausted => Err(AccountError::TooManyAttempts),
+            EmailCodeVerification::Invalid | EmailCodeVerification::NoActiveCode => {
+                Err(AccountError::InvalidCode)
+            }
+        }
     }
 }
