@@ -154,7 +154,7 @@ export function ShortcutsProvider({ children }: { children: React.ReactNode }) {
           animations
         >
           <DialogTitle className="sr-only">shortcuts</DialogTitle>
-          <div className="flex flex-col gap-y-1.5 p-4 font-mono">
+          <div className="flex flex-col gap-y-1.5 px-4 py-2 font-mono">
             {allShortcuts.map((s) => (
               <div
                 key={s.name}
