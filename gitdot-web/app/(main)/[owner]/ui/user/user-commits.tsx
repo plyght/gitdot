@@ -11,12 +11,24 @@ import { UserCommitsLog } from "./user-commits-log";
 
 export function UserCommits({ commits }: { commits: UserCommitResource[] }) {
   const tz = useTimezone();
-
+  const [view, setView] = useState<"recent" | number>("recent");
   const [startDate, setStartDate] = useState(() =>
     subtractMonths(new Date(), 11, tz),
   );
   const [endDate, setEndDate] = useState(() => formatDateIso(new Date(), tz));
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+
+  function selectView(next: "recent" | number) {
+    setSelectedMonth(null);
+    setView(next);
+    if (next === "recent") {
+      setStartDate(subtractMonths(new Date(), 11, tz));
+      setEndDate(formatDateIso(new Date(), tz));
+    } else {
+      setStartDate(`${next}-01-01`);
+      setEndDate(`${next}-12-31`);
+    }
+  }
 
   const commitMap = new Map<string, UserCommitResource[]>();
   for (const c of commits) {
@@ -29,13 +41,7 @@ export function UserCommits({ commits }: { commits: UserCommitResource[] }) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <UserCommitsHeader
-        years={years}
-        endDate={endDate}
-        setStartDate={setStartDate}
-        setEndDate={setEndDate}
-        setSelectedMonth={setSelectedMonth}
-      />
+      <UserCommitsHeader view={view} years={years} onSelect={selectView} />
       <UserCommitsCalendar
         commits={commitMap}
         startDate={startDate}
@@ -46,6 +52,7 @@ export function UserCommits({ commits }: { commits: UserCommitResource[] }) {
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
         <UserCommitStatistics
           commits={commitMap}
+          view={view}
           startDate={startDate}
           endDate={endDate}
           selectedMonth={selectedMonth}

@@ -5,11 +5,13 @@ import { dateInRange } from "@/util/date";
 
 export function UserCommitStatistics({
   commits,
+  view,
   startDate,
   endDate,
   selectedMonth,
 }: {
   commits: Map<string, UserCommitResource[]>;
+  view: "recent" | number;
   startDate: string;
   endDate: string;
   selectedMonth: string | null;
@@ -38,7 +40,9 @@ export function UserCommitStatistics({
     ? new Date(`${selectedMonth}-01T00:00:00`).toLocaleString("en-US", {
         month: "long",
       })
-    : endDate.slice(0, 4);
+    : view === "recent"
+      ? "Recent"
+      : String(view);
 
   const parts = repoList.map(([r, c]) => `${r} (${c})`);
   if (redactedCount > 0) parts.push(`private (${redactedCount})`);
