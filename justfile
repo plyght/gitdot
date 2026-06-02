@@ -92,6 +92,10 @@ db:
 db-stop:
     docker stop {{ DB_CONTAINER }}
 
+# Open a pgcli REPL against the local Postgres
+pgcli:
+    pgcli postgres://postgres:postgres@localhost:5432/gitdot
+
 # ── Kafka ────────────────────────────────────────────────────────────────────
 
 # Start local Kafka (KRaft, single broker) in Docker (idempotent)
