@@ -13,7 +13,7 @@ export default function Page() {
 
   return (
     <div
-      className={`${leagueSpartan.className} px-3 pt-3.5 pb-2 h-full overflow-y-auto scrollbar-none`}
+      className={`${leagueSpartan.className} px-3 pt-4.5 pb-2 h-full overflow-y-auto scrollbar-none`}
     >
       {posts.length === 0 ? (
         <p>No posts yet.</p>

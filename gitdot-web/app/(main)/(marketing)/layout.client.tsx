@@ -102,7 +102,7 @@ export function LayoutClient({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[1fr_min(100%,48rem)_1fr] h-full overflow-hidden">
-      <div className="hidden md:flex pr-4 pt-3 flex-col items-end text-right">
+      <div className="hidden md:flex pr-4 pt-4 flex-col items-end text-right">
         <Image
           className="dark:invert"
           src="/gitdot-long-black.svg"

@@ -150,7 +150,7 @@ export function CommitsGrid({
                       "w-full h-full transition-opacity duration-300 group-hover:duration-0",
                       cellColor(day.commitCount, thresholds),
                       dateInRange(day.date, selectedStart, selectedEnd)
-                        ? "opacity-100! ring-1 ring-inset ring-foreground"
+                        ? "opacity-100! ring-1 ring-inset ring-foreground dark:ring-foreground/60!"
                         : cn(
                             dimmed && "opacity-40",
                             "group-hover:opacity-100!",

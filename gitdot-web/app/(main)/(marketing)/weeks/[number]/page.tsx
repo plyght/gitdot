@@ -42,7 +42,7 @@ export default async function Page({
 
   return (
     <div
-      className={`${leagueSpartan.className} px-3 pt-3 pb-2 h-full overflow-y-auto scrollbar-none`}
+      className={`${leagueSpartan.className} px-3 pt-4 pb-2 h-full overflow-y-auto scrollbar-none`}
     >
       <article className="w-full overflow-hidden md:overflow-visible">
         <h1 className="text-2xl">{post.metadata.title}</h1>

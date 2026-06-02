@@ -22,13 +22,16 @@ export function UserOrgs({
       </p>
       <div className="flex flex-col gap-4">
         {memberships.map((m) => (
-          <div key={m.id} className="grid grid-cols-[auto_1fr_auto] gap-x-3">
-            <Link href={`/${m.name}`} className="peer row-span-2 self-start">
+          <div
+            key={m.id}
+            className="group grid grid-cols-[auto_1fr_auto] gap-x-3 w-full"
+          >
+            <Link href={`/${m.name}`} className="row-span-2 self-start">
               <OrgImage orgId={m.id} updatedAt={m.image_updated_at} px={32} />
             </Link>
             <Link
               href={`/${m.name}`}
-              className="text-sm font-medium dark:font-normal underline decoration-transparent hover:decoration-current peer-hover:decoration-current transition-colors duration-200 self-start"
+              className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus-within:decoration-current transition-colors duration-200 self-start"
             >
               {m.name}
             </Link>

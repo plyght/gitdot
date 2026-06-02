@@ -154,7 +154,7 @@ function NameCriteria({
         className={cn(
           "text-xs font-mono bg-transparent outline-none w-full",
           disabled
-            ? "text-muted-foreground/40 cursor-not-allowed"
+            ? "text-muted-foreground/40 dark:text-muted-foreground/80 cursor-not-allowed"
             : "text-foreground",
         )}
       />
@@ -190,7 +190,9 @@ function ChecklistCriteria({
           <span
             className={cn(
               "text-xs font-mono truncate",
-              count > 0 ? "text-foreground" : "text-muted-foreground/40",
+              count > 0
+                ? "text-foreground"
+                : "text-muted-foreground/40 dark:text-muted-foreground/80",
             )}
           >
             {summary}
@@ -289,7 +291,7 @@ function PathsCriteria({
           }
         }}
         placeholder="Search paths..."
-        className="text-xs bg-transparent placeholder:text-muted-foreground/40 focus:outline-none w-full font-mono text-foreground"
+        className="text-xs bg-transparent placeholder:text-muted-foreground/40 dark:placeholder:text-muted-foreground/80 focus:outline-none w-full font-mono text-foreground"
       />
       {showSuggestions && (
         <div className="absolute left-0 right-0 top-full z-10 bg-popover border border-border shadow-md max-h-48 overflow-y-auto">

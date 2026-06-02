@@ -96,7 +96,7 @@ function RepoGroup({
           {label}
         </p>
       )}
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col">
         {sortedRepos.map((repo) => (
           <RepoRow key={`${repo.owner}/${repo.name}`} repo={repo} />
         ))}
@@ -107,18 +107,18 @@ function RepoGroup({
 
 function RepoRow({ repo }: { repo: RepositoryResource }) {
   return (
-    <div className="flex flex-col">
+    <Link
+      href={`/${repo.owner}/${repo.name}`}
+      className="group flex flex-col w-full py-0.5 cursor-pointer outline-none"
+    >
       <div className="flex items-baseline justify-between gap-4">
         <div className="flex items-center gap-1 min-w-0">
-          <Link
-            href={`/${repo.owner}/${repo.name}`}
-            className="text-sm font-medium dark:font-normal underline decoration-transparent hover:decoration-current transition-colors duration-200 truncate"
-          >
+          <span className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus:decoration-current transition-colors duration-200 truncate">
             <span className="font-normal text-muted-foreground">
               {repo.owner}/
             </span>
             {repo.name}
-          </Link>
+          </span>
           {repo.stars > 0 && (
             <span className="text-xs text-muted-foreground font-mono">
               ({repo.stars})
@@ -131,6 +131,6 @@ function RepoRow({ repo }: { repo: RepositoryResource }) {
           {repo.description}
         </div>
       )}
-    </div>
+    </Link>
   );
 }

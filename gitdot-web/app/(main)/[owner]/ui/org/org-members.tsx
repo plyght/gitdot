@@ -69,11 +69,11 @@ export function OrgMembers({
         {sortedMembers.map((member) => (
           <div
             key={member.id}
-            className="grid grid-cols-[auto_1fr_auto] gap-x-3"
+            className="group grid grid-cols-[auto_1fr_auto] gap-x-3 w-full"
           >
             <Link
               href={`/${member.user_name}`}
-              className="peer row-span-2 self-start"
+              className="row-span-2 self-start"
             >
               <UserImage
                 userId={member.user_id}
@@ -83,7 +83,7 @@ export function OrgMembers({
             </Link>
             <Link
               href={`/${member.user_name}`}
-              className="text-sm font-medium dark:font-normal underline decoration-transparent hover:decoration-current peer-hover:decoration-current transition-colors duration-200 self-start"
+              className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus-within:decoration-current transition-colors duration-200 self-start"
             >
               {member.user_name}
             </Link>

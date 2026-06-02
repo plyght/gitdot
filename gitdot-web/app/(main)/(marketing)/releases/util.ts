@@ -11,6 +11,7 @@ export interface ReleaseMetadata {
   title: string;
   date: string;
   version: string;
+  status?: "shipped" | "upcoming";
 }
 
 export interface Release {

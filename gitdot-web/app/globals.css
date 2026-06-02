@@ -127,8 +127,8 @@
   --sidebar-accent-foreground: oklch(0.82 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0 0);
-  --diff-red: oklch(0.24 0.045 17.38);
-  --diff-green: oklch(0.24 0.045 155.826);
+  --diff-red: oklch(0.25 0.024 17.38);
+  --diff-green: oklch(0.25 0.024 155.826);
   /* word-level highlight — brighter/warmer so it pops over the line backdrop */
   --diff-orange: oklch(0.42 0.09 62);
   --upvote: oklch(72.75% 0.198 51.769);
@@ -200,6 +200,15 @@ html.dark .shiki,
 html.dark .shiki span {
   color: var(--shiki-dark) !important;
   background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+/* biome-ignore-end lint/complexity/noImportantStyles: end */
+
+/* biome-ignore-start lint/complexity/noImportantStyles: diff tokens carry shiki's inline light color + --shiki-dark var, but the diff <pre> has no .shiki wrapper (renderSpans strips it), so the html.dark .shiki span rule never applies. Swap color only — NOT background — so line tints (bg-diff-green/red) and token interaction bgs (hover/active/selected) keep working. */
+html.dark .diff-token {
+  color: var(--shiki-dark) !important;
   font-style: var(--shiki-dark-font-style) !important;
   font-weight: var(--shiki-dark-font-weight) !important;
   text-decoration: var(--shiki-dark-text-decoration) !important;
