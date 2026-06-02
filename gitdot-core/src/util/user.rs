@@ -21,7 +21,7 @@ press `?` any time to see the full shortcut list. a few to start with:
 
 - fill out your profile (click the 'settings' button in actions on the left)
 - create a new repo, or import one from GitHub
-- install the [gitdot-cli](https://gitdot.io/bkdevs/gitdot/gitdot-cli/README.md) to push changes!
+- install the [gitdot-cli](#install-cli) to push changes!
 
 and if you have any questions, email [founders@gitdot.io](mailto:founders@gitdot.io)
 "#;

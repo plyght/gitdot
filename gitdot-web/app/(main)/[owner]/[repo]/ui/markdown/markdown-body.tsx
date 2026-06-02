@@ -3,6 +3,7 @@ import type { Element, ElementContent } from "hast";
 import React from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { InstallCliLink } from "@/(main)/ui/install-cli-dialog";
 import Link from "@/ui/link";
 import { highlightMarkdownCode } from "./markdown-highlighter";
 import remarkLineBreaks from "./remark-line-breaks";
@@ -121,15 +122,20 @@ export function MarkdownBody({
             {...props}
           />
         ),
-        a: ({ node, href, children, ...props }) => (
-          <Link
-            href={href ?? ""}
-            className="text-sm underline underline-offset-4 decoration-1 hover:decoration-2 transition-all"
-            {...props}
-          >
-            {children}
-          </Link>
-        ),
+        a: ({ node, href, children, ...props }) => {
+          const linkClass =
+            "text-sm underline underline-offset-4 decoration-1 hover:decoration-2 transition-all";
+          if (href === "#install-cli") {
+            return (
+              <InstallCliLink className={linkClass}>{children}</InstallCliLink>
+            );
+          }
+          return (
+            <Link href={href ?? ""} className={linkClass} {...props}>
+              {children}
+            </Link>
+          );
+        },
         blockquote: ({ node, ...props }) => (
           <blockquote
             className={

@@ -41,7 +41,7 @@ pub async fn get_repository_resources(
     let now = Utc::now();
 
     let contents = async {
-        if params.last_commit.as_deref() != Some(head_sha.as_str()) {
+        if params.last_commit.as_deref() == Some(head_sha.as_str()) {
             return Ok::<_, AppError>(None);
         }
         let paths = state

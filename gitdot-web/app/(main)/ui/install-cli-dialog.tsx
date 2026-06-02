@@ -2,11 +2,29 @@
 
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { toast } from "@/(main)/context/toaster";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 
 const INSTALL_COMMAND = "cargo install gitdot-cli";
+
+export function InstallCliLink({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={() => window.dispatchEvent(new CustomEvent("openInstallCli"))}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function InstallCliDialog() {
   const [open, setOpen] = useState(false);
