@@ -1,11 +1,29 @@
 import "server-only";
 
 import { getVercelOidcToken } from "@vercel/oidc";
+import { headers } from "next/headers";
 import type { ZodType } from "zod";
 import { getSession } from "./auth";
 
 export const GITDOT_SERVER_URL =
   process.env.GITDOT_SERVER_URL || "http://localhost:8080";
+
+/**
+ * Forward the real end-user IP to the backend. Vercel sets `x-forwarded-for` on
+ * the incoming request at the edge (clients can't spoof it), so the backend —
+ * which would otherwise only see this server's Vercel egress IP — can attribute
+ * sessions and rate limits to the actual user.
+ */
+async function clientIpHeader(): Promise<Record<string, string>> {
+  try {
+    const h = await headers();
+    const ip =
+      h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip");
+    return ip ? { "X-Gitdot-Client-Ip": ip } : {};
+  } catch {
+    return {};
+  }
+}
 
 export async function authFetch(
   url: string,
@@ -20,6 +38,7 @@ export async function authFetch(
       ...options?.headers,
       ...(session && { Authorization: `Bearer ${session.access_token}` }),
       "X-Vercel-OIDC-Token": oidcToken,
+      ...(await clientIpHeader()),
     },
   });
 }
