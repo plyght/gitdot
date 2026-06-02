@@ -2,6 +2,8 @@ mod git_info_refs;
 mod git_receive_pack;
 mod git_upload_pack;
 
+use std::time::Duration;
+
 use axum::{
     Router,
     body::Body,
@@ -19,18 +21,22 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use crate::app::AppState;
+use gitdot_axum::middleware::create_rate_limiter;
 
-use crate::util::LimitedReader;
+use crate::{app::AppState, util::LimitedReader};
 
 use git_info_refs::git_info_refs;
 use git_receive_pack::git_receive_pack;
 use git_upload_pack::git_upload_pack;
 
 const GIT_UPLOAD_PACK_BODY_LIMIT: usize = 10 * 1024 * 1024;
-const GIT_RECEIVE_PACK_BODY_LIMIT: usize = 2 * 1024 * 1024 * 1024;
 const GIT_UPLOAD_PACK_DECOMPRESSED_LIMIT: u64 = 100 * 1024 * 1024;
+
+const GIT_RECEIVE_PACK_BODY_LIMIT: usize = 2 * 1024 * 1024 * 1024;
 const GIT_RECEIVE_PACK_DECOMPRESSED_LIMIT: u64 = 4 * 1024 * 1024 * 1024;
+
+const GIT_RATE_LIMIT_PERIOD: Duration = Duration::from_millis(100);
+const GIT_RATE_LIMIT_BURST: u32 = 40;
 
 pub fn create_git_http_router() -> Router<AppState> {
     Router::new()
@@ -44,6 +50,10 @@ pub fn create_git_http_router() -> Router<AppState> {
             post(git_receive_pack).layer(RequestBodyLimitLayer::new(GIT_RECEIVE_PACK_BODY_LIMIT)),
         )
         .layer(middleware::from_fn(add_www_authenticate_header))
+        .layer(create_rate_limiter(
+            GIT_RATE_LIMIT_PERIOD,
+            GIT_RATE_LIMIT_BURST,
+        ))
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
         .layer(PropagateRequestIdLayer::x_request_id())

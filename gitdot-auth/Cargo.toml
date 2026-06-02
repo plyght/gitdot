@@ -19,7 +19,6 @@ figment = { workspace = true }
 gitdot-api = { workspace = true }
 gitdot-axum = { workspace = true }
 gitdot-core = { workspace = true }
-governor = { workspace = true }
 http = { workspace = true }
 jsonwebtoken = { workspace = true }
 reqwest = { workspace = true }
@@ -30,7 +29,6 @@ thiserror = { workspace = true }
 time = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
-tower_governor = { workspace = true }
 tower-http = { workspace = true, features = [
   "cors",
   "request-id",

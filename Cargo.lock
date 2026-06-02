@@ -2486,7 +2486,6 @@ dependencies = [
  "gitdot-api",
  "gitdot-axum",
  "gitdot-core",
- "governor",
  "http 1.4.0",
  "jsonwebtoken",
  "reqwest 0.13.2",
@@ -2498,7 +2497,6 @@ dependencies = [
  "tokio",
  "tower",
  "tower-http",
- "tower_governor",
  "tracing",
 ]
 
@@ -2509,9 +2507,12 @@ dependencies = [
  "axum",
  "dotenvy",
  "gitdot-core",
+ "governor",
  "jsonwebtoken",
  "rustls 0.23.36",
  "thiserror 2.0.17",
+ "tokio",
+ "tower_governor",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -2679,7 +2680,6 @@ dependencies = [
  "tokio-util",
  "tower",
  "tower-http",
- "tower_governor",
  "tracing",
  "uuid",
 ]

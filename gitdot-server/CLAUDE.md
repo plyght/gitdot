@@ -62,3 +62,4 @@ Separate each group with a blank line. Merge imports from the same crate (`impor
 - Handlers are one function per file, no business logic — delegate to core services
 - `IntoApi` converts core response DTOs to API resource types (in `dto/`)
 - Auth: `AuthenticatedUser` (required), `Option<AuthenticatedUser>` (optional), `AuthenticatedUser<Jwt>` (JWT-only)
+- Rate limiting: per-IP via `gitdot_axum::rate_limit::create_rate_limiter(period, burst)` (shared helper, includes a `retain_recent` cleanup task). Two independent buckets: the JSON API tier (`app.rs`, ~100 req/s, burst 200) and the git-http tier (`handler/git_http.rs`, ~10 req/s, burst 40). `internal_router` is unthrottled (localhost-gated)

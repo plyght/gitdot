@@ -6,18 +6,14 @@ mod logout;
 mod refresh_session;
 mod slack;
 
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use axum::{
     Router, middleware,
     routing::{delete, get, post},
 };
-use governor::middleware::NoOpMiddleware;
-use tower_governor::{
-    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
-};
 
-use gitdot_axum::middleware::verify_vercel_oidc;
+use gitdot_axum::middleware::{create_rate_limiter, verify_vercel_oidc};
 
 use crate::app::AppState;
 
@@ -79,29 +75,4 @@ pub fn create_auth_router(state: AppState) -> Router<AppState> {
         ));
 
     Router::new().merge(cli_routes).merge(web_routes)
-}
-
-fn create_rate_limiter(
-    period: Duration,
-    burst: u32,
-) -> GovernorLayer<SmartIpKeyExtractor, NoOpMiddleware> {
-    let config = Arc::new(
-        GovernorConfigBuilder::default()
-            .period(period)
-            .burst_size(burst)
-            .key_extractor(SmartIpKeyExtractor)
-            .finish()
-            .expect("Failed to build governor config"),
-    );
-
-    let limiter = config.limiter().clone();
-    tokio::spawn(async move {
-        let mut tick = tokio::time::interval(Duration::from_secs(60));
-        loop {
-            tick.tick().await;
-            limiter.retain_recent();
-        }
-    });
-
-    GovernorLayer { config }
 }

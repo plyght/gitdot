@@ -20,9 +20,14 @@ helpers, request extractors, middleware, and the config types they read.
   via `FromRef<AppState>`
 - `extract/` — axum `FromRequestParts` extractors: `Principal` (verifies a
   gitdot Bearer JWT against `AuthConfig`), `ClientIp`, `UserAgent`
-- `middleware/` — `log_request` (structured per-request tracing event) and
+- `middleware/` — `log_request` (structured per-request tracing event),
   `verify_vercel_oidc` (validates the `x-vercel-oidc-token` header against
-  `VercelOidcConfig`)
+  `VercelOidcConfig`), and `create_rate_limiter(period, burst)` — a layer
+  factory that builds a per-IP `tower_governor` `GovernorLayer` (replenishes one
+  token per `period`, so sustained ≈ `1s / period`) and spawns a background
+  `retain_recent` task to bound its state map. Used by `gitdot-server` (API +
+  git-http tiers) and `gitdot-auth` (per-route auth tiers); needs a Tokio
+  runtime active when called
 
 `lib.rs` declares the four `pub mod`s. Each `extract/` and `middleware/`
 submodule is one file per item, re-exported through `extract.rs` /

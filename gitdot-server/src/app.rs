@@ -13,9 +13,6 @@ use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use tokio::net;
 use tower::ServiceBuilder;
-use tower_governor::{
-    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
-};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -23,7 +20,7 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use gitdot_axum::middleware::log_request;
+use gitdot_axum::middleware::{create_rate_limiter, log_request};
 
 use crate::handler::{
     create_git_http_router, create_internal_router, create_migration_router,
@@ -34,6 +31,9 @@ pub use error::AppError;
 pub use response::AppResponse;
 pub use settings::Settings;
 pub use state::AppState;
+
+const API_RATE_LIMIT_PERIOD: Duration = Duration::from_millis(10);
+const API_RATE_LIMIT_BURST: u32 = 200;
 
 pub struct GitdotServer {
     router: axum::Router,
@@ -69,15 +69,6 @@ impl GitdotServer {
 }
 
 fn create_router(app_state: AppState) -> Router {
-    // Per-IP rate limit: 1 token replenished every 10ms (= 100 req/sec sustained),
-    // with 200 initial tokens to absorb brief spikes from a page load.
-    let governor_config = GovernorConfigBuilder::default()
-        .per_millisecond(10)
-        .burst_size(200)
-        .key_extractor(SmartIpKeyExtractor)
-        .finish()
-        .expect("Failed to build governor config");
-
     let web_origin = app_state
         .settings
         .gitdot_web_url
@@ -103,11 +94,12 @@ fn create_router(app_state: AppState) -> Router {
         )
         .layer(TimeoutLayer::with_status_code(
             StatusCode::REQUEST_TIMEOUT,
-            Duration::from_secs(90), // TODO: only 90s for /task/poll, rest should be 10s
+            Duration::from_secs(30),
         ))
-        .layer(GovernorLayer {
-            config: governor_config.into(),
-        })
+        .layer(create_rate_limiter(
+            API_RATE_LIMIT_PERIOD,
+            API_RATE_LIMIT_BURST,
+        ))
         .layer(PropagateRequestIdLayer::x_request_id());
 
     let api_router = Router::new()
