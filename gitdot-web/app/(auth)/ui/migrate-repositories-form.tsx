@@ -155,7 +155,7 @@ function NewMigration({
       </div>
       <div className="flex flex-col h-96 -mx-1 overflow-y-auto scrollbar-thin">
         {sortedRepos === null ? (
-          <div className="px-2 py-1.5 font-mono text-muted-foreground">
+          <div className="px-0.5 py-1.5 font-mono text-muted-foreground">
             loading...
           </div>
         ) : sortedRepos.length === 0 ? (

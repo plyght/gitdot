@@ -26,7 +26,7 @@ import {
 import { cn } from "@/util";
 import { timeAgo } from "@/util/date";
 
-export function MigrateRepoDialog() {
+export function ImportRepoDialog() {
   const [open, setOpen] = useState(false);
   const [submittedMigration, setSubmittedMigration] =
     useState<MigrationResource | null>(null);
@@ -36,8 +36,8 @@ export function MigrateRepoDialog() {
       setSubmittedMigration(null);
       setOpen(true);
     };
-    window.addEventListener("openMigrateRepo", handle);
-    return () => window.removeEventListener("openMigrateRepo", handle);
+    window.addEventListener("openImportRepo", handle);
+    return () => window.removeEventListener("openImportRepo", handle);
   }, []);
 
   const pending = submittedMigration !== null;
@@ -51,20 +51,21 @@ export function MigrateRepoDialog() {
         )}
         animations={true}
         showOverlay={true}
+        onOpenAutoFocus={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => {
           if (pending) e.preventDefault();
         }}
       >
         <VisuallyHidden>
-          <DialogTitle>Migrate repositories</DialogTitle>
+          <DialogTitle>Import repositories</DialogTitle>
         </VisuallyHidden>
         {submittedMigration === null ? (
-          <NewMigration
+          <NewImport
             onSubmitted={setSubmittedMigration}
             onCancel={() => setOpen(false)}
           />
         ) : (
-          <PendingMigration
+          <PendingImport
             migration={submittedMigration}
             onDismiss={() => setOpen(false)}
           />
@@ -74,7 +75,7 @@ export function MigrateRepoDialog() {
   );
 }
 
-function NewMigration({
+function NewImport({
   onSubmitted,
   onCancel,
 }: {
@@ -152,7 +153,7 @@ function NewMigration({
 
   const isValid = selectedRepos.size > 0;
 
-  const handleMigrate = () => {
+  const handleImport = () => {
     if (!githubAccount || !repos) return;
     const repoPayload = Array.from(selectedRepos).flatMap((fullName) => {
       const match = repos.find((r) => r.full_name === fullName);
@@ -374,14 +375,16 @@ function NewMigration({
               Mirror your GitHub repositories on gitdot.
             </p>
             <p className="text-xs text-muted-foreground leading-normal mt-3">
-              Imported repositories are <b>read-only mirrors.</b> 
+              Imported repositories are <b>read-only mirrors.</b>
             </p>
             <p className="text-xs text-muted-foreground leading-normal mt-1">
-              New commits pushed to GitHub are replicated to gitdot automatically and you{" "}
-              <b>cannot</b> push directly to the gitdot mirror.
+              New commits pushed to GitHub are replicated to gitdot
+              automatically and you <b>cannot</b> push directly to the gitdot
+              mirror.
             </p>
             <p className="text-xs text-muted-foreground leading-normal mt-1">
-              Note: you can promote a mirror to a full gitdot repository at any time
+              Note: you can promote a mirror to a full gitdot repository at any
+              time
             </p>
           </div>
         </div>
@@ -391,9 +394,9 @@ function NewMigration({
           {error ? (
             <span className="text-destructive">{error}</span>
           ) : selectedRepos.size > 0 ? (
-            `Migrate ${selectedRepos.size} ${selectedRepos.size === 1 ? "repository" : "repositories"} from GitHub`
+            `Import ${selectedRepos.size} ${selectedRepos.size === 1 ? "repository" : "repositories"} from GitHub`
           ) : (
-            "Migrate repositories from GitHub"
+            "Import repositories from GitHub"
           )}
         </span>
         <div className="flex items-center h-full">
@@ -408,10 +411,10 @@ function NewMigration({
           <button
             type="button"
             disabled={!isValid || isPending}
-            onClick={handleMigrate}
+            onClick={handleImport}
             className="flex items-center px-3 h-full text-xs bg-primary text-primary-foreground border-l border-primary enabled:hover:opacity-90 disabled:opacity-60 transition-opacity disabled:cursor-not-allowed cursor-pointer"
           >
-            {isPending ? "Migrating..." : "Migrate"}
+            {isPending ? "Importing..." : "Import"}
           </button>
         </div>
       </div>
@@ -419,7 +422,7 @@ function NewMigration({
   );
 }
 
-function PendingMigration({
+function PendingImport({
   migration,
   onDismiss,
 }: {
@@ -455,9 +458,9 @@ function PendingMigration({
     <div className="flex flex-col w-full">
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
         <h2 className="text-sm font-medium dark:font-normal">
-          Migrate repositories
+          Import repositories
         </h2>
-        <MigrationStatus status={current.status} />
+        <ImportStatus status={current.status} />
       </div>
       <div className="flex flex-col h-24 overflow-y-auto scrollbar-thin border-b border-border">
         {current.repositories.length === 0 ? (
@@ -484,7 +487,7 @@ function PendingMigration({
       </div>
       <div className="flex items-center justify-between h-7">
         <span className="pl-2 text-xs truncate text-muted-foreground">
-          {`Migrate ${current.repositories.length} ${current.repositories.length === 1 ? "repository" : "repositories"} from GitHub`}
+          {`Import ${current.repositories.length} ${current.repositories.length === 1 ? "repository" : "repositories"} from GitHub`}
         </span>
         <button
           type="button"
@@ -499,13 +502,13 @@ function PendingMigration({
   );
 }
 
-function MigrationStatus({ status }: { status: string }) {
+function ImportStatus({ status }: { status: string }) {
   switch (status) {
     case "pending":
     case "running":
       return (
         <RunningStatus
-          text="migrating..."
+          text="importing..."
           className="text-xs font-mono text-muted-foreground"
         />
       );

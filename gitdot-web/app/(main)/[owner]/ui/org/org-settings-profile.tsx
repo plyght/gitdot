@@ -1,7 +1,6 @@
 "use client";
 
 import type { OrganizationResource } from "gitdot-api";
-import { Save } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useTimezone } from "@/(main)/context/timezone";
@@ -64,11 +63,10 @@ export function OrgSettingsProfile({ org }: { org: OrganizationResource }) {
             type="button"
             onClick={handleSave}
             disabled={!dirty || saving}
-            className={`flex items-center gap-1.5 text-sm border-b transition-colors cursor-pointer disabled:cursor-not-allowed ${
-              saving ? "border-transparent" : "border-current"
-            } ${dirty ? "text-foreground" : "text-muted-foreground"}`}
+            className={`text-sm underline transition-colors cursor-pointer disabled:cursor-not-allowed ${
+              dirty ? "text-foreground" : "text-muted-foreground"
+            }`}
           >
-            <Save className="size-3.5 mb-px" />
             {saving ? "Saving..." : "Save"}
           </button>
         </div>

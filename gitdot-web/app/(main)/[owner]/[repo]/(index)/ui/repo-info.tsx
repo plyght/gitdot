@@ -56,7 +56,7 @@ export function RepoInfo({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="font-bold hover:underline cursor-default">
-                    read-only
+                    read-only mirror
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="left">

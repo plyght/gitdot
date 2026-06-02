@@ -2,7 +2,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { CommitDialog } from "@/(main)/ui/commit-dialog";
-import { MigrateRepoDialog } from "@/(main)/ui/migrate-repo-dialog";
+import { ImportRepoDialog } from "@/(main)/ui/import-repo-dialog";
 import { NewOrgDialog } from "@/(main)/ui/new-org-dialog";
 import { NewRepoDialog } from "@/(main)/ui/new-repo-dialog";
 import { RepoSwitcherDialog } from "@/(main)/ui/repo-switcher-dialog";
@@ -43,7 +43,7 @@ export default async function RootLayout({
                 <RepoSwitcherDialog />
                 <NewOrgDialog />
                 <NewRepoDialog />
-                <MigrateRepoDialog />
+                <ImportRepoDialog />
                 <UserSettingsDialog />
                 <CommitDialog />
               </div>

@@ -153,13 +153,13 @@ export function MainCommands() {
       },
       {
         type: "cmd",
-        label: "new org",
-        execute: () => window.dispatchEvent(new CustomEvent("openNewOrg")),
+        label: "import repo",
+        execute: () => window.dispatchEvent(new CustomEvent("openImportRepo")),
       },
       {
         type: "cmd",
-        label: "migrate repo",
-        execute: () => window.dispatchEvent(new CustomEvent("openMigrateRepo")),
+        label: "new org",
+        execute: () => window.dispatchEvent(new CustomEvent("openNewOrg")),
       },
       {
         type: "cmd",
