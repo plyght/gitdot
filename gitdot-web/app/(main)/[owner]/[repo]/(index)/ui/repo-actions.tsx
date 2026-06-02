@@ -1,10 +1,10 @@
 "use client";
 
 import type { RepositoryResource } from "gitdot-api";
-import { Copy, Download, Settings, Star } from "lucide-react";
+import { Download, Settings, Star } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/(main)/context/toaster";
 import { cn } from "@/util";
+import { RepoCloneDialog } from "./repo-clone-dialog";
 import { RepoSettingsDialog } from "./settings/repo-settings-dialog";
 import type { RepoSettingsTab } from "./settings/repo-settings-sidebar";
 
@@ -21,25 +21,9 @@ export function RepoActions({
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<RepoSettingsTab>("info");
+  const [cloneOpen, setCloneOpen] = useState(false);
   const count =
     repository.stars + (starred ? 1 : 0) - (repository.user_star ? 1 : 0);
-
-  const handleClone = () => {
-    const url = `${window.location.origin}/${repository.owner}/${repository.name}`;
-    navigator.clipboard.writeText(url);
-    toast(
-      <div className="flex flex-col gap-1">
-        <span>Copied to clipboard</span>
-        <span className="font-mono bg-accent text-foreground px-1 rounded self-start whitespace-nowrap">
-          git clone {url}
-        </span>
-      </div>,
-      {
-        icon: <Copy className="size-4" />,
-        style: { "--width": "max-content" } as React.CSSProperties,
-      },
-    );
-  };
 
   return (
     <div className="flex flex-col py-2 border-b">
@@ -58,7 +42,12 @@ export function RepoActions({
       <RepoActionButton
         icon={<Download className="size-3" />}
         label="Clone"
-        onClick={handleClone}
+        onClick={() => setCloneOpen(true)}
+      />
+      <RepoCloneDialog
+        repository={repository}
+        open={cloneOpen}
+        onOpenChange={setCloneOpen}
       />
       {isAdmin && (
         <>
