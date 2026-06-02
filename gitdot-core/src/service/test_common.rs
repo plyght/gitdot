@@ -5,8 +5,9 @@ use crate::{
     dto::GitHubEmail,
     model::{
         AuthProvider, Commit, CommitRepository, DeviceAuthorization, DeviceAuthorizationStatus,
-        Organization, OrganizationMember, OrganizationRole, Repository, RepositoryOwnerType,
-        RepositoryVisibility, Session, User, UserEmail,
+        GitHubInstallation, GitHubInstallationType, Migration, MigrationOriginService,
+        MigrationStatus, Organization, OrganizationMember, OrganizationRole, Repository,
+        RepositoryOwnerType, RepositoryVisibility, Session, User, UserEmail,
     },
 };
 
@@ -133,6 +134,38 @@ pub fn create_device_authorization(status: DeviceAuthorizationStatus) -> DeviceA
         status,
         created_at: Utc::now(),
         expires_at: Utc::now() + Duration::minutes(10),
+    }
+}
+
+pub fn create_migration(status: MigrationStatus) -> Migration {
+    Migration {
+        id: Uuid::new_v4(),
+        number: 1,
+        author_id: Uuid::new_v4(),
+        origin_service: MigrationOriginService::GitHub,
+        origin: "octocat".to_string(),
+        origin_type: RepositoryOwnerType::User,
+        destination: "octocat".to_string(),
+        destination_type: RepositoryOwnerType::User,
+        status,
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+        repositories: None,
+    }
+}
+
+pub fn create_github_installation(
+    owner_id: Uuid,
+    login: &str,
+    installation_type: GitHubInstallationType,
+) -> GitHubInstallation {
+    GitHubInstallation {
+        id: Uuid::new_v4(),
+        installation_id: 12345,
+        owner_id,
+        r#type: installation_type,
+        github_login: login.to_string(),
+        created_at: Utc::now(),
     }
 }
 

@@ -9,11 +9,13 @@ use uuid::Uuid;
 use crate::{
     model::{
         AccessToken, Answer, AuthCode, AuthProvider, Comment, CommentSide, Commit, CommitDiff,
-        DeviceAuthorization, Diff, DiffStatus, EmailVerificationCode, Organization,
-        OrganizationMember, OrganizationRole, Question, Repository, RepositoryOwnerType,
-        RepositoryStar, RepositoryVisibility, Review, ReviewComment, ReviewStatus, Reviewer,
-        Revision, Session, TokenType, User, UserEmail, UserOrganization, Verdict, VoteResult,
-        VoteTarget,
+        DeviceAuthorization, Diff, DiffStatus, EmailVerificationCode, GitHubInstallation,
+        GitHubInstallationType, Migration, MigrationOriginService,
+        MigrationRepository as MigrationRepositoryModel, MigrationRepositoryStatus,
+        MigrationStatus, Organization, OrganizationMember, OrganizationRole, Question, Repository,
+        RepositoryOwnerType, RepositoryStar, RepositoryVisibility, Review, ReviewComment,
+        ReviewStatus, Reviewer, Revision, Session, TokenType, User, UserEmail, UserOrganization,
+        Verdict, VoteResult, VoteTarget,
     },
     repository::{AuthCodeVerification, EmailCodeVerification},
 };
@@ -188,15 +190,23 @@ mock! {
     }
 }
 
+mock! {
+    pub GitHubRepository {}
+    impl Clone for GitHubRepository {
+        fn clone(&self) -> Self;
+    }
+    #[async_trait]
+    impl crate::repository::GitHubRepository for GitHubRepository {
+        async fn create(&self, installation_id: i64, owner_id: Uuid, installation_type: GitHubInstallationType, github_login: &str) -> Result<GitHubInstallation, crate::error::DatabaseError>;
+        async fn get(&self, owner_id: Uuid, installation_id: i64) -> Result<Option<GitHubInstallation>, crate::error::DatabaseError>;
+        async fn delete_by_installation_id(&self, installation_id: i64) -> Result<(), crate::error::DatabaseError>;
+        async fn list_by_owner(&self, owner_id: Uuid, cursor: Option<crate::dto::Cursor>, limit: i64) -> Result<(Vec<GitHubInstallation>, Option<crate::dto::Cursor>), crate::error::DatabaseError>;
+    }
+}
+
 /// Hand-written because [`SessionRepository::create_session`] takes
 /// `Option<&str>`, which `mockall` + `async_trait` can't generate a mock for
 /// (the same limitation that forces [`super::test_client::MockGitClient`]).
-///
-/// Configure the two methods the service branches on with
-/// [`with_verification`](MockSessionRepository::with_verification) and
-/// [`with_session`](MockSessionRepository::with_session); the recorders
-/// (`revoked_sessions`, `revoked_families`, `created_sessions`, etc.) let tests
-/// assert which writes happened.
 #[derive(Clone)]
 pub struct MockSessionRepository {
     verification: AuthCodeVerification,
@@ -365,11 +375,6 @@ impl crate::repository::SessionRepository for MockSessionRepository {
 /// [`EmailCodeVerification`] carries a `UserEmail`, which `mockall`'s
 /// `.returning` ergonomics handle poorly, and a builder keeps the account-service
 /// tests readable.
-///
-/// Configure the verify outcome with
-/// [`with_verification`](MockEmailVerificationRepository::with_verification); the
-/// recorders (`created_codes`, `invalidated`) let tests assert which writes
-/// happened.
 #[derive(Clone)]
 pub struct MockEmailVerificationRepository {
     verification: EmailCodeVerification,
@@ -451,5 +456,123 @@ impl crate::repository::EmailVerificationRepository for MockEmailVerificationRep
         _max_attempts: i16,
     ) -> Result<EmailCodeVerification, crate::error::DatabaseError> {
         Ok(self.verification.clone())
+    }
+}
+
+/// Hand-written because [`MigrationRepository::update_migration_repository_status`]
+/// takes `Option<&str>`, which `mockall` + `async_trait` can't generate a mock
+/// for (the same limitation as [`MockSessionRepository`]).
+#[derive(Clone, Default)]
+pub struct MockMigrationRepository {
+    migration: Option<Migration>,
+    list: (Vec<Migration>, Option<crate::dto::Cursor>),
+    created_visibility: Arc<Mutex<Option<RepositoryVisibility>>>,
+}
+
+impl MockMigrationRepository {
+    pub fn with_migration(mut self, migration: Option<Migration>) -> Self {
+        self.migration = migration;
+        self
+    }
+
+    pub fn with_list(mut self, rows: Vec<Migration>, next: Option<crate::dto::Cursor>) -> Self {
+        self.list = (rows, next);
+        self
+    }
+
+    pub fn created_visibility(&self) -> Option<RepositoryVisibility> {
+        self.created_visibility.lock().unwrap().clone()
+    }
+}
+
+#[async_trait]
+impl crate::repository::MigrationRepository for MockMigrationRepository {
+    async fn create(
+        &self,
+        _author_id: Uuid,
+        _origin_service: MigrationOriginService,
+        _origin: &str,
+        _origin_type: &RepositoryOwnerType,
+        _destination: &str,
+        _destination_type: &RepositoryOwnerType,
+    ) -> Result<Migration, crate::error::DatabaseError> {
+        Ok(super::test_common::create_migration(
+            MigrationStatus::Pending,
+        ))
+    }
+
+    async fn get(
+        &self,
+        _author_id: Uuid,
+        _number: i32,
+    ) -> Result<Option<Migration>, crate::error::DatabaseError> {
+        Ok(self.migration.clone())
+    }
+
+    async fn list(
+        &self,
+        _author_id: Uuid,
+        _cursor: Option<crate::dto::Cursor>,
+        _limit: i64,
+    ) -> Result<(Vec<Migration>, Option<crate::dto::Cursor>), crate::error::DatabaseError> {
+        Ok(self.list.clone())
+    }
+
+    async fn update_status(
+        &self,
+        _id: Uuid,
+        _status: MigrationStatus,
+    ) -> Result<Migration, crate::error::DatabaseError> {
+        unimplemented!("MockMigrationRepository::update_status is not stubbed")
+    }
+
+    async fn create_migration_repository(
+        &self,
+        migration_id: Uuid,
+        origin_full_name: &str,
+        origin_repository_id: i64,
+        origin_created_at: Option<DateTime<Utc>>,
+        destination_full_name: &str,
+        visibility: &RepositoryVisibility,
+    ) -> Result<MigrationRepositoryModel, crate::error::DatabaseError> {
+        *self.created_visibility.lock().unwrap() = Some(visibility.clone());
+        Ok(MigrationRepositoryModel {
+            id: Uuid::new_v4(),
+            migration_id,
+            origin_full_name: origin_full_name.to_string(),
+            origin_repository_id,
+            origin_created_at,
+            destination_full_name: destination_full_name.to_string(),
+            destination_repository_id: None,
+            visibility: visibility.clone(),
+            status: MigrationRepositoryStatus::Pending,
+            error: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        })
+    }
+
+    async fn update_migration_repository_status(
+        &self,
+        _id: Uuid,
+        _status: MigrationRepositoryStatus,
+        _error: Option<&str>,
+    ) -> Result<MigrationRepositoryModel, crate::error::DatabaseError> {
+        unimplemented!("MockMigrationRepository::update_migration_repository_status is not stubbed")
+    }
+
+    async fn set_destination_repository_id(
+        &self,
+        _migration_repository_id: Uuid,
+        _destination_repository_id: Uuid,
+    ) -> Result<(), crate::error::DatabaseError> {
+        unimplemented!("MockMigrationRepository::set_destination_repository_id is not stubbed")
+    }
+
+    async fn list_by_origin_repository_id(
+        &self,
+        _origin_repository_id: i64,
+    ) -> Result<Vec<MigrationRepositoryModel>, crate::error::DatabaseError> {
+        unimplemented!("MockMigrationRepository::list_by_origin_repository_id is not stubbed")
     }
 }

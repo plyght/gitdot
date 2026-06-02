@@ -657,3 +657,653 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use serde_json::json;
+    use uuid::Uuid;
+
+    use super::{MigrationService, MigrationServiceImpl};
+    use crate::{
+        dto::{
+            CreateGitHubInstallationRequest, CreateGitHubMigrationRequest, Cursor,
+            GetGitHubAppInstallUrlRequest, GetMigrationRequest, GitHubAppInstallAction,
+            GitHubEmail, GitHubMembership, GitHubUser, InstallStatePayload,
+            ListGitHubInstallationRepositoriesRequest, ListGitHubInstallationsRequest,
+            ListMigrationsRequest,
+        },
+        error::{GitHubError, MigrationError},
+        model::{
+            GitHubInstallationType, MigrationStatus, RepositoryOwnerType, RepositoryVisibility,
+        },
+        service::{
+            test_client::{MockGitClient, MockGitHubClient},
+            test_common::{create_github_installation, create_migration},
+            test_repository::{
+                MockGitHubRepository, MockMigrationRepository, MockOrganizationRepository,
+                MockRepositoryRepository, MockUserRepository,
+            },
+        },
+    };
+
+    type Service = MigrationServiceImpl<
+        MockGitClient,
+        MockGitHubClient,
+        MockRepositoryRepository,
+        MockMigrationRepository,
+        MockOrganizationRepository,
+        MockGitHubRepository,
+        MockUserRepository,
+    >;
+
+    fn create_service() -> Service {
+        MigrationServiceImpl {
+            git_client: MockGitClient::default(),
+            github_client: MockGitHubClient::new(),
+            repo_repo: MockRepositoryRepository::new(),
+            migration_repo: MockMigrationRepository::default(),
+            org_repo: MockOrganizationRepository::new(),
+            github_repo: MockGitHubRepository::new(),
+            user_repo: MockUserRepository::new(),
+        }
+    }
+
+    fn cursor() -> Cursor {
+        Cursor {
+            created_at: Utc::now(),
+            id: Uuid::new_v4(),
+        }
+    }
+
+    fn octocrab_installation(
+        account_login: &str,
+        target_type: Option<&str>,
+    ) -> octocrab::models::Installation {
+        let account = json!({
+            "login": account_login,
+            "id": 1,
+            "node_id": "MDQ6VXNlcjE=",
+            "avatar_url": "https://example.com/a.png",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/x",
+            "html_url": "https://github.com/x",
+            "followers_url": "https://api.github.com/users/x/followers",
+            "following_url": "https://api.github.com/users/x/following",
+            "gists_url": "https://api.github.com/users/x/gists",
+            "starred_url": "https://api.github.com/users/x/starred",
+            "subscriptions_url": "https://api.github.com/users/x/subscriptions",
+            "organizations_url": "https://api.github.com/users/x/orgs",
+            "repos_url": "https://api.github.com/users/x/repos",
+            "events_url": "https://api.github.com/users/x/events",
+            "received_events_url": "https://api.github.com/users/x/received_events",
+            "type": "User",
+            "site_admin": false,
+        });
+        serde_json::from_value(json!({
+            "id": 12345,
+            "account": account,
+            "permissions": {},
+            "events": [],
+            "target_type": target_type,
+        }))
+        .unwrap()
+    }
+
+    fn installation_repositories(
+        repos: &[(&str, bool)],
+    ) -> octocrab::models::InstallationRepositories {
+        let repositories: Vec<_> = repos
+            .iter()
+            .map(|&(full_name, private)| {
+                let name = full_name.split('/').nth(1).unwrap_or(full_name);
+                json!({
+                    "id": 100,
+                    "name": name,
+                    "url": "https://api.github.com/repos/o/r",
+                    "full_name": full_name,
+                    "private": private,
+                    "default_branch": "main",
+                })
+            })
+            .collect();
+        serde_json::from_value(json!({
+            "total_count": repositories.len(),
+            "repositories": repositories,
+        }))
+        .unwrap()
+    }
+
+    fn install_request(owner_id: Uuid) -> CreateGitHubInstallationRequest {
+        CreateGitHubInstallationRequest::new(12345, owner_id, "state".into(), "code".into())
+    }
+
+    mod get_migration {
+        use super::*;
+
+        #[tokio::test]
+        async fn found_returns_response() {
+            let mut service = create_service();
+            let migration = create_migration(MigrationStatus::Completed);
+            let id = migration.id;
+            service.migration_repo =
+                MockMigrationRepository::default().with_migration(Some(migration));
+
+            let response = service
+                .get_migration(GetMigrationRequest::new(Uuid::new_v4(), 1))
+                .await
+                .unwrap();
+
+            assert_eq!(response.id, id);
+            assert_eq!(response.number, 1);
+        }
+
+        #[tokio::test]
+        async fn missing_is_not_found() {
+            // The default mock returns no migration.
+            let service = create_service();
+
+            let err = service
+                .get_migration(GetMigrationRequest::new(Uuid::new_v4(), 99))
+                .await
+                .unwrap_err();
+
+            assert!(matches!(err, MigrationError::NotFound(_)));
+        }
+    }
+
+    mod list_migrations {
+        use super::*;
+
+        #[tokio::test]
+        async fn rows_with_next_cursor() {
+            let mut service = create_service();
+            service.migration_repo = MockMigrationRepository::default().with_list(
+                vec![create_migration(MigrationStatus::Pending)],
+                Some(cursor()),
+            );
+
+            let response = service
+                .list_migrations(ListMigrationsRequest::new(Uuid::new_v4(), None, None).unwrap())
+                .await
+                .unwrap();
+
+            assert_eq!(response.data.len(), 1);
+            assert!(response.next_cursor.is_some());
+        }
+
+        #[tokio::test]
+        async fn empty_page() {
+            // The default mock returns an empty list with no cursor.
+            let service = create_service();
+
+            let response = service
+                .list_migrations(ListMigrationsRequest::new(Uuid::new_v4(), None, None).unwrap())
+                .await
+                .unwrap();
+
+            assert!(response.data.is_empty());
+            assert!(response.next_cursor.is_none());
+        }
+    }
+
+    mod get_github_app_install_url {
+        use super::*;
+
+        #[tokio::test]
+        async fn delegates_to_client() {
+            let url = "https://github.com/apps/gitdot/installations/new";
+            let mut service = create_service();
+            service
+                .github_client
+                .expect_get_github_app_install_url()
+                .returning(move |_, _| Ok(url.to_string()));
+
+            let response = service
+                .get_github_app_install_url(
+                    GetGitHubAppInstallUrlRequest::new(Uuid::new_v4(), "migration").unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.install_url, url);
+        }
+    }
+
+    mod list_github_installations {
+        use super::*;
+
+        #[tokio::test]
+        async fn rows_with_next_cursor() {
+            let owner_id = Uuid::new_v4();
+            let mut service = create_service();
+            service
+                .github_repo
+                .expect_list_by_owner()
+                .returning(move |_, _, _| {
+                    Ok((
+                        vec![create_github_installation(
+                            owner_id,
+                            "octocat",
+                            GitHubInstallationType::User,
+                        )],
+                        Some(cursor()),
+                    ))
+                });
+
+            let response = service
+                .list_github_installations(
+                    ListGitHubInstallationsRequest::new(owner_id, None, None).unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.data.len(), 1);
+            assert!(response.next_cursor.is_some());
+        }
+    }
+
+    mod create_github_installation {
+        use super::*;
+
+        #[tokio::test]
+        async fn state_user_mismatch_is_invalid_state() {
+            let owner_id = Uuid::new_v4();
+            let mut service = create_service();
+            // payload binds the flow to a *different* user.
+            service
+                .github_client
+                .expect_verify_install_state()
+                .returning(|_| {
+                    Ok(InstallStatePayload {
+                        user_id: Uuid::new_v4(),
+                        action: GitHubAppInstallAction::Migration,
+                        exp: 9_999_999_999,
+                    })
+                });
+
+            let err = service
+                .create_github_installation(install_request(owner_id))
+                .await
+                .unwrap_err();
+
+            assert!(matches!(
+                err,
+                MigrationError::GitHubError(GitHubError::InvalidState)
+            ));
+        }
+
+        #[tokio::test]
+        async fn user_install_login_mismatch_is_unauthorized() {
+            let owner_id = Uuid::new_v4();
+            let mut service = create_service();
+            service
+                .github_client
+                .expect_verify_install_state()
+                .returning(move |_| {
+                    Ok(InstallStatePayload {
+                        user_id: owner_id,
+                        action: GitHubAppInstallAction::Migration,
+                        exp: 9_999_999_999,
+                    })
+                });
+            service
+                .github_client
+                .expect_exchange_code()
+                .returning(|_| Ok("token".to_string()));
+            service.github_client.expect_get_user().returning(|_| {
+                Ok(GitHubUser {
+                    login: "alice".to_string(),
+                })
+            });
+            // installation account is someone else.
+            service
+                .github_client
+                .expect_get_installation()
+                .returning(|_| Ok(octocrab_installation("bob", None)));
+
+            let err = service
+                .create_github_installation(install_request(owner_id))
+                .await
+                .unwrap_err();
+
+            assert!(matches!(
+                err,
+                MigrationError::GitHubError(GitHubError::Unauthorized)
+            ));
+        }
+
+        #[tokio::test]
+        async fn org_install_non_admin_is_unauthorized() {
+            let owner_id = Uuid::new_v4();
+            let mut service = create_service();
+            service
+                .github_client
+                .expect_verify_install_state()
+                .returning(move |_| {
+                    Ok(InstallStatePayload {
+                        user_id: owner_id,
+                        action: GitHubAppInstallAction::Migration,
+                        exp: 9_999_999_999,
+                    })
+                });
+            service
+                .github_client
+                .expect_exchange_code()
+                .returning(|_| Ok("token".to_string()));
+            service.github_client.expect_get_user().returning(|_| {
+                Ok(GitHubUser {
+                    login: "alice".to_string(),
+                })
+            });
+            service
+                .github_client
+                .expect_get_installation()
+                .returning(|_| Ok(octocrab_installation("acme", Some("Organization"))));
+            service
+                .github_client
+                .expect_get_user_membership()
+                .returning(|_, _, _| {
+                    Ok(GitHubMembership {
+                        state: "active".to_string(),
+                        role: "member".to_string(),
+                    })
+                });
+
+            let err = service
+                .create_github_installation(install_request(owner_id))
+                .await
+                .unwrap_err();
+
+            assert!(matches!(
+                err,
+                MigrationError::GitHubError(GitHubError::Unauthorized)
+            ));
+        }
+
+        #[tokio::test]
+        async fn user_install_with_verified_emails_persists() {
+            let owner_id = Uuid::new_v4();
+            let mut service = create_service();
+            service
+                .github_client
+                .expect_verify_install_state()
+                .returning(move |_| {
+                    Ok(InstallStatePayload {
+                        user_id: owner_id,
+                        action: GitHubAppInstallAction::Migration,
+                        exp: 9_999_999_999,
+                    })
+                });
+            service
+                .github_client
+                .expect_exchange_code()
+                .returning(|_| Ok("token".to_string()));
+            service.github_client.expect_get_user().returning(|_| {
+                Ok(GitHubUser {
+                    login: "octocat".to_string(),
+                })
+            });
+            service
+                .github_client
+                .expect_get_installation()
+                .returning(|_| Ok(octocrab_installation("octocat", None)));
+            service
+                .github_client
+                .expect_get_user_emails()
+                .returning(|_| {
+                    Ok(vec![GitHubEmail {
+                        email: "octocat@example.com".to_string(),
+                        primary: true,
+                        verified: true,
+                    }])
+                });
+            service
+                .user_repo
+                .expect_upsert_verified_emails()
+                .times(1)
+                .returning(|_, _| Ok(()));
+            service
+                .github_repo
+                .expect_create()
+                .returning(move |_, _, _, _| {
+                    Ok(create_github_installation(
+                        owner_id,
+                        "octocat",
+                        GitHubInstallationType::User,
+                    ))
+                });
+
+            let response = service
+                .create_github_installation(install_request(owner_id))
+                .await
+                .unwrap();
+
+            assert_eq!(response.installation.github_login, "octocat");
+            assert!(matches!(response.action, GitHubAppInstallAction::Migration));
+        }
+
+        #[tokio::test]
+        async fn no_verified_emails_skips_upsert() {
+            let owner_id = Uuid::new_v4();
+            let mut service = create_service();
+            service
+                .github_client
+                .expect_verify_install_state()
+                .returning(move |_| {
+                    Ok(InstallStatePayload {
+                        user_id: owner_id,
+                        action: GitHubAppInstallAction::Migration,
+                        exp: 9_999_999_999,
+                    })
+                });
+            service
+                .github_client
+                .expect_exchange_code()
+                .returning(|_| Ok("token".to_string()));
+            service.github_client.expect_get_user().returning(|_| {
+                Ok(GitHubUser {
+                    login: "octocat".to_string(),
+                })
+            });
+            service
+                .github_client
+                .expect_get_installation()
+                .returning(|_| Ok(octocrab_installation("octocat", None)));
+            // all unverified → upsert must not be called (no expectation set;
+            // mockall panics on an unexpected call).
+            service
+                .github_client
+                .expect_get_user_emails()
+                .returning(|_| {
+                    Ok(vec![GitHubEmail {
+                        email: "octocat@example.com".to_string(),
+                        primary: true,
+                        verified: false,
+                    }])
+                });
+            service
+                .github_repo
+                .expect_create()
+                .returning(move |_, _, _, _| {
+                    Ok(create_github_installation(
+                        owner_id,
+                        "octocat",
+                        GitHubInstallationType::User,
+                    ))
+                });
+
+            service
+                .create_github_installation(install_request(owner_id))
+                .await
+                .unwrap();
+        }
+    }
+
+    mod list_github_installation_repositories {
+        use super::*;
+
+        #[tokio::test]
+        async fn not_owned_is_not_found() {
+            let owner_id = Uuid::new_v4();
+            let mut service = create_service();
+            // github_client is never reached.
+            service.github_repo.expect_get().returning(|_, _| Ok(None));
+
+            let err = service
+                .list_github_installation_repositories(ListGitHubInstallationRepositoriesRequest {
+                    owner_id,
+                    installation_id: 12345,
+                })
+                .await
+                .unwrap_err();
+
+            assert!(matches!(err, MigrationError::NotFound(_)));
+        }
+
+        #[tokio::test]
+        async fn owned_maps_repositories() {
+            let owner_id = Uuid::new_v4();
+            let mut service = create_service();
+            service.github_repo.expect_get().returning(move |_, _| {
+                Ok(Some(create_github_installation(
+                    owner_id,
+                    "octocat",
+                    GitHubInstallationType::User,
+                )))
+            });
+            service
+                .github_client
+                .expect_list_installation_repositories()
+                .returning(|_| Ok(installation_repositories(&[("octocat/hello", false)])));
+
+            let response = service
+                .list_github_installation_repositories(ListGitHubInstallationRepositoriesRequest {
+                    owner_id,
+                    installation_id: 12345,
+                })
+                .await
+                .unwrap();
+
+            assert_eq!(response.len(), 1);
+            assert_eq!(response[0].name, "hello");
+            assert_eq!(response[0].full_name, "octocat/hello");
+            assert!(!response[0].private);
+        }
+    }
+
+    mod create_github_migration {
+        use super::*;
+
+        fn migration_request(
+            user_id: Uuid,
+            destination: &str,
+            destination_type: &str,
+        ) -> CreateGitHubMigrationRequest {
+            CreateGitHubMigrationRequest::new(
+                user_id,
+                12345,
+                "octocat",
+                "user",
+                destination,
+                destination_type,
+                vec![("myrepo".to_string(), 100)],
+            )
+            .unwrap()
+        }
+
+        #[tokio::test]
+        async fn installation_not_owned_is_not_found() {
+            let mut service = create_service();
+            service.github_repo.expect_get().returning(|_, _| Ok(None));
+
+            let err = service
+                .create_github_migration(migration_request(Uuid::new_v4(), "octocat", "user"))
+                .await
+                .unwrap_err();
+
+            assert!(matches!(err, MigrationError::NotFound(_)));
+        }
+
+        #[tokio::test]
+        async fn missing_org_destination_is_not_found() {
+            let user_id = Uuid::new_v4();
+            let mut service = create_service();
+            service.github_repo.expect_get().returning(move |_, _| {
+                Ok(Some(create_github_installation(
+                    user_id,
+                    "octocat",
+                    GitHubInstallationType::User,
+                )))
+            });
+            service.org_repo.expect_get().returning(|_| Ok(None));
+
+            let err = service
+                .create_github_migration(migration_request(user_id, "acme", "organization"))
+                .await
+                .unwrap_err();
+
+            assert!(matches!(err, MigrationError::NotFound(_)));
+        }
+
+        #[tokio::test]
+        async fn repo_absent_from_installation_is_input() {
+            let user_id = Uuid::new_v4();
+            let mut service = create_service();
+            service.github_repo.expect_get().returning(move |_, _| {
+                Ok(Some(create_github_installation(
+                    user_id,
+                    "octocat",
+                    GitHubInstallationType::User,
+                )))
+            });
+            // installation has a different repo than the one requested.
+            // (the migration row is created before the per-repo loop runs; the
+            // default mock's `create` handles that.)
+            service
+                .github_client
+                .expect_list_installation_repositories()
+                .returning(|_| Ok(installation_repositories(&[("octocat/other", false)])));
+
+            let err = service
+                .create_github_migration(migration_request(user_id, "octocat", "user"))
+                .await
+                .unwrap_err();
+
+            assert!(matches!(err, MigrationError::Input(_)));
+        }
+
+        #[tokio::test]
+        async fn private_repo_plans_migration_with_private_visibility() {
+            let user_id = Uuid::new_v4();
+            let mut service = create_service();
+            service.github_repo.expect_get().returning(move |_, _| {
+                Ok(Some(create_github_installation(
+                    user_id,
+                    "octocat",
+                    GitHubInstallationType::User,
+                )))
+            });
+            // The default mock's `create` + `create_migration_repository` handle
+            // persistence; the latter records the derived visibility.
+            service
+                .github_client
+                .expect_list_installation_repositories()
+                .returning(|_| Ok(installation_repositories(&[("octocat/myrepo", true)])));
+
+            let response = service
+                .create_github_migration(migration_request(user_id, "octocat", "user"))
+                .await
+                .unwrap();
+
+            assert_eq!(response.owner_id, user_id);
+            assert_eq!(response.owner_type, RepositoryOwnerType::User);
+            assert_eq!(response.migration.repositories.unwrap().len(), 1);
+            // GitHub-private repo → gitdot `Private` visibility.
+            assert_eq!(
+                service.migration_repo.created_visibility(),
+                Some(RepositoryVisibility::Private)
+            );
+        }
+    }
+}
