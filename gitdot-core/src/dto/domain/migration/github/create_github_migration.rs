@@ -8,7 +8,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct CreateGitHubMigrationRequest {
-    pub author_id: Uuid,
+    pub user_id: Uuid,
     pub installation_id: i64,
     pub origin: String,
     pub origin_type: RepositoryOwnerType,
@@ -25,7 +25,7 @@ pub struct GitHubMigrationRepository {
 
 impl CreateGitHubMigrationRequest {
     pub fn new(
-        author_id: Uuid,
+        user_id: Uuid,
         installation_id: i64,
         origin: &str,
         origin_type: &str,
@@ -42,7 +42,7 @@ impl CreateGitHubMigrationRequest {
             })
             .collect::<Result<Vec<_>, MigrationError>>()?;
         Ok(Self {
-            author_id,
+            user_id,
             installation_id,
             origin: origin.to_string(),
             origin_type: RepositoryOwnerType::try_from(origin_type)

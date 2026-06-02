@@ -469,8 +469,14 @@ where
         &self,
         request: CreateGitHubMigrationRequest,
     ) -> Result<CreateGitHubMigrationResponse, MigrationError> {
+        // validate that the installation is owned by the user
+        self.github_repo
+            .get(request.user_id, request.installation_id)
+            .await?
+            .or_not_found("github installation", request.installation_id)?;
+
         let owner_id = match request.destination_type {
-            RepositoryOwnerType::User => request.author_id,
+            RepositoryOwnerType::User => request.user_id,
             RepositoryOwnerType::Organization => {
                 let org = self
                     .org_repo
@@ -489,7 +495,7 @@ where
         let migration = self
             .migration_repo
             .create(
-                request.author_id,
+                request.user_id,
                 MigrationOriginService::GitHub,
                 &request.origin,
                 &request.origin_type,
