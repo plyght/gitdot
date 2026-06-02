@@ -33,26 +33,19 @@ export default function InstallGithubAppForm({
         className="flex flex-col text-sm w-lg transition-opacity duration-1000"
         style={{ opacity: visible ? 1 : 0 }}
       >
-        <p className="pb-2">Connect GitHub.</p>
+        <p>Import repositories.</p>
         <p className="text-muted-foreground leading-relaxed">
-          Import your profile, commit history, and repositories. All code and
-          commit history is preserved; private repos stay private.
+          Mirror your GitHub repositories on gitdot.
         </p>
-        <p className="pt-2 text-muted-foreground leading-relaxed">
-          There are two ways to migrate:
+        <p className="pt-3 text-muted-foreground leading-relaxed">
+          Imported repositories are <b>read-only mirrors.</b>
         </p>
-        <ul className="text-muted-foreground leading-relaxed list-disc pl-4 flex flex-col gap-0">
-          <li>
-            <span className="text-foreground">Read-only:</span> a one-way sync.
-            New commits on GitHub are replicated to gitdot.
-          </li>
-          <li>
-            <span className="text-foreground">Read-write:</span> a one-time
-            migration to a fully functioning gitdot repository.
-          </li>
-        </ul>
+        <p className="text-muted-foreground leading-relaxed">
+          New commits pushed to GitHub are replicated to gitdot automatically
+          and you <b>cannot</b> push directly to the gitdot mirror.
+        </p>
         <p className="pt-2 pb-4 text-muted-foreground leading-relaxed">
-          Read-only repositories can be promoted to read-write at any time.
+          Note: you can promote a mirror to a full gitdot repository at any time
         </p>
         <p className="text-right">
           <button
@@ -61,7 +54,7 @@ export default function InstallGithubAppForm({
             disabled={isInstalling}
             className="cursor-pointer underline text-foreground decoration-current transition-colors disabled:cursor-not-allowed"
           >
-            Connect
+            Import
           </button>
           <span className="text-muted-foreground mx-1">or</span>
           <button

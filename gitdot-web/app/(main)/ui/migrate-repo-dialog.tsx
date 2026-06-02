@@ -26,13 +26,6 @@ import {
 import { cn } from "@/util";
 import { timeAgo } from "@/util/date";
 
-type MigrationType = "read-only" | "read-write";
-
-const TYPE_OPTIONS: { value: MigrationType; label: string }[] = [
-  { value: "read-only", label: "Read-only" },
-  { value: "read-write", label: "Read-write" },
-];
-
 export function MigrateRepoDialog() {
   const [open, setOpen] = useState(false);
   const [submittedMigration, setSubmittedMigration] =
@@ -93,9 +86,6 @@ function NewMigration({
   const [gitdotAccountName, setGitdotAccount] = useState("");
   const [repos, setRepos] = useState<GitHubRepositoryResource[] | null>(null);
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
-  const [migrationType, setMigrationType] = useState<MigrationType | null>(
-    null,
-  );
 
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +150,7 @@ function NewMigration({
     });
   };
 
-  const isValid = selectedRepos.size > 0 && migrationType !== null;
+  const isValid = selectedRepos.size > 0;
 
   const handleMigrate = () => {
     if (!githubAccount || !repos) return;
@@ -177,7 +167,7 @@ function NewMigration({
         destination: gitdotAccountName,
         destinationType: selectedOrg ? "organization" : "user",
         repositories: repoPayload,
-        readonly: migrationType === "read-only",
+        readonly: true,
       });
       if ("error" in result) {
         setError(result.error);
@@ -190,7 +180,7 @@ function NewMigration({
   return (
     <div className="relative w-full">
       <div className="flex w-full">
-        <div className="flex flex-col w-2/3 min-w-0 border-r border-b border-border">
+        <div className="flex flex-col w-[65%] min-w-0 border-r border-b border-border">
           <div className="flex flex-col gap-1.5 px-2 py-1.5 border-b border-border">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
@@ -375,57 +365,24 @@ function NewMigration({
             )}
           </div>
         </div>
-        <div className="flex flex-col justify-between w-1/3 shrink-0 border-b border-border">
+        <div className="flex flex-col w-[35%] shrink-0 border-b border-border">
           <div className="p-2">
             <h2 className="text-sm font-medium dark:font-normal">
-              Migrate repositories
+              Import repositories
             </h2>
             <p className="text-xs text-muted-foreground leading-normal">
-              Bring your GitHub repositories to gitdot.
+              Mirror your GitHub repositories on gitdot.
+            </p>
+            <p className="text-xs text-muted-foreground leading-normal mt-3">
+              Imported repositories are <b>read-only mirrors.</b> 
             </p>
             <p className="text-xs text-muted-foreground leading-normal mt-1">
-              All code and commit history will be preserved and private repos
-              will stay private.
+              New commits pushed to GitHub are replicated to gitdot automatically and you{" "}
+              <b>cannot</b> push directly to the gitdot mirror.
             </p>
             <p className="text-xs text-muted-foreground leading-normal mt-1">
-              There are two types of migrations:
+              Note: you can promote a mirror to a full gitdot repository at any time
             </p>
-            <ul className="text-xs text-muted-foreground leading-normal flex flex-col mt-1 gap-2 list-disc pl-4">
-              <li>
-                <span className="text-foreground">Read-only:</span> A one-way
-                sync. New commits made on GitHub are replicated to gitdot and
-                you <b>cannot</b> push to the gitdot repository.
-              </li>
-              <li>
-                <span className="text-foreground">Read-write:</span> A one-time
-                migration, giving you a fully functioning gitdot repository to
-                work out of.
-              </li>
-            </ul>
-            <p className="text-xs text-muted-foreground leading-normal mt-1">
-              Read-only repositories may be promoted to read-write at any time.
-            </p>
-          </div>
-          <div className="flex flex-col">
-            {TYPE_OPTIONS.map((option) => {
-              const selected = migrationType === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setMigrationType(option.value)}
-                  className="flex items-center gap-1.5 p-2 text-left text-xs border-t border-border/50 hover:bg-accent transition-colors duration-150 cursor-pointer"
-                >
-                  <div
-                    className={cn(
-                      "shrink-0 w-3 h-3 rounded-xs border border-border transition-colors duration-150",
-                      selected ? "bg-foreground" : "bg-background",
-                    )}
-                  />
-                  <span>{option.label}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
       </div>

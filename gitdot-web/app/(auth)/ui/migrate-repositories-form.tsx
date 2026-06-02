@@ -62,9 +62,6 @@ function NewMigration({
     useState<GitHubInstallationResource | null>(null);
   const [repos, setRepos] = useState<GitHubRepositoryResource[] | null>(null);
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
-  const [migrationType, setMigrationType] = useState<MigrationType | null>(
-    null,
-  );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -129,7 +126,7 @@ function NewMigration({
         destination: username,
         destinationType: "user",
         repositories: repoPayload,
-        readonly: migrationType === "read-only",
+        readonly: true,
       });
       if ("error" in result) {
         setError(result.error);
@@ -142,7 +139,13 @@ function NewMigration({
   return (
     <>
       <div className="flex items-center justify-between pb-2">
-        <p>Migrate repositories.</p>
+        <p>
+          {selectedRepos.size === 0
+            ? "Import repositories."
+            : `Import ${selectedRepos.size} ${
+                selectedRepos.size === 1 ? "repository" : "repositories"
+              }.`}
+        </p>
         {installation && (
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Image src="/github-logo.svg" alt="" width={13} height={13} />
@@ -150,7 +153,7 @@ function NewMigration({
           </span>
         )}
       </div>
-      <div className="flex flex-col h-64 overflow-y-auto scrollbar-thin border-b border-border/50">
+      <div className="flex flex-col h-96 -mx-1 overflow-y-auto scrollbar-thin">
         {sortedRepos === null ? (
           <div className="px-2 py-1.5 font-mono text-muted-foreground">
             loading...
@@ -167,17 +170,24 @@ function NewMigration({
                 key={repo.id}
                 type="button"
                 onClick={() => toggleRepo(repo.full_name)}
-                className="flex items-start gap-2 py-0.5 text-left hover:bg-accent/50 transition-colors cursor-pointer"
+                className="flex items-start gap-2 px-1 py-1.5 text-left hover:bg-accent/50 transition-colors"
               >
                 <div
                   className={cn(
-                    "mt-1 shrink-0 w-3 h-3 rounded-xs border border-border transition-colors duration-150",
+                    "mt-[5px] shrink-0 w-3 h-3 rounded-xs border border-border transition-colors duration-150",
                     checked ? "bg-foreground" : "bg-background",
                   )}
                 />
                 <div className="flex items-end justify-between gap-2 min-w-0 flex-1">
                   <div className="flex flex-col min-w-0">
-                    <span className="truncate">{repo.full_name}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="truncate">{repo.full_name}</span>
+                      {checked && (
+                        <span className="text-muted-foreground truncate">
+                          → {username}/{repo.name}
+                        </span>
+                      )}
+                    </div>
                     <span
                       className={cn(
                         "truncate text-xs text-muted-foreground",
@@ -198,51 +208,14 @@ function NewMigration({
           })
         )}
       </div>
-      <p className="pt-4 text-muted-foreground leading-relaxed">
-        There are two ways to migrate repositories:
-      </p>
-      <div className="flex flex-col pb-2">
-        {TYPE_OPTIONS.map((option) => {
-          const selected = migrationType === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setMigrationType(option.value)}
-              className="flex items-start gap-2 py-0.5 text-left hover:bg-accent/50 transition-colors cursor-pointer"
-            >
-              <div
-                className={cn(
-                  "shrink-0 mt-1 w-3 h-3 rounded-xs border border-border transition-colors duration-150",
-                  selected ? "bg-foreground" : "bg-background",
-                )}
-              />
-              <span>
-                <span className="text-foreground mr-0.5">{option.label}:</span>{" "}
-                <span className="text-muted-foreground">
-                  {option.description}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <p className="text-muted-foreground pb-4 leading-relaxed">
-        Read-only repositories can be promoted to read-write at any time.
-      </p>
-      <p className="text-right">
+      <p className="pt-4 text-right">
         <button
           type="button"
           onClick={handleMigrate}
-          disabled={
-            isPending ||
-            selectedRepos.size === 0 ||
-            !installation ||
-            !migrationType
-          }
+          disabled={isPending || selectedRepos.size === 0 || !installation}
           className="cursor-pointer underline text-foreground decoration-current transition-colors duration-300 disabled:cursor-not-allowed disabled:no-underline disabled:text-muted-foreground"
         >
-          {isPending ? "Migrating" : "Migrate"}
+          {isPending ? "Importing" : "Import"}
         </button>
         <span className="text-muted-foreground mx-1">or</span>
         <button
@@ -306,7 +279,7 @@ function PendingMigration({
       )}
     >
       <div className="flex items-center justify-between pb-2">
-        <p>Migrating repositories.</p>
+        <p>Importing repositories.</p>
         <span className="text-xs">
           <MigrationStatus status={current.status} />
         </span>
@@ -336,34 +309,13 @@ function PendingMigration({
   );
 }
 
-type MigrationType = "read-only" | "read-write";
-
-const TYPE_OPTIONS: {
-  value: MigrationType;
-  label: string;
-  description: string;
-}[] = [
-  {
-    value: "read-only",
-    label: "Read-only",
-    description:
-      "a one-way sync. New commits on GitHub are replicated to gitdot.",
-  },
-  {
-    value: "read-write",
-    label: "Read-write",
-    description:
-      "a one-time migration to a fully functioning gitdot repository.",
-  },
-];
-
 function MigrationStatus({ status }: { status: string }) {
   switch (status) {
     case "pending":
     case "running":
       return (
         <RunningStatus
-          text="migrating..."
+          text="importing..."
           className="font-mono text-muted-foreground"
         />
       );
