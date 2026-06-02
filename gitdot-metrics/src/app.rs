@@ -10,9 +10,6 @@ use axum::{Router, middleware::from_fn, routing::get};
 use http::StatusCode;
 use tokio::net;
 use tower::ServiceBuilder;
-use tower_governor::{
-    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
-};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -20,13 +17,16 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use gitdot_axum::middleware::log_request;
+use gitdot_axum::middleware::{create_rate_limiter, log_request};
 
 use crate::handler::create_metrics_router;
 
 pub use error::AppError;
 pub use settings::Settings;
 pub use state::AppState;
+
+const METRICS_RATE_LIMIT_PERIOD: Duration = Duration::from_millis(50); // ≈20 req/s
+const METRICS_RATE_LIMIT_BURST: u32 = 100;
 
 pub struct GitdotMetricsServer {
     router: Router,
@@ -62,13 +62,6 @@ impl GitdotMetricsServer {
 }
 
 fn create_router(state: AppState) -> Router {
-    let governor_config = GovernorConfigBuilder::default()
-        .per_second(20)
-        .burst_size(100)
-        .key_extractor(SmartIpKeyExtractor)
-        .finish()
-        .expect("Failed to build governor config");
-
     let web_origin = state
         .settings
         .gitdot_web_url
@@ -90,9 +83,10 @@ fn create_router(state: AppState) -> Router {
             StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(10),
         ))
-        .layer(GovernorLayer {
-            config: governor_config.into(),
-        })
+        .layer(create_rate_limiter(
+            METRICS_RATE_LIMIT_PERIOD,
+            METRICS_RATE_LIMIT_BURST,
+        ))
         .layer(PropagateRequestIdLayer::x_request_id());
 
     Router::new()
