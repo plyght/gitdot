@@ -56,7 +56,10 @@ export function RepoCloneDialog({
           </span>
           <button
             type="button"
-            className="flex items-center px-3 h-full text-xs bg-primary text-primary-foreground border-l border-primary hover:bg-primary/80 transition-colors"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("openInstallCli"))
+            }
+            className="flex items-center px-3 h-full text-xs bg-primary text-primary-foreground border-l border-primary hover:bg-primary/80 transition-colors cursor-pointer"
           >
             Install
           </button>

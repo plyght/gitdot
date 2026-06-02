@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { CommitDialog } from "@/(main)/ui/commit-dialog";
 import { ImportRepoDialog } from "@/(main)/ui/import-repo-dialog";
+import { InstallCliDialog } from "@/(main)/ui/install-cli-dialog";
 import { NewOrgDialog } from "@/(main)/ui/new-org-dialog";
 import { NewRepoDialog } from "@/(main)/ui/new-repo-dialog";
 import { RepoSwitcherDialog } from "@/(main)/ui/repo-switcher-dialog";
@@ -46,6 +47,7 @@ export default async function RootLayout({
                 <ImportRepoDialog />
                 <UserSettingsDialog />
                 <CommitDialog />
+                <InstallCliDialog />
               </div>
             </ShortcutsProvider>
           </TimezoneProvider>
