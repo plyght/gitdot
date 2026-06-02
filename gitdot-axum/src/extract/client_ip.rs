@@ -13,10 +13,17 @@ impl<S: Send + Sync> FromRequestParts<S> for ClientIp {
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let ip = parts
             .headers
-            .get("x-forwarded-for")
+            .get("x-gitdot-client-ip")
             .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.split(',').next())
             .map(|v| v.trim().to_string())
+            .or_else(|| {
+                parts
+                    .headers
+                    .get("x-forwarded-for")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.split(',').next())
+                    .map(|v| v.trim().to_string())
+            })
             .or_else(|| {
                 parts
                     .headers
