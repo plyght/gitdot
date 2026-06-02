@@ -28,7 +28,7 @@ import {
 } from "gitdot-client";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { delay, validateEmail } from "../util";
+import { delay, validateEmail, validateRedirectPath } from "../util";
 
 // ============
 // auth actions
@@ -54,7 +54,7 @@ export async function sendCode(
     }
     return { error: "Couldn't send a code. Please try again." };
   }
-  if (redirectTo) redirect(redirectTo);
+  if (redirectTo) redirect(validateRedirectPath(redirectTo));
   return { success: true };
 }
 
@@ -177,7 +177,7 @@ export async function updateUserAction(
   }
 
   refresh();
-  if (redirectTo) redirect(redirectTo);
+  if (redirectTo) redirect(validateRedirectPath(redirectTo));
   return { user: result };
 }
 

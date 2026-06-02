@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { loginWithGithub, sendCode, verifyCode } from "@/actions";
 import { useIsTyping } from "@/hooks/use-is-typing";
-import { cn, validateEmail } from "@/util";
+import { cn, validateEmail, validateRedirectPath } from "@/util";
 
 export default function LoginForm({ redirect }: { redirect?: string }) {
   const [step, setStep] = useState<"email" | "code">("email");
@@ -124,7 +124,9 @@ function VerifyCodeForm({
   useEffect(() => {
     if (state && !("error" in state)) {
       router.push(
-        state.is_new ? "/onboarding" : (redirect ?? `/${state.username}`),
+        state.is_new
+          ? "/onboarding"
+          : validateRedirectPath(redirect, `/${state.username}`),
       );
     }
   }, [state, redirect, router]);

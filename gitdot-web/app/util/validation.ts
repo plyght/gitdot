@@ -33,3 +33,29 @@ export function validateEmail(email: string): boolean {
 export function validatePassword(password: string): boolean {
   return !!password && password.length >= 8;
 }
+
+export function validateRedirectPath(
+  path: string | null | undefined,
+  fallback = "/",
+): string {
+  if (!path) return fallback;
+  if (
+    !path.startsWith("/") ||
+    path.startsWith("//") ||
+    path.startsWith("/\\")
+  ) {
+    return fallback;
+  }
+  if (/\s/.test(path)) {
+    return fallback;
+  }
+  try {
+    const base = "https://gitdot.invalid";
+    if (new URL(path, base).origin !== base) {
+      return fallback;
+    }
+  } catch {
+    return fallback;
+  }
+  return path;
+}
