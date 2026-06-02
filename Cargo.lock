@@ -2486,6 +2486,7 @@ dependencies = [
  "gitdot-api",
  "gitdot-axum",
  "gitdot-core",
+ "governor",
  "http 1.4.0",
  "jsonwebtoken",
  "reqwest 0.13.2",

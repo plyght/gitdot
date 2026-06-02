@@ -61,6 +61,7 @@ gitdot-axum = { path = "gitdot-axum" }
 gitdot-config = { path = "gitdot-config", version = "0.1.0" }
 gitdot-core = { path = "gitdot-core" }
 gitdot-core-derive = { path = "gitdot-core/derive" }
+governor = "0.8"
 hex = "0.4.3"
 http = "1.4.0"
 humantime = "2.3"

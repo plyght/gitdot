@@ -19,6 +19,7 @@ figment = { workspace = true }
 gitdot-api = { workspace = true }
 gitdot-axum = { workspace = true }
 gitdot-core = { workspace = true }
+governor = { workspace = true }
 http = { workspace = true }
 jsonwebtoken = { workspace = true }
 reqwest = { workspace = true }

@@ -68,7 +68,7 @@ Separate each group with a blank line. Merge imports from the same crate (`impor
 - `IntoApi` converts core response DTOs to API resource types (in `dto.rs`)
 - `Principal` is the JWT-authenticated extractor; verifies the bearer token against `settings.gitdot_public_key`
 - CORS allow-origin is built from `settings.gitdot_web_url` — single origin per environment
-- Tower governor rate-limits all routes per-IP (20 rps sustained, burst 100; see `app.rs`)
+- Tower governor rate-limits routes per-IP in tiers defined in `handler.rs` (`governor_tier` + the `*_PERIOD`/`*_BURST` consts): device polling (~2 req/s, burst 10), sensitive web auth — OTP/account (~3 req/s, burst 15), and everything else (~15 req/s, burst 60). Each tier replenishes one token per `period`, so sustained rate ≈ 1s / period — the builder's `per_second(n)` confusingly means "one token every n seconds", which is why tiers use explicit `Duration` periods. Each tier spawns a background `retain_recent` task to bound its per-IP state map.
 
 ## Route Security
 
@@ -80,4 +80,4 @@ Separate each group with a blank line. Merge imports from the same crate (`impor
 - **`web_routes`** (wrapped in `verify_vercel_oidc` middleware → callable only from `gitdot-web` on Vercel):
   - email send/verify, device authorize, github redirect/exchange, slack link, refresh, logout
 
-When reasoning about brute force / abuse on a `web_routes` endpoint, the effective attack surface is *through gitdot-web*, not direct hits on this server. The 20 rps governor limit applies per Vercel egress IP, so forwarded traffic shares one budget.
+When reasoning about brute force / abuse on a `web_routes` endpoint, the effective attack surface is *through gitdot-web*, not direct hits on this server. The web tiers' per-IP governor limits apply per Vercel egress IP, so forwarded traffic shares one budget — tightening the sensitive tier throttles all web users together, not an individual abuser. Per-user abuse defense lives in gitdot-web + the OIDC chokepoint, not in these numbers.

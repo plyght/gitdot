@@ -13,9 +13,6 @@ use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use tokio::net;
 use tower::ServiceBuilder;
-use tower_governor::{
-    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
-};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -67,13 +64,6 @@ impl GitdotAuthServer {
 }
 
 fn create_router(state: AppState) -> Router {
-    let governor_config = GovernorConfigBuilder::default()
-        .per_second(20)
-        .burst_size(100)
-        .key_extractor(SmartIpKeyExtractor)
-        .finish()
-        .expect("Failed to build governor config");
-
     let web_origin = state
         .settings
         .gitdot_web_url
@@ -95,9 +85,6 @@ fn create_router(state: AppState) -> Router {
             StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(10),
         ))
-        .layer(GovernorLayer {
-            config: governor_config.into(),
-        })
         .layer(PropagateRequestIdLayer::x_request_id());
 
     Router::new()
