@@ -11,7 +11,11 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const segments = pathname.split("/").filter(Boolean);
-  if (user && (pathname === "/login" || pathname === "/signup")) {
+  if (pathname === "/week" || pathname.startsWith("/week/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/week/, "/weeks");
+    response = NextResponse.redirect(url, 308);
+  } else if (user && (pathname === "/login" || pathname === "/signup")) {
     const username = (user as { user_metadata?: { username?: string } })
       .user_metadata?.username;
     response = NextResponse.redirect(
