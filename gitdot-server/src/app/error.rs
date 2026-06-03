@@ -70,6 +70,7 @@ pub enum AppError {
 pub struct AppErrorMessage {
     pub message: String,
 }
+
 impl ApiResource for AppErrorMessage {}
 
 pub trait HttpStatus {
@@ -258,32 +259,46 @@ impl HttpStatus for WebhookError {
     }
 }
 
+impl HttpStatus for AppError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            AppError::TokenExtraction(e) => e.status_code(),
+            AppError::TokenService(e) => e.status_code(),
+            AppError::Authorization(e) => e.status_code(),
+            AppError::User(e) => e.status_code(),
+            AppError::Organization(e) => e.status_code(),
+            AppError::Repository(e) => e.status_code(),
+            AppError::Commit(e) => e.status_code(),
+            AppError::Question(e) => e.status_code(),
+            AppError::Review(e) => e.status_code(),
+            AppError::Migration(e) => e.status_code(),
+            AppError::GitHttp(e) => e.status_code(),
+            AppError::Runner(e) => e.status_code(),
+            AppError::Build(e) => e.status_code(),
+            AppError::Task(e) => e.status_code(),
+            AppError::Webhook(e) => e.status_code(),
+            AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
 fn error_response(status_code: StatusCode, message: String) -> Response {
     AppResponse::new(status_code, AppErrorMessage { message }).into_response()
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        match self {
-            AppError::TokenExtraction(e) => error_response(e.status_code(), e.to_string()),
-            AppError::TokenService(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Authorization(e) => error_response(e.status_code(), e.to_string()),
-            AppError::User(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Organization(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Repository(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Commit(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Question(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Review(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Migration(e) => error_response(e.status_code(), e.to_string()),
-            AppError::GitHttp(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Runner(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Build(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Task(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Webhook(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Internal(e) => {
-                tracing::error!("{}", e);
-                error_response(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-            }
+        let status = self.status_code();
+
+        if status.is_server_error() {
+            tracing::error!(error = %self, "request failed with internal error");
+            let message = status
+                .canonical_reason()
+                .unwrap_or("Internal server error")
+                .to_string();
+            return error_response(status, message);
         }
+
+        error_response(status, self.to_string())
     }
 }

@@ -25,6 +25,9 @@ pub enum AppError {
 
     #[error(transparent)]
     TokenExtraction(#[from] TokenExtractionError),
+
+    #[error(transparent)]
+    Internal(#[from] anyhow::Error),
 }
 
 #[derive(Debug, Serialize)]
@@ -98,18 +101,36 @@ impl HttpStatus for TokenExtractionError {
     }
 }
 
+impl HttpStatus for AppError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            AppError::Account(e) => e.status_code(),
+            AppError::Device(e) => e.status_code(),
+            AppError::Session(e) => e.status_code(),
+            AppError::Slack(e) => e.status_code(),
+            AppError::TokenExtraction(e) => e.status_code(),
+            AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
 fn error_response(status_code: StatusCode, message: String) -> Response {
     (status_code, Json(ErrorMessage { message })).into_response()
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        match self {
-            AppError::Account(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Device(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Session(e) => error_response(e.status_code(), e.to_string()),
-            AppError::Slack(e) => error_response(e.status_code(), e.to_string()),
-            AppError::TokenExtraction(e) => error_response(e.status_code(), e.to_string()),
+        let status = self.status_code();
+
+        if status.is_server_error() {
+            tracing::error!(error = %self, "request failed with internal error");
+            let message = status
+                .canonical_reason()
+                .unwrap_or("Internal server error")
+                .to_string();
+            return error_response(status, message);
         }
+
+        error_response(status, self.to_string())
     }
 }
