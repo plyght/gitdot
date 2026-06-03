@@ -20,3 +20,4 @@ pub use migration::*;
 pub use organization::*;
 pub use repository::*;
 pub use user::*;
+pub use webhook::*;

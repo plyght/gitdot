@@ -25,6 +25,7 @@ use gitdot_axum::middleware::{create_rate_limiter, log_request};
 use crate::handler::{
     create_git_http_router, create_internal_router, create_migration_router,
     create_organization_router, create_repository_router, create_user_router,
+    create_webhook_router,
 };
 
 pub use error::AppError;
@@ -107,6 +108,7 @@ fn create_router(app_state: AppState) -> Router {
         .merge(create_organization_router())
         .merge(create_repository_router())
         .merge(create_migration_router())
+        .merge(create_webhook_router())
         .layer(api_middleware);
 
     let git_router = Router::new().merge(create_git_http_router());
