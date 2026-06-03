@@ -9,16 +9,22 @@ export const GITDOT_SERVER_URL =
   process.env.GITDOT_SERVER_URL || "http://localhost:8080";
 
 /**
- * Forward the real end-user IP to the backend. Vercel sets `x-forwarded-for` on
- * the incoming request at the edge (clients can't spoof it), so the backend —
- * which would otherwise only see this server's Vercel egress IP — can attribute
- * sessions and rate limits to the actual user.
+ * Forward the real end-user IP to the backend so it can attribute sessions and
+ * rate limits to the actual user instead of this server's egress IP.
+ *
+ * Traffic flows client -> Cloudflare -> Vercel, so by the time the request
+ * reaches this SSR function the upstream that connected to Vercel is Cloudflare.
+ * That means `x-forwarded-for`/`x-real-ip` carry a Cloudflare edge IP, not the
+ * user. Cloudflare puts the real eyeball IP in `cf-connecting-ip`, so prefer
+ * that and keep the forwarded headers as a fallback for non-Cloudflare paths.
  */
 async function clientIpHeader(): Promise<Record<string, string>> {
   try {
     const h = await headers();
     const ip =
-      h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip");
+      h.get("cf-connecting-ip")?.trim() ??
+      h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      h.get("x-real-ip");
     return ip ? { "X-Gitdot-Client-Ip": ip } : {};
   } catch {
     return {};
