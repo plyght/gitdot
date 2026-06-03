@@ -22,6 +22,10 @@ struct ErrorMessage {
     message: String,
 }
 
+fn error_response(status: StatusCode, message: String) -> Response {
+    (status, Json(ErrorMessage { message })).into_response()
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = match &self {
@@ -30,9 +34,16 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         };
-        let body = ErrorMessage {
-            message: self.to_string(),
-        };
-        (status, Json(body)).into_response()
+
+        if status.is_server_error() {
+            tracing::error!(error = %self, "request failed with internal error");
+            let message = status
+                .canonical_reason()
+                .unwrap_or("Internal server error")
+                .to_string();
+            return error_response(status, message);
+        }
+
+        error_response(status, self.to_string())
     }
 }
