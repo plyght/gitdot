@@ -167,7 +167,13 @@ function EmailForm({
             disabled={githubPending}
             className="flex items-center gap-1.5 px-2 h-full text-xs border-l border-border text-foreground hover:bg-accent/50 transition-colors duration-200"
           >
-            <Image src="/github-logo.svg" alt="GitHub" width={14} height={14} />
+            <Image
+              src="/github-logo.svg"
+              alt="GitHub"
+              width={14}
+              height={14}
+              className="dark:invert"
+            />
             {githubPending ? "Redirecting..." : "GitHub"}
           </button>
           <button
