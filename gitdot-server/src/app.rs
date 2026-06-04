@@ -14,6 +14,7 @@ use sqlx::PgPool;
 use tokio::net;
 use tower::ServiceBuilder;
 use tower_http::{
+    compression::CompressionLayer,
     cors::{AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     timeout::TimeoutLayer,
@@ -80,6 +81,7 @@ fn create_router(app_state: AppState) -> Router {
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
         .layer(from_fn(log_request))
+        .layer(CompressionLayer::new())
         .layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::list([web_origin]))
