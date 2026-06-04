@@ -29,7 +29,11 @@ export default function Page() {
                 >
                   {release.metadata.version}: {release.metadata.title}
                 </Link>
-                <p className="text-sm">{release.metadata.date}</p>
+                <p className="text-sm">
+                  {release.metadata.status === "upcoming"
+                    ? `ETA: ${release.metadata.date}`
+                    : release.metadata.date}
+                </p>
               </div>
             </article>
           ))}
