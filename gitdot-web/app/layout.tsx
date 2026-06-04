@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, Inconsolata } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import { MetricsProvider } from "./context/metrics";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { TooltipProvider } from "./ui/tooltip";
@@ -42,9 +41,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <MetricsProvider>
-            <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
-          </MetricsProvider>
+          <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
         </ThemeProvider>
         <Analytics />
       </body>
