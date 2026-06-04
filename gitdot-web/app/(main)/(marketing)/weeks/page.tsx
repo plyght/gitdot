@@ -25,7 +25,7 @@ export default function Page() {
                 <Link
                   href={`/weeks/${post.metadata.week}`}
                   data-page-item
-                  className="text-lg font-medium outline-none hover:underline focus:underline"
+                  className="text-lg outline-none hover:underline focus:underline"
                 >
                   Week {post.metadata.week}: {post.metadata.title}
                 </Link>

@@ -10,7 +10,6 @@ const designsDirectory = path.join(
 export interface DesignMetadata {
   title: string;
   slug: string;
-  order: number;
   author: string;
   date: string;
 }
@@ -51,7 +50,11 @@ export function getAllDesigns(): Design[] {
       .filter((fileName) => fileName.endsWith(".md"))
       .map((fileName) => getDesignBySlug(fileName.replace(".md", "")))
       .filter((design): design is Design => design !== null)
-      .sort((a, b) => a.metadata.order - b.metadata.order);
+      .sort(
+        (a, b) =>
+          new Date(b.metadata.date).getTime() -
+          new Date(a.metadata.date).getTime(),
+      );
 
     return designs;
   } catch (error) {

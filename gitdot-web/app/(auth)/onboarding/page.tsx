@@ -16,7 +16,7 @@ const LINE_1 = "gitdot is a home for great code.";
 const LINE_2 = `It is built by developers, for developers, and makes no apologies for putting quality first.\nWe believe that software still counts. Things are changing, but building great software is just as hard and just as valuable as ever before.`;
 const LINE_3 =
   "It's early, and there's much left to build, but thank you for being here.";
-const SIGNATURE = "— baepaul & mikkelk";
+const SIGNATURE = "— baepaul & mikkel";
 const PARAGRAPH = `${LINE_1}${LINE_2}${LINE_3}`;
 
 const LINE_2_START = LINE_1.length;

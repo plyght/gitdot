@@ -25,7 +25,7 @@ export default function Page() {
                 <Link
                   href={`/releases/${release.metadata.version}`}
                   data-page-item
-                  className="text-lg font-medium outline-none hover:underline focus:underline"
+                  className="text-lg outline-none hover:underline focus:underline"
                 >
                   {release.metadata.version}: {release.metadata.title}
                 </Link>

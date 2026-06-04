@@ -88,7 +88,7 @@ export default function FAQ() {
         not so naive as to think this will be easy. Building software is hard
         &mdash; but it is simply what we love doing.
       </p>
-      <p>&mdash;baepaul & mikkelk.</p>
+      <p>&mdash;baepaul & mikkel.</p>
     </div>
   );
 }

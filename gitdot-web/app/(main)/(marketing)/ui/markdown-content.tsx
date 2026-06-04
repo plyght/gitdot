@@ -12,13 +12,21 @@ export default function MarkdownContent({ content }: { content: string }) {
       remarkPlugins={[remarkLineBreaks]}
       rehypePlugins={[rehypeRaw]}
       components={{
-        h1: ({ children }) => <h1 className="text-2xl mb-4">{children}</h1>,
-        h2: ({ children }) => <h2 className="text-xl mb-3">{children}</h2>,
-        h3: ({ children }) => <h3 className="text-lg mb-2">{children}</h3>,
-        p: ({ children }) => <p className="mb-4">{children}</p>,
+        h1: ({ children }) => (
+          <h1 className="text-2xl font-bold mb-4">{children}</h1>
+        ),
+        h2: ({ children }) => (
+          <h2 className="text-xl font-bold mb-2">{children}</h2>
+        ),
+        h3: ({ children }) => (
+          <h3 className="text-lg underline mb-2">{children}</h3>
+        ),
+        p: ({ children }) => (
+          <p className="mb-4 [&:has(+ul)]:mb-2 [&:has(+ol)]:mb-2">{children}</p>
+        ),
         ul: ({ children }) => <ul className="mb-2">{children}</ul>,
         ol: ({ children }) => (
-          <ol className="mb-2 list-decimal ml-6">{children}</ol>
+          <ol className="mb-2 list-decimal ml-4">{children}</ol>
         ),
         li: ({ children }) => <li className="ml-4">{children}</li>,
         a: ({ children, href }) => (

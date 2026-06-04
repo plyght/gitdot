@@ -25,7 +25,7 @@ export default function Page() {
                 <Link
                   href={`/designs/${design.metadata.slug}`}
                   data-page-item
-                  className="text-lg font-medium outline-none hover:underline focus:underline"
+                  className="text-lg outline-none hover:underline focus:underline"
                 >
                   {design.metadata.title}
                 </Link>
