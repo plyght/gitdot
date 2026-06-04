@@ -32,6 +32,9 @@ static RESERVED_NAMES: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
         "signup",
         // Common reserved
         "admin",
+        // Company reserved
+        "async",
+        "gitdot",
     ])
 });
 
