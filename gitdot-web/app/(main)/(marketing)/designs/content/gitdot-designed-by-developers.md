@@ -136,6 +136,10 @@ We debated it heavily, whether it is affectation or intention that is driving th
 But we’ve chosen to stick with it.
 We do believe, that as strange as it is, it is a better design.
 
+<video width="100%" muted>
+  <source src="/blog/designed-by-developers-navbar.mp4" type="video/mp4" />
+</video>
+
 &nbsp;
 **2\) Keyboard affordances**
 gitdot assumes you have a keyboard.
@@ -149,6 +153,10 @@ That isn’t to say we neglect the mouse.
 Most navigations are possible with mouse and keyboard, but there are preferred modes of interaction for each.
 
 If a user is searching for a file, it makes little sense that he use his mouse to click a search bar and then use his keyboard to type the query. If a user is new to a repository and simply browsing around, it is more intuitive that he simply click.
+
+<video width="100%" muted>
+  <source src="/blog/designed-by-developers-keyboard.mp4" type="video/mp4" />
+</video>
 
 &nbsp;
 
@@ -167,3 +175,27 @@ Everything should be designed for a purpose, and if that purpose is to advance o
 &nbsp;
 
 ## Details
+
+<video width="100%" muted data-inline>
+  <source src="/blog/designed-by-developers-details-1.mp4" type="video/mp4" />
+</video>
+
+<video width="100%" muted data-inline>
+  <source src="/blog/designed-by-developers-details-2.mp4" type="video/mp4" />
+</video>
+
+<video width="100%" muted data-inline>
+  <source src="/blog/designed-by-developers-details-3.mp4" type="video/mp4" />
+</video>
+
+<video width="100%" muted data-inline>
+  <source src="/blog/designed-by-developers-details-4.mp4" type="video/mp4" />
+</video>
+
+<video width="100%" muted data-inline>
+  <source src="/blog/designed-by-developers-details-5.mp4" type="video/mp4" />
+</video>
+
+<video width="100%" muted data-inline>
+  <source src="/blog/designed-by-developers-details-6.mp4" type="video/mp4" />
+</video>
