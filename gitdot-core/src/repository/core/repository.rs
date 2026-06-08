@@ -391,7 +391,7 @@ impl RepositoryRepository for PgRepositoryRepository {
               ON r.owner_id = u.id AND r.owner_type = 'user'
             LEFT JOIN core.organizations o
               ON r.owner_id = o.id AND r.owner_type = 'organization'
-            WHERE r.visibility = 'public'
+            WHERE r.visibility = 'public' AND r.stars > 0
             ORDER BY r.stars DESC, r.created_at DESC, r.id DESC
             LIMIT $1
             "#,
@@ -977,6 +977,7 @@ mod tests {
         let popular = make_repo(&repo, "popular", alice, RepositoryVisibility::Public, None).await;
         let quiet = make_repo(&repo, "quiet", alice, RepositoryVisibility::Public, None).await;
         let secret = make_repo(&repo, "secret", alice, RepositoryVisibility::Private, None).await;
+        make_repo(&repo, "lonely", alice, RepositoryVisibility::Public, None).await;
 
         repo.star(popular.id, bob).await.unwrap();
         repo.star(popular.id, carol).await.unwrap();
@@ -985,7 +986,6 @@ mod tests {
 
         let repos = repo.list_trending(10).await.unwrap();
         let names: Vec<_> = repos.iter().map(|r| r.name.as_str()).collect();
-        // Public repos ordered by star count desc; the private repo is excluded.
         assert_eq!(names, vec!["popular", "quiet"]);
     }
 
