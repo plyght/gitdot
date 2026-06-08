@@ -112,7 +112,7 @@ export function LayoutClient({
           <button
             type="button"
             aria-label="Open menu"
-            className="px-3 pt-4 flex items-center justify-center shrink-0 w-fit md:hidden"
+            className="px-3 pt-4 flex items-center justify-center shrink-0 w-fit outline-none ring-0 select-none md:hidden"
           >
             <span className="size-4 rounded-full bg-foreground" />
           </button>
