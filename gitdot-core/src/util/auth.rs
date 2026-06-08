@@ -17,7 +17,7 @@ static RESERVED_NAMES: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
         // Frontend routes
         "api",
         "company",
-        "decisions",
+        "designs",
         "faq",
         "home",
         "login",
