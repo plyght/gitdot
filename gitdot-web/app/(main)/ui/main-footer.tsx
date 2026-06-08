@@ -15,7 +15,7 @@ export function MainFooter() {
   if (segments[2] === "reviews" && segments[3] !== undefined) return null;
 
   return (
-    <div className="relative shrink-0 flex w-full h-7 items-center border-t bg-sidebar text-sm font-mono">
+    <div className="relative shrink-0 hidden md:flex w-full h-7 items-center border-t bg-sidebar text-sm font-mono">
       <MainCommands />
       <div className="ml-auto flex items-center h-full">
         <AuthStatus />

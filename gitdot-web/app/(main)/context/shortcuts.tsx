@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { Dialog, DialogContent, DialogTitle } from "@/ui/dialog";
 
 export interface Shortcut {
@@ -96,6 +97,7 @@ export function ShortcutsProvider({ children }: { children: React.ReactNode }) {
   const registryRef = useRef<Map<number, Shortcut[]>>(new Map());
   const counterRef = useRef(0);
   const merged = useRef<Map<string, Shortcut>>(new Map());
+  const isMobile = useIsMobile();
 
   const register = useCallback((shortcuts: Shortcut[]): (() => void) => {
     const id = ++counterRef.current;
@@ -119,7 +121,12 @@ export function ShortcutsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.defaultPrevented || isInputFocused() || isRadixModalOpen()) {
+      if (
+        isMobile ||
+        event.defaultPrevented ||
+        isInputFocused() ||
+        isRadixModalOpen()
+      ) {
         return;
       }
 
@@ -138,7 +145,7 @@ export function ShortcutsProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isMobile]);
 
   const allShortcuts = [...new Set(merged.current.values())].concat(
     helpShortcut,

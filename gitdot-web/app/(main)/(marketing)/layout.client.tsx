@@ -3,9 +3,10 @@
 import type { CurrentUserResource } from "gitdot-api";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useShortcuts } from "@/(main)/context/shortcuts";
 import { useUserContext } from "@/(main)/context/user";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/ui/dialog";
 import Link from "@/ui/link";
 import { cn } from "@/util";
 
@@ -40,6 +41,7 @@ export function LayoutClient({
 }) {
   const pathname = usePathname();
   const { openAuthDialog } = useUserContext();
+  const [mobileDialogOpen, setMobileDialogOpen] = useState(false);
 
   const cycle = useCallback((delta: number) => {
     const items = Array.from(
@@ -103,8 +105,36 @@ export function LayoutClient({
   );
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-none outline-none">
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_min(100%,48rem)_1fr] min-h-full">
+    <div className="h-full overflow-y-auto scrollbar-none outline-none flex flex-col">
+      {/* mobile nav */}
+      <Dialog open={mobileDialogOpen} onOpenChange={setMobileDialogOpen}>
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            aria-label="Open menu"
+            className="mx-3 mt-4 size-2.5 shrink-0 rounded-full bg-foreground md:hidden"
+          />
+        </DialogTrigger>
+        <DialogContent className="max-w-xs! gap-1 p-4" animations>
+          <DialogTitle className="sr-only">Menu</DialogTitle>
+          {NAV_LINKS.map((link) => {
+            const active = isActive(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileDialogOpen(false)}
+                className={navClassName(active)}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </DialogContent>
+      </Dialog>
+
+      {/* desktop nav */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_min(100%,48rem)_1fr] flex-1 min-h-0">
         <div className="hidden md:flex pr-4 pt-4 flex-col items-end text-right sticky top-0 self-start">
           <Image
             className="dark:invert"
