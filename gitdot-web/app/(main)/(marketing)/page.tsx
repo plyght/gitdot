@@ -5,7 +5,7 @@ import {
 import Link from "@/ui/link";
 import { PageClient } from "./page.client";
 import { getAllReleases } from "./releases/util";
-import { getAllPosts } from "./weeks/util";
+import { getPostByWeek } from "./weeks/util";
 
 export default async function Page() {
   const [trending, latest] = await Promise.all([
@@ -13,7 +13,7 @@ export default async function Page() {
     listLatestRepositories(),
   ]);
 
-  const thisWeek = getAllPosts()[0] ?? null;
+  const thisWeek = getPostByWeek(20);
   const nextRelease =
     getAllReleases()
       .reverse()

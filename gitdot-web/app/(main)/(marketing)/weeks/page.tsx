@@ -12,9 +12,7 @@ export default function Page() {
   const posts = getAllPosts();
 
   return (
-    <div
-      className={`${leagueSpartan.className} px-3 pt-4.5 pb-2 h-full overflow-y-auto scrollbar-none`}
-    >
+    <div className={`${leagueSpartan.className} px-3 pt-4.5 pb-2`}>
       {posts.length === 0 ? (
         <p>No posts yet.</p>
       ) : (

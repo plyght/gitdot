@@ -4,7 +4,7 @@ import { leagueSpartan } from "../fonts";
 export default function FAQ() {
   return (
     <div
-      className={`${leagueSpartan.className} flex flex-col gap-6 px-3 py-4.5 h-full overflow-y-auto scrollbar-none`}
+      className={`${leagueSpartan.className} flex flex-col gap-6 px-3 py-4.5`}
     >
       <div>
         <p className="font-bold text-lg">1. What is gitdot?</p>
@@ -108,7 +108,7 @@ export default function FAQ() {
         <p>
           We do not. <br />
           There are fewer things lamer than selling data for profit. <br />
-          Your code is your own and there should not be a damn thing to say
+          Your code is your own and there should not be a thing to say
           otherwise. <br /> <br />
           We make this promise in our{" "}
           <Link

@@ -40,9 +40,7 @@ export default async function Page({
   }
 
   return (
-    <div
-      className={`${leagueSpartan.className} px-3 pt-4 pb-2 h-full overflow-y-auto scrollbar-none`}
-    >
+    <div className={`${leagueSpartan.className} px-3 pt-4 pb-2`}>
       <article className="w-full overflow-hidden md:overflow-visible">
         <h1 className="text-2xl">{design.metadata.title}</h1>
         <Link href="/designs" className="text-sm hover:underline">

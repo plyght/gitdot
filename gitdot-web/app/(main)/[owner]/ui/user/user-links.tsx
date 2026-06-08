@@ -51,7 +51,7 @@ export function UserLinks({ user }: { user: UserResource }) {
             href={/^https?:\/\//.test(link) ? link : `https://${link}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs underline decoration-transparent hover:decoration-current transition-colors duration-200"
+            className="flex items-center gap-1 text-xs underline decoration-transparent hover:decoration-current"
           >
             {matched ? (
               <>

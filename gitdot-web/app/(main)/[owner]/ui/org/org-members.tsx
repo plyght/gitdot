@@ -67,39 +67,36 @@ export function OrgMembers({
       </div>
       <div className="flex flex-col gap-4">
         {sortedMembers.map((member) => (
-          <div
+          <Link
             key={member.id}
-            className="group grid grid-cols-[auto_1fr_auto] gap-x-3 w-full"
+            href={`/${member.user_name}`}
+            className="group flex items-start gap-x-3 w-full"
           >
-            <Link
-              href={`/${member.user_name}`}
-              className="row-span-2 self-start"
-            >
-              <UserImage
-                userId={member.user_id}
-                updatedAt={member.image_updated_at}
-                px={32}
-              />
-            </Link>
-            <Link
-              href={`/${member.user_name}`}
-              className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus-within:decoration-current transition-colors duration-200 self-start"
-            >
-              {member.user_name}
-            </Link>
-            <span className="text-xs font-mono text-muted-foreground self-start">
-              joined {formatDate(new Date(member.created_at), tz)}
-            </span>
-            <p
-              className={`col-start-2 col-end-4 ${
-                member.role_description
-                  ? "text-xs text-foreground"
-                  : "text-xs text-muted-foreground italic"
-              }`}
-            >
-              {member.role_description || "no description"}
-            </p>
-          </div>
+            <UserImage
+              userId={member.user_id}
+              updatedAt={member.image_updated_at}
+              px={32}
+            />
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus-within:decoration-current transition-colors duration-200">
+                  {member.user_name}
+                </span>
+                <span className="text-xs font-mono text-muted-foreground whitespace-nowrap shrink-0">
+                  joined {formatDate(new Date(member.created_at), tz)}
+                </span>
+              </div>
+              <p
+                className={
+                  member.role_description
+                    ? "text-xs text-foreground"
+                    : "text-xs text-muted-foreground italic"
+                }
+              >
+                {member.role_description || "no description"}
+              </p>
+            </div>
+          </Link>
         ))}
       </div>
     </div>

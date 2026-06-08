@@ -12,9 +12,7 @@ export default function Page() {
   const designs = getAllDesigns();
 
   return (
-    <div
-      className={`${leagueSpartan.className} px-3 pt-4.5 pb-2 h-full overflow-y-auto scrollbar-none`}
-    >
+    <div className={`${leagueSpartan.className} px-3 pt-4.5 pb-2`}>
       {designs.length === 0 ? (
         <p>No designs yet.</p>
       ) : (

@@ -25,7 +25,7 @@ I chose not to implement that protocol myself. Just not yet. Git ships `git http
 
 Step one was the whole product in miniature. One server, git on disk, one database.
 
-<img src="/blog/how-gitdot-backend-evolved-1.png" alt="step 1" height="400" />
+<img src="/blog/how-gitdot-backend-evolved-1.png" alt="step 1" />
 
 &nbsp;
 
@@ -39,7 +39,7 @@ Errors and responses run through one funnel, so every handler looks the same. Ev
 
 The outside still looks the same, one server and one database. But the structure is what made the rest come fast. Users, repositories, organizations, each new domain was just the same layers again. It paid off in a way I didn't expect, too. Once Claude Code started writing parts of the code, the predictable structure gave it a clear pattern to follow, and the output came back higher quality and easier to review. It's the shape everything after is built on.
 
-<img src="/blog/how-gitdot-backend-evolved-2.png" alt="step 2" height="400" />
+<img src="/blog/how-gitdot-backend-evolved-2.png" alt="step 2" />
 
 &nbsp;
 
@@ -55,7 +55,7 @@ Since gitdot-api has no server code in it, writing a client is almost mechanical
 
 The CLI unlocked one more thing, private repos. Until then every repo was public, since the git endpoints had no auth. The CLI fixed that with git's own credential system. Login still ran on Supabase then, which I'll come back to. `dot login` hands your gitdot token to `git credential approve`, which stores it in whatever helper git already uses, like the macOS keychain. After that, cloning or pushing a private repo over HTTPS just works. Git pulls the token back out and sends it, and the server checks it. You never type a token, and I never built credential storage. Git already had one, the same way it already had http-backend.
 
-<img src="/blog/how-gitdot-backend-evolved-3.png" alt="step 3" height="400" />
+<img src="/blog/how-gitdot-backend-evolved-3.png" alt="step 3" />
 
 &nbsp;
 
@@ -73,7 +73,7 @@ gitdot-auth is its own Axum server. It handles the usual flows, email one-time-c
 
 What I like most is how the routes are locked down. A small set is public for the CLI. These are the device-code endpoints, where you trade a long random code for a token. Everything else handles email, OAuth, and sessions, and it sits behind a middleware that only passes requests from our own web app. gitdot-web runs on Vercel, which signs every request with an identity token, and the auth server checks it. So even on the public internet, the sensitive routes are reachable only through gitdot-web. The token design, the device flow, the OIDC gating. There's enough here for its own post.
 
-<img src="/blog/how-gitdot-backend-evolved-4.png" alt="step 4" height="400" />
+<img src="/blog/how-gitdot-backend-evolved-4.png" alt="step 4" />
 
 &nbsp;
 
@@ -87,7 +87,7 @@ Three servers now, with a lot in common. Each needs logging, request IDs, rate l
 
 You might ask whether three servers beat one big one. Fair question. One server is simpler to deploy, with no shared crate to maintain. But splitting buys real things. Each deploys and scales on its own, one failing can't take down the others, and the boundaries make each easier to hold in your head. The cost is mostly boilerplate. Each server has its own setup, plus a crate like gitdot-axum to keep it from drifting. But with a well-structured repo and Claude Code, that part is almost nothing. The pattern is already there to copy. With three small servers it doesn't feel heavy yet, and when it does, the boundaries are clean enough that merging or splitting again won't be a rewrite.
 
-<img src="/blog/how-gitdot-backend-evolved-5.png" alt="step 4" height="400" />
+<img src="/blog/how-gitdot-backend-evolved-5.png" alt="step 4" />
 
 &nbsp;
 

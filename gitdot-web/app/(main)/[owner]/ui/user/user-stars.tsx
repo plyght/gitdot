@@ -11,7 +11,7 @@ export function UserStars({ stars }: { stars: UserRepositoryResource[] }) {
         <Link
           key={`${repo.owner}/${repo.name}`}
           href={`/${repo.owner}/${repo.name}`}
-          className="block w-full truncate text-xs underline decoration-transparent hover:decoration-current transition-colors duration-200"
+          className="block w-full truncate text-xs underline decoration-transparent hover:decoration-current"
         >
           <span className="text-muted-foreground">{repo.owner}/</span>
           {repo.name}

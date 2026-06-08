@@ -50,7 +50,7 @@ As of now, all repositories are free, but we do envision charging for private re
 
 We do not. \
 There are fewer things lamer than selling data for profit. \
-Your code is your own and there should not be a damn thing to say otherwise.
+Your code is your own and there should not be a thing to say otherwise.
 
 We make this promise in our [privacy policy](https://gitdot.io/privacy), but also know that even the law is not enough in matters of sovereignty, so plan to build an end-to-end encrypted git protocol as well.
 

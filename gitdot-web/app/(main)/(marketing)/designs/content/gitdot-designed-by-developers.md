@@ -15,8 +15,7 @@ Realms of subjectivity, where the “best answer” depends on one’s opinion, 
 Yet, there are few cohorts that care as much about as design as developers do.
 Developers are opinionated, picky people, and the choice of software they use is often more considered than the clothes they wear.
 
-I’m no exception to the rule. I care about design.
-
+I’m no exception to the rule.
 The rational reason is that I think it counts: design can be and is a differentiator.
 The irrational reason is that I simply can’t not.
 
@@ -63,8 +62,7 @@ They’re riddled with frustrations: loading animations, flickering UIs, and lay
 These are all things we take for granted and we call them necessities, things we accept as the status quo of software.
 
 But I see them as deficiencies.
-I want to get rid of it.
-I want gitdot to be instant — and for not a damn pixel on the page to flicker.
+I want gitdot to be instant — and for not a pixel on the page to flicker.
 
 That is quite hard.
 There is a reason these affordances exist and it goes beyond a lack of care.

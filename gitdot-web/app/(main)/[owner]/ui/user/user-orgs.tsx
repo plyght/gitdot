@@ -22,32 +22,32 @@ export function UserOrgs({
       </p>
       <div className="flex flex-col gap-4">
         {memberships.map((m) => (
-          <div
+          <Link
             key={m.id}
-            className="group grid grid-cols-[auto_1fr_auto] gap-x-3 w-full"
+            href={`/${m.name}`}
+            className="group flex items-start gap-x-3 w-full"
           >
-            <Link href={`/${m.name}`} className="row-span-2 self-start">
-              <OrgImage orgId={m.id} updatedAt={m.image_updated_at} px={32} />
-            </Link>
-            <Link
-              href={`/${m.name}`}
-              className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus-within:decoration-current transition-colors duration-200 self-start"
-            >
-              {m.name}
-            </Link>
-            <span className="text-xs font-mono text-muted-foreground self-start">
-              member since {formatDate(new Date(m.joined_at), tz)}
-            </span>
-            <p
-              className={`col-start-2 col-end-4 ${
-                m.role_description
-                  ? "text-xs text-foreground"
-                  : "text-xs text-muted-foreground italic"
-              }`}
-            >
-              {m.role_description || "no description"}
-            </p>
-          </div>
+            <OrgImage orgId={m.id} updatedAt={m.image_updated_at} px={32} />
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-sm font-medium dark:font-normal underline decoration-transparent group-hover:decoration-current group-focus-within:decoration-current transition-colors duration-200">
+                  {m.name}
+                </span>
+                <span className="text-xs font-mono text-muted-foreground whitespace-nowrap shrink-0">
+                  member since {formatDate(new Date(m.joined_at), tz)}
+                </span>
+              </div>
+              <p
+                className={
+                  m.role_description
+                    ? "text-xs text-foreground"
+                    : "text-xs text-muted-foreground italic"
+                }
+              >
+                {m.role_description || "no description"}
+              </p>
+            </div>
+          </Link>
         ))}
       </div>
     </div>

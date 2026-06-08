@@ -68,7 +68,7 @@ export function OrgActions({
           key={action.label}
           type="button"
           onClick={action.onClick}
-          className="text-xs underline decoration-transparent hover:decoration-current transition-colors duration-200 cursor-pointer"
+          className="text-xs underline decoration-transparent hover:decoration-current cursor-pointer"
         >
           {action.label}
         </button>

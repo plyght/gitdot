@@ -24,7 +24,7 @@ function isActive(pathname: string, href: string) {
 
 function navClassName(active: boolean) {
   return cn(
-    "w-full py-0.5 text-sm font-mono cursor-pointer underline decoration-transparent transition-colors duration-200",
+    "w-full py-0.5 text-sm font-mono cursor-pointer underline decoration-transparent outline-none ring-0",
     active
       ? "text-foreground decoration-current"
       : "text-muted-foreground hover:text-foreground hover:decoration-current",
@@ -103,42 +103,44 @@ export function LayoutClient({
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[1fr_min(100%,48rem)_1fr] h-full overflow-hidden">
-      <div className="hidden md:flex pr-4 pt-4 flex-col items-end text-right">
-        <Image
-          className="dark:invert"
-          src="/gitdot-long-black.svg"
-          alt="gitdot logo"
-          width={64}
-          height={30}
-          priority
-        />
-        {NAV_LINKS.map((link) => {
-          const active = isActive(pathname, link.href);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              data-nav-item
-              data-nav-item-active={active ? "true" : undefined}
-              className={navClassName(active)}
+    <div className="h-full overflow-y-auto scrollbar-none outline-none">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_min(100%,48rem)_1fr] min-h-full">
+        <div className="hidden md:flex pr-4 pt-4 flex-col items-end text-right sticky top-0 self-start">
+          <Image
+            className="dark:invert"
+            src="/gitdot-long-black.svg"
+            alt="gitdot logo"
+            width={64}
+            height={30}
+            priority
+          />
+          {NAV_LINKS.map((link) => {
+            const active = isActive(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                data-nav-item
+                data-nav-item-active={active ? "true" : undefined}
+                className={navClassName(active)}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+          {!user && (
+            <button
+              type="button"
+              onClick={() => openAuthDialog("signup")}
+              className={cn(navClassName(false), "cursor-pointer text-right")}
             >
-              {link.label}
-            </Link>
-          );
-        })}
-        {!user && (
-          <button
-            type="button"
-            onClick={() => openAuthDialog("signup")}
-            className={cn(navClassName(false), "cursor-pointer text-right")}
-          >
-            /signup
-          </button>
-        )}
-      </div>
+              /signup
+            </button>
+          )}
+        </div>
 
-      {children}
+        {children}
+      </div>
     </div>
   );
 }
