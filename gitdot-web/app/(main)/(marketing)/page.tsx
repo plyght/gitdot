@@ -15,7 +15,9 @@ export default async function Page() {
 
   const thisWeek = getAllPosts()[0] ?? null;
   const nextRelease =
-    getAllReleases().find((r) => r.metadata.status === "upcoming") ?? null;
+    getAllReleases()
+      .reverse()
+      .find((r) => r.metadata.status === "upcoming") ?? null;
 
   return (
     <>
